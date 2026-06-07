@@ -12,7 +12,7 @@ RUN npm ci
 # Copy source
 COPY . .
 
-# Generate Prisma Client
+# Generate Prisma Client (does not require DB)
 RUN npx prisma generate
 
 # Production stage
@@ -20,12 +20,22 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Accept build args from EasyPanel (they pass them via --build-arg)
+ARG DATABASE_URL
+ARG SESSION_SECRET
+ARG PORT
+
+# Set as environment variables for runtime
+ENV DATABASE_URL=$DATABASE_URL
+ENV SESSION_SECRET=$SESSION_SECRET
+ENV PORT=$PORT
+ENV NODE_ENV=production
+
 # Copy from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/.env.example ./.env
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -34,8 +44,10 @@ USER nodejs
 
 EXPOSE 3000
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Simple healthcheck (use /health if you add the route later)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/ || exit 1
 
-CMD ["node", "src/app.js"]
+# Run Prisma migrations (or db push for early MVP) then start the app
+# Using db push for now because migrations folder may be empty on first deploy
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node src/app.js"]

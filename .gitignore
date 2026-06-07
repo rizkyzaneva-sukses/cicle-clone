@@ -4,4 +4,7 @@ node_modules
 dist
 .DS_Store
 *.log
-prisma/migrations
+
+# Keep migrations committed for production deploys (prisma migrate deploy)
+# prisma/migrations
+# (uncomment above line only if you want to ignore migration history)

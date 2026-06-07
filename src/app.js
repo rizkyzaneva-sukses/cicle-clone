@@ -48,6 +48,7 @@ const taskRoutes = require('./routes/tasks');
 const chatRoutes = require('./routes/chat');
 const checklistRoutes = require('./routes/checklist');
 const myTasksRoutes = require('./routes/my-tasks');
+const panduanRoutes = require('./routes/panduan');
 
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
