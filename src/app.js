@@ -119,7 +119,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Cicle Clone running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Cicle Clone running on port ${PORT} (listening on 0.0.0.0)`);
   console.log('Ready for EasyPanel deployment!');
 });
