@@ -6,98 +6,154 @@ const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
-// List all members of user's company
+// Ambil company yang relevan untuk user ini
+async function getUserCompany(userId, platformRole) {
+  if (platformRole === 'owner') {
+    // Owner bisa lihat semua — default ke yang pertama, atau dari query
+    return prisma.membership.findFirst({
+      where: { userId },
+      include: { company: true }
+    });
+  }
+  if (platformRole === 'partner') {
+    const pa = await prisma.partnerAccess.findFirst({
+      where: { userId },
+      include: { company: true }
+    });
+    return pa ? { company: pa.company, role: 'partner' } : null;
+  }
+  return prisma.membership.findFirst({
+    where: { userId },
+    include: { company: true }
+  });
+}
+
 router.get('/', async (req, res) => {
   const userId = req.session.user.id;
+  const platformRole = req.session.user.platformRole;
 
-  const userMembership = await prisma.membership.findFirst({
-    where: { userId },
-    include: {
-      company: {
-        include: {
-          memberships: {
-            include: { user: true },
-            orderBy: { joinedAt: 'asc' }
-          }
-        }
-      }
-    }
+  // Ambil companyId dari query (owner bisa switch brand)
+  const companyId = req.query.companyId;
+
+  let company, userRole;
+
+  if (platformRole === 'owner') {
+    const c = companyId
+      ? await prisma.company.findUnique({ where: { id: companyId } })
+      : (await prisma.company.findFirst({ orderBy: { createdAt: 'asc' } }));
+    company = c;
+    userRole = 'owner';
+  } else if (platformRole === 'partner') {
+    const pa = await prisma.partnerAccess.findFirst({
+      where: { userId, ...(companyId ? { companyId } : {}) },
+      include: { company: true }
+    });
+    company = pa?.company;
+    userRole = 'partner';
+  } else {
+    const m = await prisma.membership.findFirst({
+      where: { userId, ...(companyId ? { companyId } : {}) },
+      include: { company: true }
+    });
+    company = m?.company;
+    userRole = m?.role || 'member';
+  }
+
+  if (!company) return res.redirect('/');
+
+  const members = await prisma.membership.findMany({
+    where: { companyId: company.id },
+    include: { user: true },
+    orderBy: { joinedAt: 'asc' }
   });
 
-  if (!userMembership) return res.redirect('/');
+  // Partner yang punya akses ke brand ini
+  const partners = await prisma.partnerAccess.findMany({
+    where: { companyId: company.id },
+    include: { user: true }
+  });
+
+  const canManage = ['owner', 'partner', 'admin'].includes(userRole);
 
   res.render('members', {
     title: 'Anggota Tim',
-    company: userMembership.company,
-    members: userMembership.company.memberships,
-    isAdmin: userMembership.role === 'admin',
+    company,
+    members,
+    partners,
+    userRole,
+    canManage,
     currentUserId: userId
   });
 });
 
-// Invite member by email
+// Invite member (admin/partner/owner)
 router.post('/invite', async (req, res) => {
-  const { email } = req.body;
-  const userId = req.session.user.id;
+  const { email, companyId } = req.body;
+  const { id: userId, platformRole } = req.session.user;
 
   try {
-    const adminMembership = await prisma.membership.findFirst({
-      where: { userId, role: 'admin' }
-    });
+    // Cek hak akses
+    const hasAccess = platformRole === 'owner' ||
+      (platformRole === 'partner' && await prisma.partnerAccess.findUnique({
+        where: { userId_companyId: { userId, companyId } }
+      })) ||
+      await prisma.membership.findFirst({ where: { userId, companyId, role: 'admin' } });
 
-    if (!adminMembership) {
-      req.flash('error', 'Hanya admin yang bisa mengundang anggota');
-      return res.redirect('/members');
+    if (!hasAccess) {
+      req.flash('error', 'Kamu tidak punya akses untuk mengundang anggota');
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { email } });
-    if (!targetUser) {
-      req.flash('error', 'User dengan email tersebut belum terdaftar. Minta mereka daftar dulu.');
-      return res.redirect('/members');
+    const target = await prisma.user.findUnique({ where: { email } });
+    if (!target) {
+      req.flash('error', 'User belum terdaftar. Minta mereka daftar dulu.');
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
     const existing = await prisma.membership.findUnique({
-      where: { userId_companyId: { userId: targetUser.id, companyId: adminMembership.companyId } }
+      where: { userId_companyId: { userId: target.id, companyId } }
     });
-
     if (existing) {
-      req.flash('error', `${targetUser.name} sudah menjadi anggota workspace ini`);
-      return res.redirect('/members');
+      req.flash('error', `${target.name} sudah jadi anggota brand ini`);
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
     await prisma.membership.create({
-      data: { userId: targetUser.id, companyId: adminMembership.companyId, role: 'member' }
+      data: { userId: target.id, companyId, role: 'member' }
     });
 
-    req.flash('success', `${targetUser.name} berhasil ditambahkan sebagai anggota`);
-    res.redirect('/members');
+    req.flash('success', `${target.name} berhasil ditambahkan sebagai Member`);
+    res.redirect(`/members?companyId=${companyId}`);
   } catch (err) {
     console.error(err);
-    req.flash('error', 'Terjadi kesalahan, coba lagi');
+    req.flash('error', 'Terjadi kesalahan');
     res.redirect('/members');
   }
 });
 
-// Change member role
+// Ubah role member
 router.post('/:membershipId/role', async (req, res) => {
   const { membershipId } = req.params;
-  const { role } = req.body;
-  const userId = req.session.user.id;
+  const { role, companyId } = req.body;
+  const { id: userId, platformRole } = req.session.user;
 
   try {
-    const adminMembership = await prisma.membership.findFirst({
-      where: { userId, role: 'admin' }
-    });
-
-    if (!adminMembership) {
-      req.flash('error', 'Hanya admin yang bisa mengubah role');
-      return res.redirect('/members');
+    const target = await prisma.membership.findUnique({ where: { id: membershipId } });
+    if (!target) return res.redirect(`/members?companyId=${companyId}`);
+    if (target.userId === userId) {
+      req.flash('error', 'Tidak bisa mengubah role sendiri');
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
-    const target = await prisma.membership.findUnique({ where: { id: membershipId } });
-    if (target?.userId === userId) {
-      req.flash('error', 'Tidak bisa mengubah role sendiri');
-      return res.redirect('/members');
+    const canChange = platformRole === 'owner' ||
+      (platformRole === 'partner' && await prisma.partnerAccess.findUnique({
+        where: { userId_companyId: { userId, companyId: target.companyId } }
+      })) ||
+      await prisma.membership.findFirst({ where: { userId, companyId: target.companyId, role: 'admin' } });
+
+    if (!canChange) {
+      req.flash('error', 'Akses ditolak');
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
     await prisma.membership.update({
@@ -106,7 +162,7 @@ router.post('/:membershipId/role', async (req, res) => {
     });
 
     req.flash('success', 'Role berhasil diubah');
-    res.redirect('/members');
+    res.redirect(`/members?companyId=${companyId}`);
   } catch (err) {
     console.error(err);
     req.flash('error', 'Terjadi kesalahan');
@@ -114,32 +170,34 @@ router.post('/:membershipId/role', async (req, res) => {
   }
 });
 
-// Remove member
+// Hapus member
 router.post('/:membershipId/remove', async (req, res) => {
   const { membershipId } = req.params;
-  const userId = req.session.user.id;
+  const { companyId } = req.body;
+  const { id: userId, platformRole } = req.session.user;
 
   try {
-    const adminMembership = await prisma.membership.findFirst({
-      where: { userId, role: 'admin' }
-    });
-
-    if (!adminMembership) {
-      req.flash('error', 'Hanya admin yang bisa menghapus anggota');
-      return res.redirect('/members');
+    const target = await prisma.membership.findUnique({ where: { id: membershipId } });
+    if (!target) return res.redirect(`/members?companyId=${companyId}`);
+    if (target.userId === userId) {
+      req.flash('error', 'Tidak bisa menghapus diri sendiri');
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
-    const target = await prisma.membership.findUnique({ where: { id: membershipId } });
-    if (!target) return res.redirect('/members');
+    const canRemove = platformRole === 'owner' ||
+      (platformRole === 'partner' && await prisma.partnerAccess.findUnique({
+        where: { userId_companyId: { userId, companyId: target.companyId } }
+      })) ||
+      await prisma.membership.findFirst({ where: { userId, companyId: target.companyId, role: 'admin' } });
 
-    if (target.userId === userId) {
-      req.flash('error', 'Tidak bisa menghapus diri sendiri dari workspace');
-      return res.redirect('/members');
+    if (!canRemove) {
+      req.flash('error', 'Akses ditolak');
+      return res.redirect(`/members?companyId=${companyId}`);
     }
 
     await prisma.membership.delete({ where: { id: membershipId } });
-    req.flash('success', 'Anggota berhasil dihapus dari workspace');
-    res.redirect('/members');
+    req.flash('success', 'Anggota berhasil dihapus');
+    res.redirect(`/members?companyId=${companyId}`);
   } catch (err) {
     console.error(err);
     req.flash('error', 'Terjadi kesalahan');

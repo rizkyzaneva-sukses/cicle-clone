@@ -70,7 +70,11 @@
             <%= currentUser.name.charAt(0).toUpperCase() %>
           </div>
           <span class="font-medium hidden sm:inline"><%= currentUser.name.split(' ')[0] %></span>
-          <% if (userRole === 'admin') { %>
+          <% if (currentUser.platformRole === 'owner') { %>
+            <span class="bg-yellow-100 text-yellow-700 text-xs px-1.5 py-0.5 rounded-full font-semibold hidden md:inline">Owner</span>
+          <% } else if (currentUser.platformRole === 'partner') { %>
+            <span class="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded-full font-semibold hidden md:inline">Partner</span>
+          <% } else if (userRole === 'admin') { %>
             <span class="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full font-semibold hidden md:inline">Admin</span>
           <% } %>
         </a>
@@ -99,20 +103,41 @@
           <i class="fas fa-home w-4 text-center"></i><span>Dashboard</span>
         </a>
 
-        <a href="/projects" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-          <%- (currentPath && currentPath.startsWith('/projects')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
-          <i class="fas fa-folder w-4 text-center"></i><span>Proyek</span>
-        </a>
+        <!-- Owner: kelola semua brand -->
+        <% if (currentUser.platformRole === 'owner') { %>
+          <a href="/brands" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+            <%- (currentPath && currentPath.startsWith('/brands')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+            <i class="fas fa-store w-4 text-center"></i><span>Kelola Brand</span>
+          </a>
+        <% } %>
+
+        <!-- Partner & Admin/Member: akses proyek -->
+        <% if (['partner','user'].includes(currentUser.platformRole) || !currentUser.platformRole) { %>
+          <a href="/projects" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+            <%- (currentPath && currentPath.startsWith('/projects')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+            <i class="fas fa-folder w-4 text-center"></i><span>Proyek</span>
+          </a>
+        <% } %>
+
+        <!-- Owner juga bisa lihat semua proyek -->
+        <% if (currentUser.platformRole === 'owner') { %>
+          <a href="/projects" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+            <%- (currentPath && currentPath.startsWith('/projects')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+            <i class="fas fa-folder w-4 text-center"></i><span>Semua Proyek</span>
+          </a>
+        <% } %>
 
         <a href="/my-tasks" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
           <%- (currentPath && currentPath.startsWith('/my-tasks')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
           <i class="fas fa-check-square w-4 text-center"></i><span>Tugas Saya</span>
         </a>
 
-        <a href="/members" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
-          <%- (currentPath && currentPath.startsWith('/members')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
-          <i class="fas fa-users w-4 text-center"></i><span>Anggota Tim</span>
-        </a>
+        <% if (currentUser.platformRole !== 'owner') { %>
+          <a href="/members" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+            <%- (currentPath && currentPath.startsWith('/members')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+            <i class="fas fa-users w-4 text-center"></i><span>Anggota Tim</span>
+          </a>
+        <% } %>
 
         <a href="/profile" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
           <%- (currentPath && currentPath.startsWith('/profile')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">

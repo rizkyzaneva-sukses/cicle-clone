@@ -12,17 +12,13 @@ const prisma = new PrismaClient();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
-// Share io instance with routes
 app.set('io', io);
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session
 app.use(session({
   secret: process.env.SESSION_SECRET || 'cicle-secret-key-change-in-prod',
   resave: false,
@@ -31,14 +27,11 @@ app.use(session({
 }));
 
 app.use(flash());
-
-// View engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Global locals for all views
+// Global locals
 app.use(async (req, res, next) => {
-  res.locals.prisma = prisma;
   res.locals.currentUser = req.session.user || null;
   res.locals.flash = req.flash();
   res.locals.currentPath = req.path;
@@ -47,21 +40,29 @@ app.use(async (req, res, next) => {
   res.locals.unreadNotifications = 0;
 
   if (req.session.user) {
+    const { id: userId, platformRole } = req.session.user;
     try {
-      const [membership, unreadCount] = await Promise.all([
-        prisma.membership.findFirst({
-          where: { userId: req.session.user.id },
-          include: { company: true }
-        }),
-        prisma.notification.count({
-          where: { userId: req.session.user.id, isRead: false }
-        })
+      const [unreadCount] = await Promise.all([
+        prisma.notification.count({ where: { userId, isRead: false } })
       ]);
-      if (membership) {
-        res.locals.currentCompany = membership.company;
-        res.locals.userRole = membership.role;
-      }
       res.locals.unreadNotifications = unreadCount;
+
+      // Current company context (untuk sidebar workspace label)
+      if (platformRole === 'owner') {
+        const c = await prisma.company.findFirst({ orderBy: { createdAt: 'asc' } });
+        res.locals.currentCompany = c;
+      } else if (platformRole === 'partner') {
+        const pa = await prisma.partnerAccess.findFirst({
+          where: { userId }, include: { company: true }
+        });
+        res.locals.currentCompany = pa?.company || null;
+      } else {
+        const m = await prisma.membership.findFirst({
+          where: { userId }, include: { company: true }
+        });
+        res.locals.currentCompany = m?.company || null;
+        res.locals.userRole = m?.role || 'member';
+      }
     } catch (_) {}
   }
 
@@ -69,77 +70,103 @@ app.use(async (req, res, next) => {
 });
 
 // Routes
-const authRoutes = require('./routes/auth');
-const projectRoutes = require('./routes/projects');
-const taskRoutes = require('./routes/tasks');
-const chatRoutes = require('./routes/chat');
-const checklistRoutes = require('./routes/checklist');
-const myTasksRoutes = require('./routes/my-tasks');
-const panduanRoutes = require('./routes/panduan');
-const membersRoutes = require('./routes/members');
-const profileRoutes = require('./routes/profile');
-const notificationsRoutes = require('./routes/notifications');
+app.use('/auth', require('./routes/auth'));
+app.use('/brands', require('./routes/brands'));
+app.use('/projects', require('./routes/projects'));
+app.use('/tasks', require('./routes/tasks'));
+app.use('/chat', require('./routes/chat'));
+app.use('/checklist', require('./routes/checklist'));
+app.use('/my-tasks', require('./routes/my-tasks'));
+app.use('/panduan', require('./routes/panduan'));
+app.use('/members', require('./routes/members'));
+app.use('/profile', require('./routes/profile'));
+app.use('/notifications', require('./routes/notifications'));
 
-app.use('/auth', authRoutes);
-app.use('/projects', projectRoutes);
-app.use('/tasks', taskRoutes);
-app.use('/chat', chatRoutes);
-app.use('/checklist', checklistRoutes);
-app.use('/my-tasks', myTasksRoutes);
-app.use('/panduan', panduanRoutes);
-app.use('/members', membersRoutes);
-app.use('/profile', profileRoutes);
-app.use('/notifications', notificationsRoutes);
-
-// Home / Dashboard
+// Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {
   if (!req.session.user) return res.redirect('/auth/login');
 
-  const userId = req.session.user.id;
+  const { id: userId, platformRole } = req.session.user;
+
+  if (platformRole === 'owner') {
+    // Owner: semua brand + statistik global
+    const brands = await prisma.company.findMany({
+      include: {
+        partnerAccess: { include: { user: true } },
+        projects: true,
+        memberships: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const [totalTasks, tasksDone, tasksPending, totalMembers] = await Promise.all([
+      prisma.task.count(),
+      prisma.task.count({ where: { status: 'DONE' } }),
+      prisma.task.count({ where: { status: { in: ['TODO', 'IN_PROGRESS'] } } }),
+      prisma.membership.count()
+    ]);
+
+    return res.render('dashboard-owner', {
+      title: 'Dashboard Owner',
+      brands, totalTasks, tasksDone, tasksPending, totalMembers
+    });
+  }
+
+  if (platformRole === 'partner') {
+    // Partner: brand yang dia kelola
+    const partnerBrands = await prisma.partnerAccess.findMany({
+      where: { userId },
+      include: {
+        company: {
+          include: { projects: true, memberships: true }
+        }
+      }
+    });
+
+    const brandIds = partnerBrands.map(p => p.companyId);
+    const [tasksDone, tasksPending] = await Promise.all([
+      prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: 'DONE' } }),
+      prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
+    ]);
+
+    return res.render('dashboard-partner', {
+      title: 'Dashboard Partner',
+      brands: partnerBrands.map(p => p.company),
+      tasksDone, tasksPending
+    });
+  }
+
+  // Admin/Member: brand mereka saja
   const memberships = await prisma.membership.findMany({
     where: { userId },
     include: { company: true }
   });
-
   const companies = memberships.map(m => m.company);
-  let projects = [], tasksDone = 0, tasksPending = 0;
 
+  let projects = [], tasksDone = 0, tasksPending = 0;
   if (companies.length > 0) {
     const companyId = companies[0].id;
     [projects, tasksDone, tasksPending] = await Promise.all([
-      prisma.project.findMany({
-        where: { companyId },
-        orderBy: { createdAt: 'desc' },
-        take: 6
-      }),
+      prisma.project.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' }, take: 6 }),
       prisma.task.count({ where: { project: { companyId }, status: 'DONE' } }),
       prisma.task.count({ where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
     ]);
   }
 
-  res.render('dashboard', { companies, projects, activeCompany: companies[0] || null, tasksDone, tasksPending });
+  res.render('dashboard', {
+    title: 'Dashboard',
+    companies, projects, activeCompany: companies[0] || null, tasksDone, tasksPending
+  });
 });
 
 // Socket.io
 io.on('connection', (socket) => {
-  socket.on('join-project', (projectId) => {
-    socket.join(`project-${projectId}`);
-  });
-
-  socket.on('join-user', (userId) => {
-    socket.join(`user-${userId}`);
-  });
-
-  socket.on('task-updated', (data) => {
-    io.to(`project-${data.projectId}`).emit('task-updated', data);
-  });
-
-  socket.on('new-message', (data) => {
-    io.to(`project-${data.projectId}`).emit('new-message', data);
-  });
+  socket.on('join-project', (projectId) => socket.join(`project-${projectId}`));
+  socket.on('join-user', (userId) => socket.join(`user-${userId}`));
+  socket.on('task-updated', (data) => io.to(`project-${data.projectId}`).emit('task-updated', data));
+  socket.on('new-message', (data) => io.to(`project-${data.projectId}`).emit('new-message', data));
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');

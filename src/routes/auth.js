@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Register - Create user + company
 router.get('/register', (req, res) => {
   res.render('auth/register', { error: null });
 });
@@ -18,50 +16,41 @@ router.post('/register', async (req, res) => {
       return res.render('auth/register', { error: 'Semua field wajib diisi' });
     }
 
-    // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.render('auth/register', { error: 'Email sudah terdaftar' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // User pertama yang daftar = Owner platform
+    const userCount = await prisma.user.count();
+    const platformRole = userCount === 0 ? 'owner' : 'user';
 
-    // Create user
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword
-      }
+      data: { name, email, password: hashedPassword, platformRole }
     });
 
-    // Create company
     const slug = companyName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
     const company = await prisma.company.create({
-      data: {
-        name: companyName,
-        slug
-      }
+      data: { name: companyName, slug }
     });
 
-    // Create membership as admin
+    // Owner & non-owner sama-sama jadi admin di brand yang mereka buat
     await prisma.membership.create({
-      data: {
-        userId: user.id,
-        companyId: company.id,
-        role: 'admin'
-      }
+      data: { userId: user.id, companyId: company.id, role: 'admin' }
     });
 
-    // Auto login
     req.session.user = {
       id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      platformRole: user.platformRole
     };
 
-    req.flash('success', 'Selamat datang di Cicle! Perusahaan Anda berhasil dibuat.');
+    req.flash('success', platformRole === 'owner'
+      ? 'Selamat datang, Owner! Platform Cicle siap digunakan.'
+      : 'Akun berhasil dibuat. Hubungi Owner untuk akses brand.'
+    );
     res.redirect('/');
   } catch (error) {
     console.error(error);
@@ -69,7 +58,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
 router.get('/login', (req, res) => {
   res.render('auth/login', { error: null });
 });
@@ -79,19 +67,16 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.render('auth/login', { error: 'Email atau password salah' });
-    }
+    if (!user) return res.render('auth/login', { error: 'Email atau password salah' });
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.render('auth/login', { error: 'Email atau password salah' });
-    }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.render('auth/login', { error: 'Email atau password salah' });
 
     req.session.user = {
       id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      platformRole: user.platformRole
     };
 
     res.redirect('/');
@@ -101,11 +86,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Logout
 router.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/auth/login');
-  });
+  req.session.destroy(() => res.redirect('/auth/login'));
 });
 
 module.exports = router;

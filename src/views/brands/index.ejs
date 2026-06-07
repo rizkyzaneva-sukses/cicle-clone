@@ -1,0 +1,151 @@
+<%- include('../partials/header', { title: 'Kelola Brand' }) %>
+
+<div class="mb-8 flex items-center justify-between">
+  <div>
+    <h1 class="text-3xl font-bold">Kelola Brand</h1>
+    <p class="text-gray-500 mt-1">Buat brand, assign partner, dan atur akses</p>
+  </div>
+  <button onclick="document.getElementById('createBrandModal').classList.remove('hidden')"
+    class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700 transition">
+    <i class="fas fa-plus"></i> Buat Brand Baru
+  </button>
+</div>
+
+<% if (brands.length === 0) { %>
+  <div class="bg-white border rounded-3xl p-16 text-center">
+    <i class="fas fa-store text-6xl text-gray-200 mb-4"></i>
+    <p class="text-gray-500 text-lg mb-4">Belum ada brand</p>
+    <button onclick="document.getElementById('createBrandModal').classList.remove('hidden')"
+      class="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium">Buat Brand Pertama</button>
+  </div>
+<% } %>
+
+<div class="space-y-5">
+  <% brands.forEach(brand => { %>
+  <div class="bg-white border rounded-3xl p-6 shadow-sm">
+    <div class="flex items-start justify-between gap-6">
+
+      <!-- Brand Info -->
+      <div class="flex items-center gap-4 min-w-0">
+        <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0">
+          <%= brand.name.charAt(0).toUpperCase() %>
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-bold text-xl"><%= brand.name %></h3>
+          <p class="text-xs text-gray-400">
+            <%= brand.projects.length %> proyek &bull;
+            <%= brand.memberships.length %> anggota &bull;
+            Dibuat <%= new Date(brand.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %>
+          </p>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="/projects?companyId=<%= brand.id %>"
+          class="px-3 py-1.5 text-xs border rounded-xl text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-folder mr-1"></i>Proyek
+        </a>
+        <a href="/members?companyId=<%= brand.id %>"
+          class="px-3 py-1.5 text-xs border rounded-xl text-gray-600 hover:bg-gray-50 transition">
+          <i class="fas fa-users mr-1"></i>Anggota
+        </a>
+        <form action="/brands/<%= brand.id %>/delete" method="POST"
+          onsubmit="return confirm('Hapus brand <%= brand.name %>? Semua data di dalamnya akan ikut terhapus!')">
+          <button type="submit" class="px-3 py-1.5 text-xs border border-red-200 text-red-500 rounded-xl hover:bg-red-50 transition">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Partner Section -->
+    <div class="mt-5 pt-5 border-t">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <i class="fas fa-user-tie text-purple-600"></i>
+          Partner Brand Ini
+          <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full"><%= brand.partnerAccess.length %></span>
+        </div>
+        <button onclick="toggleAssignForm('<%= brand.id %>')"
+          class="text-xs text-blue-600 hover:underline flex items-center gap-1">
+          <i class="fas fa-plus"></i> Assign Partner
+        </button>
+      </div>
+
+      <!-- Assign Partner Form (hidden) -->
+      <div id="assign-form-<%= brand.id %>" class="hidden mb-3">
+        <form action="/brands/<%= brand.id %>/assign-partner" method="POST" class="flex gap-2">
+          <input type="email" name="email" required placeholder="Email user yang akan dijadikan Partner..."
+            class="flex-1 border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-400">
+          <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm hover:bg-purple-700 transition">
+            Assign
+          </button>
+          <button type="button" onclick="toggleAssignForm('<%= brand.id %>')"
+            class="px-3 py-2 border rounded-xl text-sm text-gray-500 hover:bg-gray-50">
+            Batal
+          </button>
+        </form>
+        <p class="text-xs text-gray-400 mt-1.5">
+          <i class="fas fa-info-circle"></i> User harus sudah daftar. Jika belum jadi Partner, akan otomatis diupgrade.
+        </p>
+      </div>
+
+      <!-- Daftar Partner -->
+      <% if (brand.partnerAccess.length === 0) { %>
+        <p class="text-sm text-gray-400 italic">Belum ada partner di brand ini</p>
+      <% } else { %>
+        <div class="flex flex-wrap gap-2">
+          <% brand.partnerAccess.forEach(pa => { %>
+            <div class="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-2xl px-3 py-2">
+              <div class="w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                <%= pa.user.name.charAt(0).toUpperCase() %>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-gray-800"><%= pa.user.name %></div>
+                <div class="text-xs text-gray-400"><%= pa.user.email %></div>
+              </div>
+              <form action="/brands/<%= brand.id %>/remove-partner/<%= pa.userId %>" method="POST"
+                onsubmit="return confirm('Cabut akses <%= pa.user.name %> dari brand ini?')">
+                <button type="submit" class="ml-1 text-red-400 hover:text-red-600 transition p-1" title="Cabut akses">
+                  <i class="fas fa-times-circle"></i>
+                </button>
+              </form>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+  <% }) %>
+</div>
+
+<!-- Create Brand Modal -->
+<div id="createBrandModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-3xl p-8 w-full max-w-md mx-4 shadow-2xl">
+    <h3 class="text-2xl font-bold mb-6">Buat Brand Baru</h3>
+    <form action="/brands/create" method="POST">
+      <div class="mb-5">
+        <label class="block text-sm font-medium mb-1.5">Nama Brand</label>
+        <input type="text" name="name" required autofocus placeholder="Contoh: Zaneva Kosmetik"
+          class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="document.getElementById('createBrandModal').classList.add('hidden')"
+          class="flex-1 py-3 border rounded-2xl text-gray-600">Batal</button>
+        <button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700">
+          Buat Brand
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleAssignForm(brandId) {
+  const form = document.getElementById(`assign-form-${brandId}`);
+  form.classList.toggle('hidden');
+}
+</script>
+
+<%- include('../partials/footer') %>

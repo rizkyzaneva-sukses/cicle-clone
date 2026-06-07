@@ -1,9 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-/**
- * Middleware: Require user to be logged in
- */
 function requireAuth(req, res, next) {
   if (!req.session.user) {
     if (req.xhr || req.headers.accept?.includes('json')) {
@@ -14,54 +11,73 @@ function requireAuth(req, res, next) {
   next();
 }
 
-/**
- * Middleware: Check if user is Admin in the company
- */
-async function requireAdmin(req, res, next) {
+// Hanya Owner platform
+function requireOwner(req, res, next) {
+  if (req.session.user?.platformRole !== 'owner') {
+    if (req.xhr || req.headers.accept?.includes('json')) {
+      return res.status(403).json({ error: 'Hanya Owner yang diizinkan' });
+    }
+    req.flash('error', 'Hanya Owner yang bisa melakukan aksi ini');
+    return res.redirect('/');
+  }
+  next();
+}
+
+// Owner ATAU Partner yang punya akses ke brand ini ATAU Admin brand
+async function requireBrandManager(req, res, next) {
   try {
-    const userId = req.session.user?.id;
+    const { id: userId, platformRole } = req.session.user || {};
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Get companyId from params, body, or query
-    let companyId = req.params.companyId || req.body.companyId || req.query.companyId;
+    if (platformRole === 'owner') return next();
 
-    // If no companyId, try to get from project
-    if (!companyId && req.params.projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: req.params.projectId },
-        select: { companyId: true }
+    const companyId = await resolveCompanyId(req);
+    if (!companyId) return res.status(400).json({ error: 'Brand tidak ditemukan' });
+
+    if (platformRole === 'partner') {
+      const access = await prisma.partnerAccess.findUnique({
+        where: { userId_companyId: { userId, companyId } }
       });
-      if (project) companyId = project.companyId;
-    }
-
-    if (!companyId) {
-      return res.status(400).json({ error: 'Company ID required' });
+      if (access) return next();
     }
 
     const membership = await prisma.membership.findFirst({
-      where: {
-        userId,
-        companyId,
-        role: 'admin'
-      }
+      where: { userId, companyId, role: 'admin' }
     });
+    if (membership) return next();
 
-    if (!membership) {
-      if (req.xhr || req.headers.accept?.includes('json')) {
-        return res.status(403).json({ error: 'Hanya Admin yang diizinkan' });
-      }
-      req.flash('error', 'Hanya Admin yang bisa melakukan aksi ini');
-      return res.redirect('back');
+    if (req.xhr || req.headers.accept?.includes('json')) {
+      return res.status(403).json({ error: 'Akses ditolak' });
     }
-
-    next();
-  } catch (error) {
-    console.error('Admin check error:', error);
+    req.flash('error', 'Kamu tidak punya akses untuk aksi ini');
+    return res.redirect('back');
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-module.exports = {
-  requireAuth,
-  requireAdmin
-};
+// Alias agar route lama tidak perlu diubah
+const requireAdmin = requireBrandManager;
+
+// Helper: ambil companyId dari berbagai sumber request
+async function resolveCompanyId(req) {
+  let companyId = req.params.companyId || req.body.companyId || req.query.companyId;
+  if (!companyId && req.params.projectId) {
+    const p = await prisma.project.findUnique({
+      where: { id: req.params.projectId },
+      select: { companyId: true }
+    });
+    if (p) companyId = p.companyId;
+  }
+  if (!companyId && req.params.id) {
+    const p = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      select: { companyId: true }
+    }).catch(() => null);
+    if (p) companyId = p.companyId;
+  }
+  return companyId || null;
+}
+
+module.exports = { requireAuth, requireOwner, requireAdmin, requireBrandManager };
