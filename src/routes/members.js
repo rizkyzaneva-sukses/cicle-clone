@@ -30,7 +30,7 @@ async function getUserCompany(userId, platformRole) {
 
 router.get('/', async (req, res) => {
   const userId = req.session.user.id;
-  const platformRole = req.session.user.platformRole;
+  const platformRole = req.session.user.platformRole || 'user';
 
   // Ambil companyId dari query (owner bisa switch brand)
   const companyId = req.query.companyId;
@@ -89,7 +89,7 @@ router.get('/', async (req, res) => {
 // Invite member (admin/partner/owner)
 router.post('/invite', async (req, res) => {
   const { email, companyId } = req.body;
-  const { id: userId, platformRole } = req.session.user;
+  const { id: userId, platformRole = 'user' } = req.session.user;
 
   try {
     // Cek hak akses

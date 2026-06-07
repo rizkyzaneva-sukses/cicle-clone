@@ -1,138 +1,195 @@
-<%- include('partials/header', { title: 'Panduan Penggunaan - Cicle Clone' }) %>
+<%- include('partials/header', { title: 'Panduan Penggunaan' }) %>
 
 <div class="max-w-4xl mx-auto">
+
   <div class="mb-10">
-    <h1 class="text-4xl font-bold mb-2">📖 Panduan Penggunaan Cicle Clone</h1>
-    <p class="text-xl text-gray-600">Aplikasi manajemen tugas dan kolaborasi tim mirip Cicle.app</p>
+    <h1 class="text-4xl font-bold mb-2">Panduan Penggunaan</h1>
+    <p class="text-xl text-gray-500">Cicle — Task Management & Team Collaboration</p>
   </div>
 
-  <!-- Apa itu Cicle Clone -->
-  <div class="bg-white border rounded-3xl p-8 mb-8">
-    <h2 class="text-2xl font-bold mb-4 flex items-center gap-3">
-      <i class="fas fa-info-circle text-blue-600"></i> Apa itu Cicle Clone?
+  <!-- Role Hierarchy -->
+  <div class="bg-white border rounded-3xl p-8 mb-6 shadow-sm">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+      <i class="fas fa-sitemap text-blue-600"></i> Hierarki Role
     </h2>
-    <p class="text-gray-700 leading-relaxed">
-      Cicle Clone adalah aplikasi all-in-one untuk mengelola tugas tim, komunikasi, dan kolaborasi. 
-      Dibuat dengan Node.js, Prisma, dan Socket.io. Cocok untuk tim kecil-menengah yang ingin 
-      menggantikan WhatsApp grup + Trello + spreadsheet menjadi satu tempat yang rapi.
-    </p>
-    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-      <div class="bg-blue-50 p-4 rounded-2xl">
-        <strong>Kanban Board</strong><br>
-        <span class="text-gray-600">Drag & drop tugas</span>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-center">
+        <div class="text-2xl mb-2">👑</div>
+        <div class="font-bold text-yellow-800">Owner</div>
+        <div class="text-xs text-yellow-700 mt-2 text-left space-y-1">
+          <div>✅ Lihat semua brand</div>
+          <div>✅ Buat & hapus brand</div>
+          <div>✅ Assign partner ke brand</div>
+          <div>✅ Akses semua fitur</div>
+        </div>
       </div>
-      <div class="bg-emerald-50 p-4 rounded-2xl">
-        <strong>Real-time Chat</strong><br>
-        <span class="text-gray-600">Diskusi per proyek</span>
+      <div class="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
+        <div class="text-2xl mb-2">🤝</div>
+        <div class="font-bold text-purple-800">Partner</div>
+        <div class="text-xs text-purple-700 mt-2 text-left space-y-1">
+          <div>✅ Kelola brand yang di-assign</div>
+          <div>✅ Buat & kelola proyek</div>
+          <div>✅ Kelola anggota brand</div>
+          <div>❌ Tidak bisa hapus brand</div>
+        </div>
       </div>
-      <div class="bg-amber-50 p-4 rounded-2xl">
-        <strong>Checklist</strong><br>
-        <span class="text-gray-600">Sub-task di dalam tugas</span>
+      <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
+        <div class="text-2xl mb-2">🛡️</div>
+        <div class="font-bold text-blue-800">Admin</div>
+        <div class="text-xs text-blue-700 mt-2 text-left space-y-1">
+          <div>✅ Buat proyek di brand</div>
+          <div>✅ Undang & kelola anggota</div>
+          <div>✅ Kelola semua task</div>
+          <div>❌ Tidak bisa hapus brand</div>
+        </div>
       </div>
-      <div class="bg-purple-50 p-4 rounded-2xl">
-        <strong>My Tasks</strong><br>
-        <span class="text-gray-600">Tugas pribadi</span>
+      <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">
+        <div class="text-2xl mb-2">👤</div>
+        <div class="font-bold text-gray-800">Member</div>
+        <div class="text-xs text-gray-600 mt-2 text-left space-y-1">
+          <div>✅ Kerjakan task</div>
+          <div>✅ Chat di proyek</div>
+          <div>✅ Tambah checklist</div>
+          <div>✅ Komentar di task</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Cara Memulai -->
-  <div class="bg-white border rounded-3xl p-8 mb-8">
-    <h2 class="text-2xl font-bold mb-4">🚀 Cara Memulai</h2>
-    <ol class="space-y-4 text-gray-700">
-      <li class="flex gap-4">
-        <span class="font-bold text-blue-600 w-6">1.</span>
-        <span><strong>Daftar Akun</strong> → Klik "Daftar" dan isi nama, email, password, serta nama perusahaan/tim kamu.</span>
-      </li>
-      <li class="flex gap-4">
-        <span class="font-bold text-blue-600 w-6">2.</span>
-        <span><strong>Login</strong> menggunakan email dan password yang sudah didaftarkan.</span>
-      </li>
-      <li class="flex gap-4">
-        <span class="font-bold text-blue-600 w-6">3.</span>
-        <span><strong>Buat Proyek</strong> → Dari dashboard, buat proyek baru (hanya Admin yang bisa).</span>
-      </li>
-      <li class="flex gap-4">
-        <span class="font-bold text-blue-600 w-6">4.</span>
-        <span><strong>Invite Tim</strong> → Anggota tim bisa daftar sendiri dan join ke company yang sama.</span>
-      </li>
-    </ol>
+  <!-- Quick Start per Role -->
+  <div class="bg-white border rounded-3xl p-8 mb-6 shadow-sm">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+      <i class="fas fa-rocket text-blue-600"></i> Cara Mulai
+    </h2>
+
+    <div class="space-y-6">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">OWNER</span>
+          <span class="font-semibold">Langkah awal sebagai Owner</span>
+        </div>
+        <ol class="space-y-2 text-sm text-gray-700 pl-4">
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">1.</span> Daftar akun → otomatis jadi Owner (user pertama yang daftar)</li>
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">2.</span> Buka <strong>Kelola Brand</strong> di sidebar → buat brand untuk tiap klien/tim</li>
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">3.</span> Minta partner daftar → assign mereka ke brand lewat halaman Kelola Brand</li>
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">4.</span> Partner akan otomatis bisa kelola brand yang di-assign</li>
+        </ol>
+      </div>
+
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-full">PARTNER</span>
+          <span class="font-semibold">Langkah awal sebagai Partner</span>
+        </div>
+        <ol class="space-y-2 text-sm text-gray-700 pl-4">
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">1.</span> Daftar akun dengan email yang sudah diberitahu ke Owner</li>
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">2.</span> Owner akan assign kamu ke brand yang kamu kelola</li>
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">3.</span> Login → buka Proyek → buat proyek untuk brand kamu</li>
+          <li class="flex gap-3"><span class="font-bold text-blue-600 shrink-0">4.</span> Undang Admin/Member lewat halaman <strong>Anggota Tim</strong></li>
+        </ol>
+      </div>
+    </div>
   </div>
 
   <!-- Fitur Utama -->
-  <div class="bg-white border rounded-3xl p-8 mb-8">
-    <h2 class="text-2xl font-bold mb-6">⭐ Fitur Utama</h2>
+  <div class="bg-white border rounded-3xl p-8 mb-6 shadow-sm">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+      <i class="fas fa-star text-blue-600"></i> Fitur Utama
+    </h2>
 
-    <div class="space-y-8">
-      <!-- Kanban -->
-      <div>
-        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
-          <i class="fas fa-columns text-blue-600"></i> Kanban Board
-        </h3>
-        <p class="text-gray-700 mb-2">Kelola tugas dengan 3 kolom utama: <strong>To Do → In Progress → Done</strong>.</p>
-        <ul class="list-disc pl-6 text-gray-600 space-y-1 text-sm">
-          <li>Drag & drop tugas antar kolom</li>
-          <li>Tambah tugas baru dengan judul, deskripsi, assignee, dan deadline</li>
-          <li>Lihat detail tugas dengan klik card</li>
-        </ul>
+    <div class="space-y-7">
+
+      <div class="flex gap-4">
+        <div class="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center shrink-0">
+          <i class="fas fa-columns text-blue-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Kanban Board</h3>
+          <p class="text-gray-600 text-sm mt-1">Kelola tugas dengan 3 kolom: <strong>To Do → In Progress → Done</strong>. Drag & drop antar kolom, update otomatis real-time. Filter task berdasarkan prioritas.</p>
+        </div>
       </div>
 
-      <!-- Checklist -->
-      <div>
-        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
-          <i class="fas fa-check-square text-emerald-600"></i> Checklist / Sub-task
-        </h3>
-        <p class="text-gray-700">Di dalam setiap tugas, kamu bisa menambahkan checklist untuk memecah tugas besar menjadi langkah-langkah kecil.</p>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
+          <i class="fas fa-tasks text-emerald-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Detail Task</h3>
+          <p class="text-gray-600 text-sm mt-1">Klik nama task untuk buka halaman detail. Di sini bisa edit info task, tambah <strong>checklist</strong> (sub-task dengan progress bar), tulis <strong>komentar</strong>, dan ubah status langsung.</p>
+        </div>
       </div>
 
-      <!-- Chat -->
-      <div>
-        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
-          <i class="fas fa-comments text-purple-600"></i> Real-time Chat
-        </h3>
-        <p class="text-gray-700">Setiap proyek punya chat room sendiri. Semua anggota proyek bisa berdiskusi secara real-time.</p>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center shrink-0">
+          <i class="fas fa-flag text-red-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Prioritas Task</h3>
+          <p class="text-gray-600 text-sm mt-1">Setiap task punya prioritas: <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full font-semibold">None</span> <span class="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-semibold">Low</span> <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full font-semibold">Medium</span> <span class="bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded-full font-semibold">High</span> <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full font-semibold">Urgent</span>. Gunakan tombol filter di atas board.</p>
+        </div>
       </div>
 
-      <!-- My Tasks -->
-      <div>
-        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
-          <i class="fas fa-user-check text-amber-600"></i> My Tasks
-        </h3>
-        <p class="text-gray-700">Halaman khusus yang menampilkan <strong>semua tugas yang ditugaskan ke kamu</strong> dari berbagai proyek.</p>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 bg-purple-100 rounded-2xl flex items-center justify-center shrink-0">
+          <i class="fas fa-bell text-purple-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Notifikasi Real-time</h3>
+          <p class="text-gray-600 text-sm mt-1">Dapat notifikasi otomatis saat kamu di-assign ke task. Klik ikon lonceng di navbar untuk lihat semua notifikasi dan tandai sudah dibaca.</p>
+        </div>
       </div>
 
-      <!-- Role -->
-      <div>
-        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
-          <i class="fas fa-user-shield text-red-600"></i> Role & Permission
-        </h3>
-        <p class="text-gray-700">Ada 2 role:</p>
-        <ul class="list-disc pl-6 text-gray-600">
-          <li><strong>Admin</strong>: Bisa buat proyek, mengelola anggota (saat ini proteksi dasar sudah aktif)</li>
-          <li><strong>Member</strong>: Bisa mengerjakan tugas dan chat</li>
-        </ul>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 bg-amber-100 rounded-2xl flex items-center justify-center shrink-0">
+          <i class="fas fa-comments text-amber-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Chat Proyek</h3>
+          <p class="text-gray-600 text-sm mt-1">Setiap proyek punya ruang chat sendiri. Diskusi tim langsung di halaman Kanban Board, real-time via Socket.io.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="w-10 h-10 bg-teal-100 rounded-2xl flex items-center justify-center shrink-0">
+          <i class="fas fa-user-check text-teal-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-lg">Tugas Saya</h3>
+          <p class="text-gray-600 text-sm mt-1">Halaman khusus yang menampilkan semua task yang di-assign ke kamu dari semua proyek, lengkap dengan status dan deadline.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Tips & Tricks -->
+  <div class="bg-white border rounded-3xl p-8 mb-6 shadow-sm">
+    <h2 class="text-2xl font-bold mb-5 flex items-center gap-3">
+      <i class="fas fa-lightbulb text-yellow-500"></i> Tips
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-gray-50 rounded-2xl p-4 text-sm">
+        <div class="font-semibold mb-1">📱 Mobile</div>
+        <div class="text-gray-600">Tap ikon hamburger (☰) di kiri atas untuk buka sidebar navigasi di HP.</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4 text-sm">
+        <div class="font-semibold mb-1">🔔 Notifikasi</div>
+        <div class="text-gray-600">Badge merah di lonceng = ada notifikasi belum dibaca. Klik lonceng untuk lihat.</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4 text-sm">
+        <div class="font-semibold mb-1">🎯 Filter Prioritas</div>
+        <div class="text-gray-600">Di kanban board, klik tombol Urgent/High/Medium/Low untuk filter task berdasarkan prioritas.</div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4 text-sm">
+        <div class="font-semibold mb-1">👤 Profil</div>
+        <div class="text-gray-600">Klik nama kamu di navbar atau buka menu Profil Saya untuk edit nama, email, dan ganti password.</div>
       </div>
     </div>
   </div>
 
-  <!-- Panduan Deploy -->
-  <div class="bg-white border rounded-3xl p-8 mb-8">
-    <h2 class="text-2xl font-bold mb-4">🛠️ Cara Deploy ke EasyPanel</h2>
-    <ol class="space-y-3 text-gray-700">
-      <li>Push code ke GitHub repo baru.</li>
-      <li>Di EasyPanel, buat Project baru → Connect GitHub.</li>
-      <li>Pilih <strong>Dockerfile</strong> sebagai build method.</li>
-      <li>Tambahkan service <strong>PostgreSQL</strong>.</li>
-      <li>Set environment variable:
-        <code class="bg-gray-100 px-2 py-1 rounded">DATABASE_URL=postgresql://...</code>
-      </li>
-      <li>Deploy!</li>
-    </ol>
-  </div>
-
-  <div class="text-center text-gray-500 text-sm mt-10">
-    Dibuat dengan ❤️ menggunakan Node.js + Prisma + Socket.io<br>
-    Mirip Cicle.app • Siap digunakan untuk tim Indonesia
+  <div class="text-center text-gray-400 text-sm mt-8 pb-4">
+    Dibuat dengan Node.js + Prisma + Socket.io • Dikelola di EasyPanel
   </div>
 </div>
+
 <%- include('partials/footer') %>
