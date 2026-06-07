@@ -1,0 +1,108 @@
+<%- include('layout', { title: 'Dashboard' }) %>
+
+<div class="mb-8">
+  <h1 class="text-4xl font-bold text-gray-900">Selamat datang, <%= currentUser.name.split(' ')[0] %>! 👋</h1>
+  <p class="text-gray-600 mt-2">Kelola tugas tim Anda dengan mudah seperti di Cicle.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Companies / Workspace -->
+  <div class="lg:col-span-1 bg-white rounded-3xl p-6 shadow-sm border">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="font-semibold text-xl">Workspace Anda</h2>
+      <button onclick="showCreateCompanyModal()" class="text-blue-600 text-sm flex items-center gap-1 hover:underline">
+        <i class="fas fa-plus"></i> Buat Baru
+      </button>
+    </div>
+    
+    <% if (companies && companies.length > 0) { %>
+      <% companies.forEach(company => { %>
+        <div class="p-4 bg-gray-50 rounded-2xl mb-3 flex items-center justify-between hover:bg-gray-100 transition">
+          <div>
+            <div class="font-semibold"><%= company.name %></div>
+            <div class="text-xs text-gray-500"><%= company.slug %></div>
+          </div>
+          <a href="/projects" class="px-4 py-1.5 text-sm bg-white border rounded-full hover:bg-blue-50">Buka</a>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p class="text-gray-500 text-sm">Belum ada workspace. Buat perusahaan baru saat register.</p>
+    <% } %>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border">
+    <h2 class="font-semibold text-xl mb-4">Ringkasan</h2>
+    <div class="grid grid-cols-3 gap-4">
+      <div class="bg-blue-50 p-5 rounded-2xl text-center">
+        <div class="text-3xl font-bold text-blue-600"><%= projects ? projects.length : 0 %></div>
+        <div class="text-sm text-blue-700 mt-1">Proyek Aktif</div>
+      </div>
+      <div class="bg-emerald-50 p-5 rounded-2xl text-center">
+        <div class="text-3xl font-bold text-emerald-600">12</div>
+        <div class="text-sm text-emerald-700 mt-1">Tugas Selesai</div>
+      </div>
+      <div class="bg-amber-50 p-5 rounded-2xl text-center">
+        <div class="text-3xl font-bold text-amber-600">7</div>
+        <div class="text-sm text-amber-700 mt-1">Tugas Tertunda</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Projects -->
+<div class="mt-8">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="font-semibold text-2xl">Proyek Terbaru</h2>
+    <a href="/projects" class="text-blue-600 hover:underline flex items-center gap-1 text-sm">
+      Lihat Semua <i class="fas fa-arrow-right"></i>
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    <% if (projects && projects.length > 0) { %>
+      <% projects.forEach(project => { %>
+        <a href="/projects/<%= project.id %>" class="block bg-white border rounded-3xl p-6 hover:shadow-lg transition group">
+          <div class="flex justify-between">
+            <div>
+              <h3 class="font-bold text-xl group-hover:text-blue-600 transition"><%= project.name %></h3>
+              <p class="text-gray-500 text-sm mt-1 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
+            </div>
+            <i class="fas fa-folder text-3xl text-gray-300 group-hover:text-blue-400"></i>
+          </div>
+          <div class="mt-6 flex items-center text-xs text-gray-500">
+            <i class="fas fa-calendar mr-1.5"></i>
+            Dibuat <%= new Date(project.createdAt).toLocaleDateString('id-ID') %>
+          </div>
+        </a>
+      <% }) %>
+    <% } else { %>
+      <div class="col-span-3 bg-white border rounded-3xl p-12 text-center">
+        <i class="fas fa-folder-open text-5xl text-gray-300 mb-4"></i>
+        <p class="text-gray-600">Belum ada proyek. Buat proyek pertama Anda!</p>
+        <a href="/projects" class="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-full text-sm">Buat Proyek Baru</a>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Create Company Modal (simple) -->
+<div id="createCompanyModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-3xl p-8 w-full max-w-md">
+    <h3 class="text-xl font-bold mb-4">Buat Workspace Baru</h3>
+    <form action="/auth/register" method="POST">
+      <!-- For simplicity, redirect to register or implement later -->
+      <p class="text-sm text-gray-600 mb-4">Fitur ini tersedia saat registrasi akun baru. Untuk sekarang, gunakan akun yang sudah ada.</p>
+      <button type="button" onclick="hideCreateCompanyModal()" class="w-full py-3 bg-gray-200 rounded-2xl">Tutup</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function showCreateCompanyModal() {
+  document.getElementById('createCompanyModal').classList.remove('hidden');
+}
+function hideCreateCompanyModal() {
+  document.getElementById('createCompanyModal').classList.add('hidden');
+}
+</script>

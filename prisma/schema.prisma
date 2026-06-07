@@ -1,0 +1,113 @@
+// This is your Prisma schema file for Cicle Clone
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships   Membership[]
+  tasks         Task[]    @relation("TaskAssignee")
+  comments      Comment[]
+  messages      ChatMessage[]
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+
+  memberships Membership[]
+  projects    Project[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  role      String   @default("member") // admin, member
+  joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  companyId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id])
+  tasks       Task[]
+  messages    ChatMessage[]
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("TODO") // TODO, IN_PROGRESS, DONE
+  position    Int       @default(0)
+  dueDate     DateTime?
+  projectId   String
+  assigneeId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project     Project         @relation(fields: [projectId], references: [id])
+  assignee    User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  comments    Comment[]
+  checklists  ChecklistItem[]
+}
+
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  content   String
+  isDone    Boolean  @default(false)
+  taskId    String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  content   String
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}

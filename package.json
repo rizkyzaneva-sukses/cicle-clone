@@ -1,0 +1,34 @@
+{
+  "name": "cicle-clone",
+  "version": "1.0.0",
+  "description": "Cicle.app clone - Task Management & Team Collaboration built with Node.js, Express, Prisma, Socket.io",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "build": "echo 'No build step needed for EJS app'"
+  },
+  "keywords": ["task-management", "kanban", "team-collaboration", "cicle"],
+  "author": "Ryan + Grok",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "prisma": "^5.22.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}

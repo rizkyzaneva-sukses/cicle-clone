@@ -1,0 +1,92 @@
+<%- include('../layout', { title: 'Proyek Saya' }) %>
+
+<div class="flex justify-between items-center mb-8">
+  <h1 class="text-3xl font-bold">Semua Proyek</h1>
+  
+  <!-- Create Project Button -->
+  <button onclick="showCreateProjectModal()" 
+          class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 text-sm font-medium">
+    <i class="fas fa-plus"></i>
+    <span>Buat Proyek Baru</span>
+  </button>
+</div>
+
+<% if (memberships && memberships.length > 0) { %>
+  <% memberships.forEach(membership => { %>
+    <div class="mb-10">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="font-bold text-xl"><%= membership.company.name %></div>
+        <span class="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-full"><%= membership.role.toUpperCase() %></span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <% if (membership.company.projects && membership.company.projects.length > 0) { %>
+          <% membership.company.projects.forEach(project => { %>
+            <a href="/projects/<%= project.id %>" class="group bg-white border p-6 rounded-3xl hover:border-blue-300 transition flex flex-col justify-between min-h-[160px]">
+              <div>
+                <div class="font-bold text-xl group-hover:text-blue-600"><%= project.name %></div>
+                <p class="text-sm text-gray-600 mt-2 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
+              </div>
+              <div class="text-xs text-gray-500 mt-auto pt-4 flex items-center gap-1">
+                <i class="fas fa-clock"></i> 
+                <%= new Date(project.createdAt).toLocaleDateString('id-ID') %>
+              </div>
+            </a>
+          <% }) %>
+        <% } else { %>
+          <div class="col-span-full p-8 text-center bg-white border rounded-3xl">
+            <p class="text-gray-500">Belum ada proyek di workspace ini.</p>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+<% } else { %>
+  <div class="text-center py-16">
+    <i class="fas fa-building text-6xl text-gray-200"></i>
+    <p class="mt-4 text-gray-600">Anda belum bergabung dengan perusahaan manapun.</p>
+  </div>
+<% } %>
+
+<!-- Create Project Modal -->
+<div id="createProjectModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-3xl p-8 w-full max-w-md mx-4">
+    <h3 class="font-bold text-2xl mb-6">Buat Proyek Baru</h3>
+    
+    <form action="/projects/create" method="POST">
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm mb-1.5 font-medium">Nama Proyek</label>
+          <input type="text" name="name" required class="w-full border rounded-2xl px-5 py-3.5">
+        </div>
+        <div>
+          <label class="block text-sm mb-1.5 font-medium">Deskripsi (opsional)</label>
+          <textarea name="description" rows="3" class="w-full border rounded-2xl px-5 py-3.5"></textarea>
+        </div>
+        
+        <div>
+          <label class="block text-sm mb-1.5 font-medium">Pilih Workspace</label>
+          <select name="companyId" required class="w-full border rounded-2xl px-5 py-3.5">
+            <% memberships.forEach(m => { %>
+              <option value="<%= m.company.id %>"><%= m.company.name %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mt-8">
+        <button type="button" onclick="hideCreateProjectModal()" class="flex-1 py-3.5 border rounded-2xl">Batal</button>
+        <button type="submit" class="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-medium">Buat Proyek</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showCreateProjectModal() {
+  document.getElementById('createProjectModal').classList.remove('hidden');
+}
+function hideCreateProjectModal() {
+  document.getElementById('createProjectModal').classList.add('hidden');
+}
+</script>

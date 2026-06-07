@@ -1,0 +1,137 @@
+<%- include('layout', { title: 'Panduan Penggunaan - Cicle Clone' }) %>
+
+<div class="max-w-4xl mx-auto">
+  <div class="mb-10">
+    <h1 class="text-4xl font-bold mb-2">📖 Panduan Penggunaan Cicle Clone</h1>
+    <p class="text-xl text-gray-600">Aplikasi manajemen tugas dan kolaborasi tim mirip Cicle.app</p>
+  </div>
+
+  <!-- Apa itu Cicle Clone -->
+  <div class="bg-white border rounded-3xl p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-4 flex items-center gap-3">
+      <i class="fas fa-info-circle text-blue-600"></i> Apa itu Cicle Clone?
+    </h2>
+    <p class="text-gray-700 leading-relaxed">
+      Cicle Clone adalah aplikasi all-in-one untuk mengelola tugas tim, komunikasi, dan kolaborasi. 
+      Dibuat dengan Node.js, Prisma, dan Socket.io. Cocok untuk tim kecil-menengah yang ingin 
+      menggantikan WhatsApp grup + Trello + spreadsheet menjadi satu tempat yang rapi.
+    </p>
+    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div class="bg-blue-50 p-4 rounded-2xl">
+        <strong>Kanban Board</strong><br>
+        <span class="text-gray-600">Drag & drop tugas</span>
+      </div>
+      <div class="bg-emerald-50 p-4 rounded-2xl">
+        <strong>Real-time Chat</strong><br>
+        <span class="text-gray-600">Diskusi per proyek</span>
+      </div>
+      <div class="bg-amber-50 p-4 rounded-2xl">
+        <strong>Checklist</strong><br>
+        <span class="text-gray-600">Sub-task di dalam tugas</span>
+      </div>
+      <div class="bg-purple-50 p-4 rounded-2xl">
+        <strong>My Tasks</strong><br>
+        <span class="text-gray-600">Tugas pribadi</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cara Memulai -->
+  <div class="bg-white border rounded-3xl p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-4">🚀 Cara Memulai</h2>
+    <ol class="space-y-4 text-gray-700">
+      <li class="flex gap-4">
+        <span class="font-bold text-blue-600 w-6">1.</span>
+        <span><strong>Daftar Akun</strong> → Klik "Daftar" dan isi nama, email, password, serta nama perusahaan/tim kamu.</span>
+      </li>
+      <li class="flex gap-4">
+        <span class="font-bold text-blue-600 w-6">2.</span>
+        <span><strong>Login</strong> menggunakan email dan password yang sudah didaftarkan.</span>
+      </li>
+      <li class="flex gap-4">
+        <span class="font-bold text-blue-600 w-6">3.</span>
+        <span><strong>Buat Proyek</strong> → Dari dashboard, buat proyek baru (hanya Admin yang bisa).</span>
+      </li>
+      <li class="flex gap-4">
+        <span class="font-bold text-blue-600 w-6">4.</span>
+        <span><strong>Invite Tim</strong> → Anggota tim bisa daftar sendiri dan join ke company yang sama.</span>
+      </li>
+    </ol>
+  </div>
+
+  <!-- Fitur Utama -->
+  <div class="bg-white border rounded-3xl p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-6">⭐ Fitur Utama</h2>
+
+    <div class="space-y-8">
+      <!-- Kanban -->
+      <div>
+        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
+          <i class="fas fa-columns text-blue-600"></i> Kanban Board
+        </h3>
+        <p class="text-gray-700 mb-2">Kelola tugas dengan 3 kolom utama: <strong>To Do → In Progress → Done</strong>.</p>
+        <ul class="list-disc pl-6 text-gray-600 space-y-1 text-sm">
+          <li>Drag & drop tugas antar kolom</li>
+          <li>Tambah tugas baru dengan judul, deskripsi, assignee, dan deadline</li>
+          <li>Lihat detail tugas dengan klik card</li>
+        </ul>
+      </div>
+
+      <!-- Checklist -->
+      <div>
+        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
+          <i class="fas fa-check-square text-emerald-600"></i> Checklist / Sub-task
+        </h3>
+        <p class="text-gray-700">Di dalam setiap tugas, kamu bisa menambahkan checklist untuk memecah tugas besar menjadi langkah-langkah kecil.</p>
+      </div>
+
+      <!-- Chat -->
+      <div>
+        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
+          <i class="fas fa-comments text-purple-600"></i> Real-time Chat
+        </h3>
+        <p class="text-gray-700">Setiap proyek punya chat room sendiri. Semua anggota proyek bisa berdiskusi secara real-time.</p>
+      </div>
+
+      <!-- My Tasks -->
+      <div>
+        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
+          <i class="fas fa-user-check text-amber-600"></i> My Tasks
+        </h3>
+        <p class="text-gray-700">Halaman khusus yang menampilkan <strong>semua tugas yang ditugaskan ke kamu</strong> dari berbagai proyek.</p>
+      </div>
+
+      <!-- Role -->
+      <div>
+        <h3 class="font-semibold text-xl mb-2 flex items-center gap-2">
+          <i class="fas fa-user-shield text-red-600"></i> Role & Permission
+        </h3>
+        <p class="text-gray-700">Ada 2 role:</p>
+        <ul class="list-disc pl-6 text-gray-600">
+          <li><strong>Admin</strong>: Bisa buat proyek, mengelola anggota (saat ini proteksi dasar sudah aktif)</li>
+          <li><strong>Member</strong>: Bisa mengerjakan tugas dan chat</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panduan Deploy -->
+  <div class="bg-white border rounded-3xl p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-4">🛠️ Cara Deploy ke EasyPanel</h2>
+    <ol class="space-y-3 text-gray-700">
+      <li>Push code ke GitHub repo baru.</li>
+      <li>Di EasyPanel, buat Project baru → Connect GitHub.</li>
+      <li>Pilih <strong>Dockerfile</strong> sebagai build method.</li>
+      <li>Tambahkan service <strong>PostgreSQL</strong>.</li>
+      <li>Set environment variable:
+        <code class="bg-gray-100 px-2 py-1 rounded">DATABASE_URL=postgresql://...</code>
+      </li>
+      <li>Deploy!</li>
+    </ol>
+  </div>
+
+  <div class="text-center text-gray-500 text-sm mt-10">
+    Dibuat dengan ❤️ menggunakan Node.js + Prisma + Socket.io<br>
+    Mirip Cicle.app • Siap digunakan untuk tim Indonesia
+  </div>
+</div>

@@ -1,0 +1,64 @@
+<%- include('layout', { title: 'Tugas Saya' }) %>
+
+<div class="mb-8">
+  <h1 class="text-3xl font-bold">Tugas Saya</h1>
+  <p class="text-gray-600">Semua tugas yang ditugaskan kepada kamu</p>
+</div>
+
+<% if (tasks.length === 0) { %>
+  <div class="bg-white border rounded-3xl p-12 text-center">
+    <i class="fas fa-tasks text-5xl text-gray-300 mb-4"></i>
+    <p class="text-gray-600">Kamu belum punya tugas yang ditugaskan.</p>
+  </div>
+<% } else { %>
+  <div class="bg-white border rounded-3xl overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="text-left px-6 py-4 font-semibold">Tugas</th>
+          <th class="text-left px-6 py-4 font-semibold">Proyek</th>
+          <th class="text-left px-6 py-4 font-semibold">Status</th>
+          <th class="text-left px-6 py-4 font-semibold">Deadline</th>
+          <th class="text-right px-6 py-4 font-semibold">Aksi</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <% tasks.forEach(task => { %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+              <div class="font-medium"><%= task.title %></div>
+              <% if (task.description) { %>
+                <div class="text-sm text-gray-500 line-clamp-1"><%= task.description %></div>
+              <% } %>
+            </td>
+            <td class="px-6 py-4">
+              <a href="/projects/<%= task.project.id %>" class="text-blue-600 hover:underline">
+                <%= task.project.name %>
+              </a>
+            </td>
+            <td class="px-6 py-4">
+              <span class="px-3 py-1 text-xs rounded-full 
+                <%= task.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' : 
+                   task.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
+                <%= task.status %>
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm">
+              <%= task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID') : '-' %>
+            </td>
+            <td class="px-6 py-4 text-right">
+              <a href="/projects/<%= task.project.id %>" 
+                 class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                Lihat di Board →
+              </a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<div class="mt-6">
+  <a href="/" class="text-blue-600 hover:underline">← Kembali ke Dashboard</a>
+</div>

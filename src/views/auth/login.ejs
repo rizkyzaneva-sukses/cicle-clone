@@ -1,0 +1,37 @@
+<%- include('../layout', { title: 'Masuk - Cicle' }) %>
+
+<div class="max-w-md mx-auto mt-16">
+  <div class="text-center mb-8">
+    <div class="inline-flex w-14 h-14 bg-blue-600 rounded-3xl items-center justify-center mb-4">
+      <i class="fas fa-lock text-white text-3xl"></i>
+    </div>
+    <h1 class="text-3xl font-bold">Selamat Datang Kembali</h1>
+  </div>
+
+  <div class="bg-white border rounded-3xl p-8">
+    <% if (error) { %>
+      <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-2xl text-sm"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/auth/login">
+      <div class="space-y-5">
+        <div>
+          <label class="text-sm font-medium">Email</label>
+          <input type="email" name="email" required class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl">
+        </div>
+        <div>
+          <label class="text-sm font-medium">Password</label>
+          <input type="password" name="password" required class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl">
+        </div>
+      </div>
+
+      <button type="submit" class="mt-7 w-full bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-4 rounded-2xl text-lg">
+        Masuk
+      </button>
+    </form>
+
+    <div class="text-center mt-6">
+      <p class="text-sm text-gray-600">Belum punya akun? <a href="/auth/register" class="font-medium text-blue-600">Daftar gratis</a></p>
+    </div>
+  </div>
+</div>

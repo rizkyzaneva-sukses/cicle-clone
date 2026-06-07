@@ -1,0 +1,420 @@
+<%- include('../layout', { title: project.name + ' | Kanban' }) %>
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <a href="/" class="text-blue-600 hover:underline text-sm flex items-center gap-1 mb-1">
+      <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+    </a>
+    <h1 class="text-3xl font-bold"><%= project.name %></h1>
+    <p class="text-gray-600"><%= project.description || 'Proyek kolaborasi tim' %></p>
+  </div>
+  
+  <div class="flex items-center gap-3">
+    <button onclick="showCreateTaskModal()" 
+            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 transition text-white px-5 py-2.5 rounded-2xl text-sm font-medium">
+      <i class="fas fa-plus"></i> 
+      <span>Buat Tugas Baru</span>
+    </button>
+  </div>
+</div>
+
+<!-- Kanban Board -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="kanban-board">
+  <!-- To Do -->
+  <div class="bg-white rounded-3xl p-5 border shadow-sm">
+    <div class="flex items-center justify-between mb-4 px-1">
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
+        <span class="font-semibold text-lg">To Do</span>
+      </div>
+      <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-mono" id="count-todo">0</span>
+    </div>
+    <div id="column-TODO" class="kanban-column space-y-3 min-h-[420px] p-2 rounded-2xl bg-gray-50" 
+         ondrop="drop(event, 'TODO')" ondragover="allowDrop(event)">
+      <!-- Tasks populated by JS -->
+    </div>
+  </div>
+
+  <!-- In Progress -->
+  <div class="bg-white rounded-3xl p-5 border shadow-sm">
+    <div class="flex items-center justify-between mb-4 px-1">
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 bg-amber-400 rounded-full"></div>
+        <span class="font-semibold text-lg">In Progress</span>
+      </div>
+      <span class="bg-amber-100 text-amber-600 text-xs px-3 py-1 rounded-full font-mono" id="count-in_progress">0</span>
+    </div>
+    <div id="column-IN_PROGRESS" class="kanban-column space-y-3 min-h-[420px] p-2 rounded-2xl bg-gray-50" 
+         ondrop="drop(event, 'IN_PROGRESS')" ondragover="allowDrop(event)">
+    </div>
+  </div>
+
+  <!-- Done -->
+  <div class="bg-white rounded-3xl p-5 border shadow-sm">
+    <div class="flex items-center justify-between mb-4 px-1">
+      <div class="flex items-center gap-2">
+        <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+        <span class="font-semibold text-lg">Done</span>
+      </div>
+      <span class="bg-emerald-100 text-emerald-600 text-xs px-3 py-1 rounded-full font-mono" id="count-done">0</span>
+    </div>
+    <div id="column-DONE" class="kanban-column space-y-3 min-h-[420px] p-2 rounded-2xl bg-gray-50" 
+         ondrop="drop(event, 'DONE')" ondragover="allowDrop(event)">
+    </div>
+  </div>
+</div>
+
+<!-- Chat Section -->
+<div class="mt-10 bg-white rounded-3xl p-6 border shadow-sm">
+  <h3 class="font-semibold text-xl mb-4 flex items-center gap-2">
+    <i class="fas fa-comments text-blue-600"></i> 
+    Chat Proyek
+  </h3>
+  
+  <div id="chat-messages" class="h-72 overflow-y-auto bg-gray-50 rounded-2xl p-4 mb-4 space-y-4 text-sm">
+    <!-- Messages loaded via JS -->
+  </div>
+  
+  <div class="flex gap-3">
+    <input id="chat-input" type="text" placeholder="Ketik pesan..." 
+           class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400"
+           onkeypress="if(event.key === 'Enter') sendMessage()">
+    <button onclick="sendMessage()" 
+            class="px-8 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 flex items-center">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Create Task Modal -->
+<div id="createTaskModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-[100]">
+  <div class="bg-white w-full max-w-lg mx-4 rounded-3xl p-8">
+    <h3 class="text-2xl font-bold mb-6">Buat Tugas Baru</h3>
+    
+    <form id="createTaskForm" onsubmit="createTask(event)">
+      <input type="hidden" name="projectId" value="<%= project.id %>">
+      
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium mb-1.5">Judul Tugas *</label>
+          <input type="text" name="title" required class="w-full border rounded-2xl px-5 py-3">
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium mb-1.5">Deskripsi</label>
+          <textarea name="description" rows="3" class="w-full border rounded-2xl px-5 py-3"></textarea>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Ditugaskan ke</label>
+            <select name="assigneeId" class="w-full border rounded-2xl px-5 py-3">
+              <option value="">Belum ditugaskan</option>
+              <% members.forEach(member => { %>
+                <option value="<%= member.id %>"><%= member.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Deadline</label>
+            <input type="date" name="dueDate" class="w-full border rounded-2xl px-5 py-3">
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex gap-3 mt-8">
+        <button type="button" onclick="hideCreateTaskModal()" 
+                class="flex-1 py-3.5 border rounded-2xl font-medium">Batal</button>
+        <button type="submit" 
+                class="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700">Buat Tugas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+// Initialize data
+const projectId = '<%= project.id %>';
+let tasks = <%- JSON.stringify(project.tasks) %>;
+const socket = io();
+
+// Connect to project room
+socket.emit('join-project', projectId);
+
+// Render Kanban
+function renderKanban() {
+  const columns = {
+    'TODO': document.getElementById('column-TODO'),
+    'IN_PROGRESS': document.getElementById('column-IN_PROGRESS'),
+    'DONE': document.getElementById('column-DONE')
+  };
+
+  // Clear columns
+  Object.values(columns).forEach(col => col.innerHTML = '');
+
+  // Count
+  let counts = { TODO: 0, IN_PROGRESS: 0, DONE: 0 };
+
+  tasks.forEach(task => {
+    const column = columns[task.status];
+    if (!column) return;
+
+    counts[task.status]++;
+
+    const card = document.createElement('div');
+    card.className = `task-card bg-white border p-4 rounded-2xl cursor-grab active:cursor-grabbing`;
+    card.draggable = true;
+    card.dataset.id = task.id;
+    card.ondragstart = (e) => drag(e, task.id);
+
+    card.innerHTML = `
+      <div class="flex justify-between items-start mb-2">
+        <div class="font-semibold pr-2">${task.title}</div>
+        ${task.assignee ? `<div class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap">${task.assignee.name.split(' ')[0]}</div>` : ''}
+      </div>
+      
+      ${task.description ? `<p class="text-xs text-gray-600 line-clamp-2 mb-3">${task.description}</p>` : ''}
+      
+      <div class="flex items-center justify-between text-xs">
+        <div class="flex items-center gap-1 text-gray-500">
+          ${task.dueDate ? `<i class="fas fa-clock"></i> <span>${new Date(task.dueDate).toLocaleDateString('id-ID', {month:'short', day:'numeric'})}</span>` : ''}
+        </div>
+        <div class="flex gap-1">
+          <button onclick="event.stopImmediatePropagation(); editTask('${task.id}')" class="text-blue-500 hover:text-blue-700 p-1"><i class="fas fa-edit fa-sm"></i></button>
+          <button onclick="event.stopImmediatePropagation(); deleteTask('${task.id}')" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash fa-sm"></i></button>
+        </div>
+      </div>
+    `;
+
+    // Click to open detail (simple alert for now)
+    card.onclick = () => showTaskDetail(task);
+
+    column.appendChild(card);
+  });
+
+  // Update counts
+  document.getElementById('count-todo').textContent = counts.TODO;
+  document.getElementById('count-in_progress').textContent = counts.IN_PROGRESS;
+  document.getElementById('count-done').textContent = counts.DONE;
+}
+
+// Drag and Drop functions
+let draggedTaskId = null;
+
+function drag(ev, taskId) {
+  draggedTaskId = taskId;
+  ev.dataTransfer.setData("text", taskId);
+}
+
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+async function drop(ev, newStatus) {
+  ev.preventDefault();
+  const taskId = ev.dataTransfer.getData("text") || draggedTaskId;
+  
+  if (!taskId) return;
+
+  // Find task
+  const taskIndex = tasks.findIndex(t => t.id === taskId);
+  if (!taskIndex && taskIndex !== 0) return;
+
+  const oldStatus = tasks[taskIndex].status;
+  
+  if (oldStatus === newStatus) return;
+
+  // Optimistic update
+  tasks[taskIndex].status = newStatus;
+  renderKanban();
+
+  // Update backend
+  try {
+    const res = await fetch(`/tasks/${taskId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    
+    if (res.ok) {
+      // Emit to others
+      socket.emit('task-updated', { taskId, status: newStatus, projectId });
+    }
+  } catch (e) {
+    console.error(e);
+    // Revert on error
+    tasks[taskIndex].status = oldStatus;
+    renderKanban();
+    alert('Gagal update status tugas');
+  }
+}
+
+// Socket listeners
+socket.on('task-updated', (data) => {
+  const taskIndex = tasks.findIndex(t => t.id === data.taskId);
+  if (taskIndex > -1) {
+    tasks[taskIndex].status = data.status;
+    renderKanban();
+  }
+});
+
+socket.on('new-message', (msg) => {
+  appendMessage(msg);
+});
+
+// Create Task
+function showCreateTaskModal() {
+  document.getElementById('createTaskModal').classList.remove('hidden');
+}
+
+function hideCreateTaskModal() {
+  document.getElementById('createTaskModal').classList.add('hidden');
+  document.getElementById('createTaskForm').reset();
+}
+
+async function createTask(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch('/tasks/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (result.success) {
+      tasks.push(result.task);
+      renderKanban();
+      hideCreateTaskModal();
+      form.reset();
+    }
+  } catch (err) {
+    alert('Gagal membuat tugas');
+  }
+}
+
+// Delete task
+async function deleteTask(taskId) {
+  if (!confirm('Hapus tugas ini?')) return;
+  
+  try {
+    await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+    tasks = tasks.filter(t => t.id !== taskId);
+    renderKanban();
+  } catch (e) {
+    alert('Gagal menghapus');
+  }
+}
+
+// Simple edit (prompt for now)
+async function editTask(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const newTitle = prompt('Judul baru:', task.title);
+  if (!newTitle) return;
+
+  try {
+    const res = await fetch(`/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle })
+    });
+    const updated = await res.json();
+    if (updated.success) {
+      Object.assign(task, updated.task);
+      renderKanban();
+    }
+  } catch (e) {}
+}
+
+// Task detail modal (simple)
+function showTaskDetail(task) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-[200]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-3xl p-8 max-w-lg w-full mx-4">
+      <h3 class="text-2xl font-bold mb-1">${task.title}</h3>
+      <p class="text-sm text-gray-500 mb-6">Status: <span class="font-mono">${task.status}</span></p>
+      
+      ${task.description ? `<p class="mb-6 text-gray-700">${task.description}</p>` : ''}
+      
+      <div class="flex justify-end gap-3">
+        <button onclick="this.closest('.fixed').remove()" class="px-6 py-2.5 rounded-2xl border">Tutup</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Chat functions
+async function loadChatMessages() {
+  try {
+    const res = await fetch(`/chat/messages/${projectId}`);
+    const messages = await res.json();
+    const container = document.getElementById('chat-messages');
+    container.innerHTML = '';
+    messages.forEach(msg => appendMessage(msg, false));
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {}
+}
+
+function appendMessage(msg, scroll = true) {
+  const container = document.getElementById('chat-messages');
+  const isMe = msg.user && msg.user.id === '<%= currentUserId %>';
+  
+  const div = document.createElement('div');
+  div.className = `flex ${isMe ? 'justify-end' : ''}`;
+  div.innerHTML = `
+    <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
+      <div class="text-xs opacity-70 mb-0.5">${msg.user ? msg.user.name : 'User'}</div>
+      <div>${msg.content}</div>
+    </div>
+  `;
+  container.appendChild(div);
+  if (scroll) container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  try {
+    // Send via REST (will also be emitted by server in future improvement)
+    const res = await fetch(`/chat/messages/${projectId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    
+    const result = await res.json();
+    if (result.success) {
+      appendMessage(result.message);
+      socket.emit('new-message', result.message);
+      input.value = '';
+    }
+  } catch (e) {
+    // Fallback local
+    appendMessage({ content, user: { name: 'Anda' } });
+    input.value = '';
+  }
+}
+
+// Initialize everything
+function init() {
+  renderKanban();
+  loadChatMessages();
+
+  // Socket task update listener already set above
+  console.log('%c[Cicle] Kanban board initialized with real-time sync', 'color:#666');
+}
+
+window.onload = init;
+</script>
