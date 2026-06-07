@@ -1,0 +1,115 @@
+<%- include('partials/header', { title: 'Anggota Tim' }) %>
+
+<div class="mb-8 flex items-center justify-between">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900">Anggota Tim</h1>
+    <p class="text-gray-500 mt-1">Kelola anggota workspace <strong><%= company.name %></strong></p>
+  </div>
+  <div class="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 text-center">
+    <div class="text-2xl font-bold text-blue-600"><%= members.length %></div>
+    <div class="text-xs text-blue-500">Total Anggota</div>
+  </div>
+</div>
+
+<!-- Invite Form (admin only) -->
+<% if (isAdmin) { %>
+<div class="bg-white border rounded-3xl p-6 mb-8 shadow-sm">
+  <h2 class="font-semibold text-lg mb-4 flex items-center gap-2">
+    <i class="fas fa-user-plus text-blue-600"></i>
+    Undang Anggota Baru
+  </h2>
+  <form action="/members/invite" method="POST" class="flex gap-3">
+    <div class="flex-1">
+      <input type="email" name="email" required
+        placeholder="Masukkan email anggota yang sudah terdaftar..."
+        class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+    </div>
+    <button type="submit"
+      class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition flex items-center gap-2 shrink-0">
+      <i class="fas fa-paper-plane"></i>
+      Undang
+    </button>
+  </form>
+  <p class="text-xs text-gray-400 mt-2">
+    <i class="fas fa-info-circle"></i>
+    Anggota harus sudah punya akun Cicle sebelum bisa diundang
+  </p>
+</div>
+<% } %>
+
+<!-- Members List -->
+<div class="bg-white border rounded-3xl shadow-sm overflow-hidden">
+  <div class="px-6 py-4 border-b bg-gray-50">
+    <h2 class="font-semibold text-gray-700">Daftar Anggota</h2>
+  </div>
+
+  <div class="divide-y">
+    <% members.forEach(function(membership) { %>
+    <div class="px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition">
+
+      <!-- Avatar -->
+      <div class="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+        <%= membership.user.name.charAt(0).toUpperCase() %>
+      </div>
+
+      <!-- Info -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-gray-900"><%= membership.user.name %></span>
+          <% if (membership.user.id === currentUserId) { %>
+            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Kamu</span>
+          <% } %>
+        </div>
+        <div class="text-sm text-gray-500"><%= membership.user.email %></div>
+      </div>
+
+      <!-- Role Badge -->
+      <div class="shrink-0">
+        <% if (membership.role === 'admin') { %>
+          <span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+            <i class="fas fa-shield-alt mr-1"></i>Admin
+          </span>
+        <% } else { %>
+          <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">
+            <i class="fas fa-user mr-1"></i>Member
+          </span>
+        <% } %>
+      </div>
+
+      <!-- Join Date -->
+      <div class="text-xs text-gray-400 shrink-0 text-right">
+        <div>Bergabung</div>
+        <div><%= new Date(membership.joinedAt).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' }) %></div>
+      </div>
+
+      <!-- Actions (admin only, can't edit self) -->
+      <% if (isAdmin && membership.user.id !== currentUserId) { %>
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Change Role -->
+        <form action="/members/<%= membership.id %>/role" method="POST">
+          <input type="hidden" name="role" value="<%= membership.role === 'admin' ? 'member' : 'admin' %>">
+          <button type="submit"
+            class="text-xs px-3 py-1.5 border rounded-xl hover:bg-gray-50 transition text-gray-600"
+            title="<%= membership.role === 'admin' ? 'Jadikan Member' : 'Jadikan Admin' %>">
+            <i class="fas fa-exchange-alt mr-1"></i>
+            <%= membership.role === 'admin' ? 'Jadikan Member' : 'Jadikan Admin' %>
+          </button>
+        </form>
+
+        <!-- Remove -->
+        <form action="/members/<%= membership.id %>/remove" method="POST"
+          onsubmit="return confirm('Hapus <%= membership.user.name %> dari workspace ini?')">
+          <button type="submit"
+            class="text-xs px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl transition">
+            <i class="fas fa-trash"></i>
+          </button>
+        </form>
+      </div>
+      <% } %>
+
+    </div>
+    <% }) %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

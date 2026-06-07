@@ -34,10 +34,27 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Make prisma and user available in views
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   res.locals.prisma = prisma;
   res.locals.currentUser = req.session.user || null;
   res.locals.flash = req.flash();
+  res.locals.currentPath = req.path;
+  res.locals.currentCompany = null;
+  res.locals.userRole = 'member';
+
+  if (req.session.user) {
+    try {
+      const membership = await prisma.membership.findFirst({
+        where: { userId: req.session.user.id },
+        include: { company: true }
+      });
+      if (membership) {
+        res.locals.currentCompany = membership.company;
+        res.locals.userRole = membership.role;
+      }
+    } catch (_) {}
+  }
+
   next();
 });
 
@@ -49,6 +66,7 @@ const chatRoutes = require('./routes/chat');
 const checklistRoutes = require('./routes/checklist');
 const myTasksRoutes = require('./routes/my-tasks');
 const panduanRoutes = require('./routes/panduan');
+const membersRoutes = require('./routes/members');
 
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
@@ -57,6 +75,7 @@ app.use('/chat', chatRoutes);
 app.use('/checklist', checklistRoutes);
 app.use('/my-tasks', myTasksRoutes);
 app.use('/panduan', panduanRoutes);
+app.use('/members', membersRoutes);
 
 // Home / Dashboard
 app.get('/', async (req, res) => {
@@ -72,20 +91,31 @@ app.get('/', async (req, res) => {
 
   const companies = memberships.map(m => m.company);
 
-  // Get recent projects from first company (MVP: assume one company per user for simplicity)
   let projects = [];
+  let tasksDone = 0;
+  let tasksPending = 0;
+
   if (companies.length > 0) {
+    const companyId = companies[0].id;
     projects = await prisma.project.findMany({
-      where: { companyId: companies[0].id },
+      where: { companyId },
       orderBy: { createdAt: 'desc' },
       take: 6
     });
+    tasksDone = await prisma.task.count({
+      where: { project: { companyId }, status: 'DONE' }
+    });
+    tasksPending = await prisma.task.count({
+      where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } }
+    });
   }
 
-  res.render('dashboard', { 
-    companies, 
+  res.render('dashboard', {
+    companies,
     projects,
-    activeCompany: companies[0] || null 
+    activeCompany: companies[0] || null,
+    tasksDone,
+    tasksPending
   });
 });
 
