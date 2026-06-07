@@ -20,9 +20,21 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   memberships   Membership[]
-  tasks         Task[]    @relation("TaskAssignee")
+  tasks         Task[]         @relation("TaskAssignee")
   comments      Comment[]
   messages      ChatMessage[]
+  notifications Notification[]
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Company {
@@ -66,6 +78,7 @@ model Task {
   title       String
   description String?
   status      String    @default("TODO") // TODO, IN_PROGRESS, DONE
+  priority    String    @default("NONE") // NONE, LOW, MEDIUM, HIGH, URGENT
   position    Int       @default(0)
   dueDate     DateTime?
   projectId   String

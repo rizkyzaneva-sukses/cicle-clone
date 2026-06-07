@@ -1,0 +1,399 @@
+<%- include('../partials/header', { title: task.title }) %>
+
+<!-- Breadcrumb -->
+<div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+  <a href="/" class="hover:text-blue-600">Dashboard</a>
+  <i class="fas fa-chevron-right text-xs"></i>
+  <a href="/projects/<%= task.projectId %>" class="hover:text-blue-600"><%= task.project.name %></a>
+  <i class="fas fa-chevron-right text-xs"></i>
+  <span class="text-gray-800 font-medium truncate"><%= task.title %></span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- LEFT: Task Info + Edit -->
+  <div class="lg:col-span-2 space-y-5">
+
+    <!-- Task Header -->
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div class="flex-1">
+          <!-- Status + Priority badges -->
+          <div class="flex items-center gap-2 mb-3 flex-wrap">
+            <% const statusMap = { TODO: ['bg-gray-100 text-gray-700', 'To Do'], IN_PROGRESS: ['bg-amber-100 text-amber-700', 'In Progress'], DONE: ['bg-emerald-100 text-emerald-700', 'Done'] } %>
+            <span class="px-3 py-1 text-xs font-semibold rounded-full <%= statusMap[task.status]?.[0] || 'bg-gray-100 text-gray-700' %>">
+              <%= statusMap[task.status]?.[1] || task.status %>
+            </span>
+            <% const prioMap = { NONE: ['bg-gray-100 text-gray-500', 'Tanpa Prioritas'], LOW: ['bg-blue-100 text-blue-700', 'Low'], MEDIUM: ['bg-yellow-100 text-yellow-700', 'Medium'], HIGH: ['bg-orange-100 text-orange-700', 'High'], URGENT: ['bg-red-100 text-red-700', 'Urgent'] } %>
+            <% if (task.priority && task.priority !== 'NONE') { %>
+            <span class="px-3 py-1 text-xs font-semibold rounded-full <%= prioMap[task.priority]?.[0] %>">
+              <i class="fas fa-flag mr-1"></i><%= prioMap[task.priority]?.[1] %>
+            </span>
+            <% } %>
+          </div>
+          <h1 class="text-2xl font-bold text-gray-900"><%= task.title %></h1>
+          <% if (task.description) { %>
+            <p class="text-gray-600 mt-2"><%= task.description %></p>
+          <% } %>
+        </div>
+        <button onclick="toggleEditForm()" class="shrink-0 px-4 py-2 border rounded-xl text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+      </div>
+
+      <!-- Meta info -->
+      <div class="grid grid-cols-2 gap-4 text-sm pt-4 border-t">
+        <div>
+          <span class="text-gray-400">Assignee</span>
+          <div class="font-medium mt-0.5">
+            <% if (task.assignee) { %>
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  <%= task.assignee.name.charAt(0) %>
+                </div>
+                <%= task.assignee.name %>
+              </div>
+            <% } else { %>
+              <span class="text-gray-400">Belum ditugaskan</span>
+            <% } %>
+          </div>
+        </div>
+        <div>
+          <span class="text-gray-400">Deadline</span>
+          <div class="font-medium mt-0.5">
+            <% if (task.dueDate) { %>
+              <% const isOverdue = new Date(task.dueDate) < new Date() && task.status !== 'DONE' %>
+              <span class="<%= isOverdue ? 'text-red-600' : '' %>">
+                <%= isOverdue ? '⚠️ ' : '' %><%= new Date(task.dueDate).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}) %>
+              </span>
+            <% } else { %>
+              <span class="text-gray-400">Tidak ada</span>
+            <% } %>
+          </div>
+        </div>
+        <div>
+          <span class="text-gray-400">Proyek</span>
+          <div class="font-medium mt-0.5">
+            <a href="/projects/<%= task.projectId %>" class="text-blue-600 hover:underline"><%= task.project.name %></a>
+          </div>
+        </div>
+        <div>
+          <span class="text-gray-400">Dibuat</span>
+          <div class="font-medium mt-0.5"><%= new Date(task.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}) %></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Form (hidden by default) -->
+    <div id="editForm" class="hidden bg-white border rounded-3xl p-6 shadow-sm">
+      <h3 class="font-semibold text-lg mb-4">Edit Task</h3>
+      <form action="/tasks/<%= task.id %>/update" method="POST">
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm font-medium text-gray-700">Judul</label>
+            <input type="text" name="title" value="<%= task.title %>" required
+              class="mt-1 w-full border rounded-2xl px-4 py-2.5 focus:outline-none focus:border-blue-400">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700">Deskripsi</label>
+            <textarea name="description" rows="3"
+              class="mt-1 w-full border rounded-2xl px-4 py-2.5 focus:outline-none focus:border-blue-400"><%= task.description || '' %></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-medium text-gray-700">Status</label>
+              <select name="status" class="mt-1 w-full border rounded-2xl px-4 py-2.5">
+                <option value="TODO" <%= task.status==='TODO'?'selected':'' %>>To Do</option>
+                <option value="IN_PROGRESS" <%= task.status==='IN_PROGRESS'?'selected':'' %>>In Progress</option>
+                <option value="DONE" <%= task.status==='DONE'?'selected':'' %>>Done</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700">Prioritas</label>
+              <select name="priority" class="mt-1 w-full border rounded-2xl px-4 py-2.5">
+                <option value="NONE" <%= task.priority==='NONE'?'selected':'' %>>Tanpa Prioritas</option>
+                <option value="LOW" <%= task.priority==='LOW'?'selected':'' %>>Low</option>
+                <option value="MEDIUM" <%= task.priority==='MEDIUM'?'selected':'' %>>Medium</option>
+                <option value="HIGH" <%= task.priority==='HIGH'?'selected':'' %>>High</option>
+                <option value="URGENT" <%= task.priority==='URGENT'?'selected':'' %>>Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700">Assignee</label>
+              <select name="assigneeId" class="mt-1 w-full border rounded-2xl px-4 py-2.5">
+                <option value="">Belum ditugaskan</option>
+                <% members.forEach(m => { %>
+                  <option value="<%= m.id %>" <%= task.assigneeId===m.id?'selected':'' %>><%= m.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm font-medium text-gray-700">Deadline</label>
+              <input type="date" name="dueDate"
+                value="<%= task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '' %>"
+                class="mt-1 w-full border rounded-2xl px-4 py-2.5">
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-5">
+          <button type="submit" class="flex-1 py-2.5 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700">Simpan</button>
+          <button type="button" onclick="toggleEditForm()" class="flex-1 py-2.5 border rounded-2xl text-gray-600">Batal</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Checklist -->
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-lg flex items-center gap-2">
+          <i class="fas fa-check-square text-blue-600"></i> Checklist
+        </h3>
+        <span class="text-sm text-gray-500" id="checklist-count">
+          <%= task.checklists.filter(c=>c.isDone).length %> / <%= task.checklists.length %> selesai
+        </span>
+      </div>
+
+      <!-- Progress bar -->
+      <% if (task.checklists.length > 0) { %>
+        <% const pct = Math.round(task.checklists.filter(c=>c.isDone).length / task.checklists.length * 100) %>
+        <div class="h-1.5 bg-gray-100 rounded-full mb-4 overflow-hidden">
+          <div class="h-full bg-blue-500 rounded-full transition-all" id="checklist-bar" style="width:<%= pct %>%"></div>
+        </div>
+      <% } %>
+
+      <div id="checklist-list" class="space-y-2 mb-4">
+        <% task.checklists.forEach(item => { %>
+          <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group" id="check-<%= item.id %>">
+            <input type="checkbox" <%= item.isDone ? 'checked' : '' %>
+              onchange="toggleCheck('<%= item.id %>', this)"
+              class="w-4 h-4 accent-blue-600 cursor-pointer">
+            <span class="flex-1 text-sm <%= item.isDone ? 'line-through text-gray-400' : 'text-gray-700' %>">
+              <%= item.content %>
+            </span>
+            <button onclick="deleteCheck('<%= item.id %>')"
+              class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        <% }) %>
+      </div>
+
+      <!-- Add checklist item -->
+      <div class="flex gap-2">
+        <input type="text" id="new-checklist" placeholder="Tambah item checklist..."
+          class="flex-1 border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-400"
+          onkeypress="if(event.key==='Enter') addCheck()">
+        <button onclick="addCheck()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Comments -->
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+        <i class="fas fa-comments text-blue-600"></i> Komentar
+        <span class="text-sm text-gray-400 font-normal">(<%= task.comments.length %>)</span>
+      </h3>
+
+      <div id="comment-list" class="space-y-4 mb-5">
+        <% task.comments.forEach(comment => { %>
+          <div class="flex gap-3" id="comment-<%= comment.id %>">
+            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">
+              <%= comment.user.name.charAt(0) %>
+            </div>
+            <div class="flex-1 bg-gray-50 rounded-2xl px-4 py-3">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-semibold"><%= comment.user.name %></span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-400">
+                    <%= new Date(comment.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short'}) %>
+                  </span>
+                  <% if (comment.userId === currentUserId) { %>
+                    <button onclick="deleteComment('<%= comment.id %>')" class="text-xs text-red-400 hover:text-red-600">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  <% } %>
+                </div>
+              </div>
+              <p class="text-sm text-gray-700"><%= comment.content %></p>
+            </div>
+          </div>
+        <% }) %>
+        <% if (task.comments.length === 0) { %>
+          <p class="text-gray-400 text-sm text-center py-4" id="no-comments">Belum ada komentar. Jadi yang pertama!</p>
+        <% } %>
+      </div>
+
+      <!-- Add comment -->
+      <div class="flex gap-3">
+        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-1">
+          <%= currentUser.name.charAt(0) %>
+        </div>
+        <div class="flex-1 flex gap-2">
+          <input type="text" id="comment-input" placeholder="Tulis komentar..."
+            class="flex-1 border rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
+            onkeypress="if(event.key==='Enter') addComment()">
+          <button onclick="addComment()" class="px-5 py-2.5 bg-blue-600 text-white rounded-2xl text-sm hover:bg-blue-700">
+            Kirim
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Quick Actions Sidebar -->
+  <div class="space-y-4">
+
+    <!-- Back to Board -->
+    <a href="/projects/<%= task.projectId %>"
+      class="flex items-center gap-2 px-4 py-3 bg-white border rounded-2xl text-sm text-gray-700 hover:bg-gray-50 transition font-medium">
+      <i class="fas fa-arrow-left text-blue-600"></i> Kembali ke Board
+    </a>
+
+    <!-- Change Status Quick -->
+    <div class="bg-white border rounded-3xl p-5 shadow-sm">
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Ubah Status</div>
+      <div class="space-y-2">
+        <% ['TODO','IN_PROGRESS','DONE'].forEach(s => { %>
+          <form action="/tasks/<%= task.id %>/update" method="POST">
+            <input type="hidden" name="title" value="<%= task.title %>">
+            <input type="hidden" name="priority" value="<%= task.priority %>">
+            <input type="hidden" name="status" value="<%= s %>">
+            <% if (task.assigneeId) { %><input type="hidden" name="assigneeId" value="<%= task.assigneeId %>"><% } %>
+            <button type="submit" class="w-full text-left px-3 py-2 rounded-xl text-sm transition
+              <%= task.status === s ? 'bg-blue-600 text-white font-semibold' : 'hover:bg-gray-50 text-gray-700' %>">
+              <% if (s==='TODO') { %><i class="fas fa-circle text-gray-400 mr-2 text-xs"></i>To Do
+              <% } else if (s==='IN_PROGRESS') { %><i class="fas fa-circle text-amber-400 mr-2 text-xs"></i>In Progress
+              <% } else { %><i class="fas fa-circle text-emerald-500 mr-2 text-xs"></i>Done<% } %>
+            </button>
+          </form>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- Delete Task -->
+    <form onsubmit="return confirmDelete(event, '<%= task.id %>', '<%= task.projectId %>')">
+      <button type="submit"
+        class="w-full px-4 py-3 border border-red-200 text-red-500 rounded-2xl text-sm hover:bg-red-50 transition font-medium">
+        <i class="fas fa-trash mr-2"></i>Hapus Task
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+const taskId = '<%= task.id %>';
+
+function toggleEditForm() {
+  document.getElementById('editForm').classList.toggle('hidden');
+}
+
+// Checklist
+async function toggleCheck(id, el) {
+  await fetch(`/checklist/${id}/toggle`, { method: 'PATCH' });
+  const label = el.parentElement.querySelector('span');
+  if (el.checked) label.classList.add('line-through','text-gray-400');
+  else label.classList.remove('line-through','text-gray-400');
+  updateChecklistMeta();
+}
+
+async function deleteCheck(id) {
+  await fetch(`/checklist/${id}`, { method: 'DELETE' });
+  document.getElementById(`check-${id}`)?.remove();
+  updateChecklistMeta();
+}
+
+async function addCheck() {
+  const input = document.getElementById('new-checklist');
+  const content = input.value.trim();
+  if (!content) return;
+
+  const res = await fetch(`/checklist/task/${taskId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+  const data = await res.json();
+  if (data.success) {
+    const list = document.getElementById('checklist-list');
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group';
+    div.id = `check-${data.item.id}`;
+    div.innerHTML = `
+      <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-4 h-4 accent-blue-600 cursor-pointer">
+      <span class="flex-1 text-sm text-gray-700">${data.item.content}</span>
+      <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    list.appendChild(div);
+    input.value = '';
+    updateChecklistMeta();
+  }
+}
+
+function updateChecklistMeta() {
+  const all = document.querySelectorAll('#checklist-list input[type=checkbox]');
+  const done = document.querySelectorAll('#checklist-list input[type=checkbox]:checked');
+  document.getElementById('checklist-count').textContent = `${done.length} / ${all.length} selesai`;
+  const bar = document.getElementById('checklist-bar');
+  if (bar && all.length > 0) bar.style.width = `${Math.round(done.length/all.length*100)}%`;
+}
+
+// Comments
+async function addComment() {
+  const input = document.getElementById('comment-input');
+  const content = input.value.trim();
+  if (!content) return;
+
+  const res = await fetch(`/tasks/${taskId}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+  const data = await res.json();
+  if (data.success) {
+    const list = document.getElementById('comment-list');
+    document.getElementById('no-comments')?.remove();
+    const div = document.createElement('div');
+    div.className = 'flex gap-3';
+    div.id = `comment-${data.comment.id}`;
+    div.innerHTML = `
+      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">
+        ${data.comment.user.name.charAt(0)}
+      </div>
+      <div class="flex-1 bg-gray-50 rounded-2xl px-4 py-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-semibold">${data.comment.user.name}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">Baru saja</span>
+            <button onclick="deleteComment('${data.comment.id}')" class="text-xs text-red-400 hover:text-red-600">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <p class="text-sm text-gray-700">${data.comment.content}</p>
+      </div>
+    `;
+    list.appendChild(div);
+    input.value = '';
+  }
+}
+
+async function deleteComment(id) {
+  if (!confirm('Hapus komentar ini?')) return;
+  await fetch(`/tasks/${taskId}/comments/${id}`, { method: 'DELETE' });
+  document.getElementById(`comment-${id}`)?.remove();
+}
+
+async function confirmDelete(e, id, projectId) {
+  e.preventDefault();
+  if (!confirm('Hapus task ini permanen?')) return false;
+  await fetch(`/tasks/${id}`, { method: 'DELETE' });
+  window.location.href = `/projects/${projectId}`;
+  return false;
+}
+</script>
+
+<%- include('../partials/footer') %>

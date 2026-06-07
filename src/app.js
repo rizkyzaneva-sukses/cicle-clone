@@ -13,6 +13,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Share io instance with routes
+app.set('io', io);
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -24,7 +27,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'cicle-secret-key-change-in-prod',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } // 7 days
+  cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
 }));
 
 app.use(flash());
@@ -33,7 +36,7 @@ app.use(flash());
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Make prisma and user available in views
+// Global locals for all views
 app.use(async (req, res, next) => {
   res.locals.prisma = prisma;
   res.locals.currentUser = req.session.user || null;
@@ -41,17 +44,24 @@ app.use(async (req, res, next) => {
   res.locals.currentPath = req.path;
   res.locals.currentCompany = null;
   res.locals.userRole = 'member';
+  res.locals.unreadNotifications = 0;
 
   if (req.session.user) {
     try {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: req.session.user.id },
-        include: { company: true }
-      });
+      const [membership, unreadCount] = await Promise.all([
+        prisma.membership.findFirst({
+          where: { userId: req.session.user.id },
+          include: { company: true }
+        }),
+        prisma.notification.count({
+          where: { userId: req.session.user.id, isRead: false }
+        })
+      ]);
       if (membership) {
         res.locals.currentCompany = membership.company;
         res.locals.userRole = membership.role;
       }
+      res.locals.unreadNotifications = unreadCount;
     } catch (_) {}
   }
 
@@ -67,6 +77,8 @@ const checklistRoutes = require('./routes/checklist');
 const myTasksRoutes = require('./routes/my-tasks');
 const panduanRoutes = require('./routes/panduan');
 const membersRoutes = require('./routes/members');
+const profileRoutes = require('./routes/profile');
+const notificationsRoutes = require('./routes/notifications');
 
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
@@ -76,12 +88,12 @@ app.use('/checklist', checklistRoutes);
 app.use('/my-tasks', myTasksRoutes);
 app.use('/panduan', panduanRoutes);
 app.use('/members', membersRoutes);
+app.use('/profile', profileRoutes);
+app.use('/notifications', notificationsRoutes);
 
 // Home / Dashboard
 app.get('/', async (req, res) => {
-  if (!req.session.user) {
-    return res.redirect('/auth/login');
-  }
+  if (!req.session.user) return res.redirect('/auth/login');
 
   const userId = req.session.user.id;
   const memberships = await prisma.membership.findMany({
@@ -90,55 +102,40 @@ app.get('/', async (req, res) => {
   });
 
   const companies = memberships.map(m => m.company);
-
-  let projects = [];
-  let tasksDone = 0;
-  let tasksPending = 0;
+  let projects = [], tasksDone = 0, tasksPending = 0;
 
   if (companies.length > 0) {
     const companyId = companies[0].id;
-    projects = await prisma.project.findMany({
-      where: { companyId },
-      orderBy: { createdAt: 'desc' },
-      take: 6
-    });
-    tasksDone = await prisma.task.count({
-      where: { project: { companyId }, status: 'DONE' }
-    });
-    tasksPending = await prisma.task.count({
-      where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } }
-    });
+    [projects, tasksDone, tasksPending] = await Promise.all([
+      prisma.project.findMany({
+        where: { companyId },
+        orderBy: { createdAt: 'desc' },
+        take: 6
+      }),
+      prisma.task.count({ where: { project: { companyId }, status: 'DONE' } }),
+      prisma.task.count({ where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
+    ]);
   }
 
-  res.render('dashboard', {
-    companies,
-    projects,
-    activeCompany: companies[0] || null,
-    tasksDone,
-    tasksPending
-  });
+  res.render('dashboard', { companies, projects, activeCompany: companies[0] || null, tasksDone, tasksPending });
 });
 
-// Socket.io for real-time
+// Socket.io
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
   socket.on('join-project', (projectId) => {
     socket.join(`project-${projectId}`);
-    console.log(`User joined project room: project-${projectId}`);
+  });
+
+  socket.on('join-user', (userId) => {
+    socket.join(`user-${userId}`);
   });
 
   socket.on('task-updated', (data) => {
-    // Broadcast to project room
     io.to(`project-${data.projectId}`).emit('task-updated', data);
   });
 
   socket.on('new-message', (data) => {
     io.to(`project-${data.projectId}`).emit('new-message', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
   });
 });
 
