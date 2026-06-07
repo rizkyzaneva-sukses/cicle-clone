@@ -1,4 +1,4 @@
-<%- include('../layout', { title: 'Proyek Saya' }) %>
+<%- include('../partials/header', { title: 'Proyek Saya' }) %>
 
 <div class="flex justify-between items-center mb-8">
   <h1 class="text-3xl font-bold">Semua Proyek</h1>
@@ -90,3 +90,4 @@ function hideCreateProjectModal() {
   document.getElementById('createProjectModal').classList.add('hidden');
 }
 </script>
+<%- include('../partials/footer') %>

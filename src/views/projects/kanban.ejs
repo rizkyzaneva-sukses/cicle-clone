@@ -1,4 +1,4 @@
-<%- include('../layout', { title: project.name + ' | Kanban' }) %>
+<%- include('../partials/header', { title: project.name + ' | Kanban' }) %>
 
 <div class="flex items-center justify-between mb-6">
   <div>
@@ -418,3 +418,4 @@ function init() {
 
 window.onload = init;
 </script>
+<%- include('../partials/footer') %>

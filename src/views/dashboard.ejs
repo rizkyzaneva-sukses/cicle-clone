@@ -1,4 +1,4 @@
-<%- include('layout', { title: 'Dashboard' }) %>
+<%- include('partials/header', { title: 'Dashboard' }) %>
 
 <div class="mb-8">
   <h1 class="text-4xl font-bold text-gray-900">Selamat datang, <%= currentUser.name.split(' ')[0] %>! 👋</h1>
@@ -106,3 +106,4 @@ function hideCreateCompanyModal() {
   document.getElementById('createCompanyModal').classList.add('hidden');
 }
 </script>
+<%- include('partials/footer') %>
