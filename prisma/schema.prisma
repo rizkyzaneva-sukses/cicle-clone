@@ -8,32 +8,37 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  password      String
-  avatar        String?
-  platformRole  String    @default("user") // owner, partner, user
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  password     String
+  avatar       String?
+  platformRole String   @default("user") // owner, partner, user
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  memberships   Membership[]
-  tasks         Task[]         @relation("TaskAssignee")
-  comments      Comment[]
-  messages      ChatMessage[]
-  notifications Notification[]
-  partnerAccess PartnerAccess[]
+  memberships    Membership[]
+  tasks          Task[]          @relation("TaskAssignee")
+  comments       Comment[]
+  messages       ChatMessage[]
+  directSent     DirectMessage[] @relation("DirectSent")
+  directReceived DirectMessage[] @relation("DirectReceived")
+  notifications  Notification[]
+  partnerAccess  PartnerAccess[]
+  uploads        Attachment[]
+  activityLogs   ActivityLog[]
 }
 
 model Company {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
 
   memberships   Membership[]
   projects      Project[]
   partnerAccess PartnerAccess[]
+  labels        Label[]
 }
 
 // Menghubungkan Partner ke Brand yang dia kelola
@@ -56,8 +61,8 @@ model Membership {
   role      String   @default("member") // admin, member
   joinedAt  DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
-  company   Company  @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
 
   @@unique([userId, companyId])
 }
@@ -70,9 +75,11 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company     Company       @relation(fields: [companyId], references: [id])
-  tasks       Task[]
-  messages    ChatMessage[]
+  company      Company       @relation(fields: [companyId], references: [id])
+  tasks        Task[]
+  messages     ChatMessage[]
+  attachments  Attachment[]
+  activityLogs ActivityLog[]
 }
 
 model Task {
@@ -88,10 +95,13 @@ model Task {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  project    Project         @relation(fields: [projectId], references: [id])
-  assignee   User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  comments   Comment[]
-  checklists ChecklistItem[]
+  project      Project         @relation(fields: [projectId], references: [id])
+  assignee     User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  comments     Comment[]
+  checklists   ChecklistItem[]
+  labels       TaskLabel[]
+  attachments  Attachment[]
+  activityLogs ActivityLog[]
 }
 
 model ChecklistItem {
@@ -123,8 +133,83 @@ model ChatMessage {
   userId    String
   createdAt DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+  project     Project      @relation(fields: [projectId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  attachments Attachment[]
+}
+
+model DirectMessage {
+  id         String    @id @default(cuid())
+  content    String    @default("")
+  senderId   String
+  receiverId String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  sender      User         @relation("DirectSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User         @relation("DirectReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
+}
+
+model Attachment {
+  id              String   @id @default(cuid())
+  filename        String
+  originalName    String
+  mimeType        String
+  size            Int
+  url             String
+  uploadedById    String
+  projectId       String?
+  taskId          String?
+  chatMessageId   String?
+  directMessageId String?
+  createdAt       DateTime @default(now())
+
+  uploadedBy    User           @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  project       Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task          Task?          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  chatMessage   ChatMessage?   @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  directMessage DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#3B82F6")
+  companyId String?
+  createdAt DateTime @default(now())
+
+  company Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tasks   TaskLabel[]
+
+  @@unique([name, companyId])
+}
+
+model TaskLabel {
+  id      String @id @default(cuid())
+  taskId  String
+  labelId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, labelId])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  action     String   @default("event")
+  entityType String   @default("system")
+  entityId   String   @default("")
+  metadata   Json?
+  userId     String?
+  projectId  String?
+  taskId     String?
+  createdAt  DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task    Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
 
 model Notification {

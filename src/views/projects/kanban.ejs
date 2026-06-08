@@ -100,7 +100,13 @@
     <!-- Messages loaded via JS -->
   </div>
   
+  <div id="chat-file-pill" class="hidden mb-3 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2"></div>
   <div class="flex gap-3">
+    <button type="button" onclick="document.getElementById('chat-files').click()"
+            class="px-4 border rounded-2xl text-gray-600 hover:bg-gray-50" title="Lampirkan file">
+      <i class="fas fa-paperclip"></i>
+    </button>
+    <input id="chat-files" type="file" multiple class="hidden" onchange="handleChatFiles(this.files)">
     <input id="chat-input" type="text" placeholder="Ketik pesan..." 
            class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400"
            onkeypress="if(event.key === 'Enter') sendMessage()">
@@ -167,11 +173,11 @@
   </div>
 </div>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 const projectId = '<%= project.id %>';
 let tasks = <%- JSON.stringify(project.tasks) %>;
 const socket = io();
+let pendingChatFiles = [];
 
 socket.emit('join-project', projectId);
 socket.emit('join-user', '<%= currentUserId %>');
@@ -186,6 +192,18 @@ const PRIO = {
 };
 
 let activeFilter = 'ALL';
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function renderAttachment(file) {
+  const name = escapeHtml(file.originalName || file.filename);
+  if ((file.mimeType || '').startsWith('image/')) {
+    return `<a href="${file.url}" target="_blank" class="block mt-2"><img src="${file.url}" alt="${name}" class="max-h-56 rounded-2xl border object-contain bg-white"></a>`;
+  }
+  return `<a href="${file.url}" target="_blank" class="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-xl bg-white border text-gray-700 hover:bg-gray-50"><i class="fas fa-file"></i><span>${name}</span></a>`;
+}
 
 function setFilter(f) {
   activeFilter = f;
@@ -218,6 +236,7 @@ function renderKanban() {
 
     const prio = PRIO[task.priority] || PRIO.NONE;
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+    const labels = (task.labels || []).map(tl => tl.label).filter(Boolean);
 
     const card = document.createElement('div');
     card.className = 'task-card bg-white border p-4 rounded-2xl cursor-grab active:cursor-grabbing';
@@ -227,10 +246,11 @@ function renderKanban() {
 
     card.innerHTML = `
       <div class="flex justify-between items-start mb-2 gap-2">
-        <a href="/tasks/${task.id}" onclick="event.stopPropagation()" class="font-semibold text-sm hover:text-blue-600 leading-tight flex-1">${task.title}</a>
-        ${task.assignee ? `<div class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">${task.assignee.name.split(' ')[0]}</div>` : ''}
+        <a href="/tasks/${task.id}" onclick="event.stopPropagation()" class="font-semibold text-sm hover:text-blue-600 leading-tight flex-1">${escapeHtml(task.title)}</a>
+        ${task.assignee ? `<div class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">${escapeHtml(task.assignee.name.split(' ')[0])}</div>` : ''}
       </div>
-      ${task.description ? `<p class="text-xs text-gray-500 line-clamp-2 mb-2">${task.description}</p>` : ''}
+      ${task.description ? `<p class="text-xs text-gray-500 line-clamp-2 mb-2">${escapeHtml(task.description)}</p>` : ''}
+      ${labels.length ? `<div class="flex flex-wrap gap-1 mb-2">${labels.map(label => `<span class="text-[10px] font-semibold rounded-full px-2 py-0.5 text-white" style="background:${escapeHtml(label.color)}">${escapeHtml(label.name)}</span>`).join('')}</div>` : ''}
       <div class="flex items-center justify-between text-xs mt-2 gap-2">
         <div class="flex items-center gap-1.5 flex-wrap">
           ${prio.label ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${prio.cls}">${prio.label}</span>` : ''}
@@ -380,38 +400,70 @@ async function loadChatMessages() {
 
 function appendMessage(msg, scroll = true) {
   const container = document.getElementById('chat-messages');
+  if (msg.id && document.getElementById(`chat-msg-${msg.id}`)) return;
   const isMe = msg.user && msg.user.id === '<%= currentUserId %>';
   
   const div = document.createElement('div');
+  if (msg.id) div.id = `chat-msg-${msg.id}`;
   div.className = `flex ${isMe ? 'justify-end' : ''}`;
   div.innerHTML = `
     <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
-      <div class="text-xs opacity-70 mb-0.5">${msg.user ? msg.user.name : 'User'}</div>
-      <div>${msg.content}</div>
+      <div class="text-xs opacity-70 mb-0.5">${msg.user ? escapeHtml(msg.user.name) : 'User'}</div>
+      ${msg.content ? `<div class="whitespace-pre-wrap">${escapeHtml(msg.content)}</div>` : ''}
+      ${(msg.attachments || []).map(renderAttachment).join('')}
     </div>
   `;
   container.appendChild(div);
   if (scroll) container.scrollTop = container.scrollHeight;
 }
 
+function refreshChatFilePill() {
+  const pill = document.getElementById('chat-file-pill');
+  if (pendingChatFiles.length === 0) {
+    pill.classList.add('hidden');
+    pill.textContent = '';
+    return;
+  }
+  pill.classList.remove('hidden');
+  pill.textContent = `${pendingChatFiles.length} file siap dikirim`;
+}
+
+function handleChatFiles(files) {
+  pendingChatFiles = [...pendingChatFiles, ...Array.from(files || [])];
+  refreshChatFilePill();
+}
+
+document.addEventListener('paste', (event) => {
+  const files = [];
+  for (const item of event.clipboardData?.items || []) {
+    if (item.kind === 'file') files.push(item.getAsFile());
+  }
+  if (files.length > 0) {
+    handleChatFiles(files.filter(Boolean));
+    event.preventDefault();
+  }
+});
+
 async function sendMessage() {
   const input = document.getElementById('chat-input');
   const content = input.value.trim();
-  if (!content) return;
+  if (!content && pendingChatFiles.length === 0) return;
 
   try {
-    // Send via REST (will also be emitted by server in future improvement)
-    const res = await fetch(`/chat/messages/${projectId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content })
-    });
+    const form = new FormData();
+    form.append('content', content);
+    pendingChatFiles.forEach(file => form.append('files', file));
+
+    const res = await fetch(`/chat/messages/${projectId}`, { method: 'POST', body: form });
     
     const result = await res.json();
     if (result.success) {
       appendMessage(result.message);
       socket.emit('new-message', result.message);
       input.value = '';
+      pendingChatFiles = [];
+      document.getElementById('chat-files').value = '';
+      refreshChatFilePill();
     }
   } catch (e) {
     // Fallback local

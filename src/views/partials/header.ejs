@@ -6,6 +6,9 @@
   <title><%= typeof title !== 'undefined' ? title : 'Cicle' %> | Task Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <% } %>
   <style>
     .kanban-column { min-height: 400px; }
     .task-card { transition: all 0.2s ease; }
@@ -38,8 +41,28 @@
       </div>
     </a>
 
+    <% if (currentUser) { %>
+    <form action="/search" method="GET" class="hidden md:flex ml-4 w-full max-w-md">
+      <div class="relative w-full">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="search" name="q" placeholder="Cari task, proyek, user..."
+          class="w-full bg-gray-100 border border-transparent rounded-2xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-blue-300">
+      </div>
+    </form>
+    <% } %>
+
     <div class="ml-auto flex items-center gap-2">
       <% if (currentUser) { %>
+
+        <!-- Inbox -->
+        <a href="/inbox" class="relative p-2 rounded-xl hover:bg-gray-100 text-gray-600" title="Inbox">
+          <i class="fas fa-inbox text-lg"></i>
+          <% if (unreadDirectMessages > 0) { %>
+            <span class="absolute top-1 right-1 w-4 h-4 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-bold" id="inbox-badge">
+              <%= unreadDirectMessages > 9 ? '9+' : unreadDirectMessages %>
+            </span>
+          <% } %>
+        </a>
 
         <!-- Notification Bell -->
         <div class="relative" id="notif-wrapper">
@@ -130,6 +153,24 @@
         <a href="/my-tasks" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
           <%- (currentPath && currentPath.startsWith('/my-tasks')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
           <i class="fas fa-check-square w-4 text-center"></i><span>Tugas Saya</span>
+        </a>
+
+        <a href="/inbox" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+          <%- (currentPath && currentPath.startsWith('/inbox')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+          <i class="fas fa-inbox w-4 text-center"></i><span>Inbox</span>
+          <% if (unreadDirectMessages > 0) { %>
+            <span class="ml-auto bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full"><%= unreadDirectMessages > 9 ? '9+' : unreadDirectMessages %></span>
+          <% } %>
+        </a>
+
+        <a href="/reminders" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+          <%- (currentPath && currentPath.startsWith('/reminders')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+          <i class="fas fa-bell w-4 text-center"></i><span>Reminder</span>
+        </a>
+
+        <a href="/search" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors md:hidden
+          <%- (currentPath && currentPath.startsWith('/search')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+          <i class="fas fa-search w-4 text-center"></i><span>Search</span>
         </a>
 
         <% if (currentUser.platformRole !== 'owner') { %>
@@ -259,6 +300,22 @@ document.addEventListener('DOMContentLoaded', () => {
           b.className = 'absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold';
           b.textContent = '1';
           btn.appendChild(b);
+        }
+      }
+    });
+    socket.on('new-direct-message', () => {
+      const badge = document.getElementById('inbox-badge');
+      if (badge) {
+        const count = parseInt(badge.textContent) || 0;
+        badge.textContent = count + 1 > 9 ? '9+' : count + 1;
+      } else {
+        const link = document.querySelector('a[href="/inbox"]');
+        if (link) {
+          const b = document.createElement('span');
+          b.id = 'inbox-badge';
+          b.className = 'absolute top-1 right-1 w-4 h-4 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-bold';
+          b.textContent = '1';
+          link.appendChild(b);
         }
       }
     });

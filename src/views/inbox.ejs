@@ -1,0 +1,169 @@
+<%- include('partials/header', { title: 'Inbox' }) %>
+
+<div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
+  <div>
+    <h1 class="text-3xl font-bold">Inbox</h1>
+    <p class="text-gray-500">Chat personal dengan anggota, partner, dan owner yang relevan.</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5">
+  <aside class="bg-white border rounded-2xl overflow-hidden">
+    <div class="px-4 py-3 border-b bg-gray-50 font-semibold text-sm">Kontak</div>
+    <div class="divide-y max-h-[620px] overflow-y-auto">
+      <% if (contacts.length === 0) { %>
+        <div class="p-5 text-sm text-gray-400 text-center">Belum ada kontak yang bisa dihubungi.</div>
+      <% } %>
+      <% contacts.forEach(contact => { %>
+        <a href="/inbox/<%= contact.id %>"
+          class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 <%= selectedUser && selectedUser.id === contact.id ? 'bg-blue-50' : '' %>">
+          <div class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+            <%= contact.name.charAt(0).toUpperCase() %>
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold text-sm truncate"><%= contact.name %></div>
+            <div class="text-xs text-gray-400 truncate"><%= contact.email %></div>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  </aside>
+
+  <section class="bg-white border rounded-2xl overflow-hidden min-h-[620px] flex flex-col">
+    <% if (!selectedUser) { %>
+      <div class="flex-1 flex items-center justify-center text-center p-8">
+        <div>
+          <i class="fas fa-inbox text-5xl text-gray-200 mb-4"></i>
+          <p class="text-gray-500">Pilih kontak untuk mulai chat personal.</p>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="px-5 py-4 border-b flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+          <%= selectedUser.name.charAt(0).toUpperCase() %>
+        </div>
+        <div>
+          <div class="font-semibold"><%= selectedUser.name %></div>
+          <div class="text-xs text-gray-400"><%= selectedUser.email %></div>
+        </div>
+      </div>
+
+      <div id="dm-messages" class="flex-1 min-h-[420px] max-h-[620px] overflow-y-auto bg-gray-50 p-5 space-y-4 text-sm"></div>
+
+      <div class="border-t p-4 bg-white">
+        <div id="dm-file-pill" class="hidden mb-2 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2"></div>
+        <div class="flex gap-2">
+          <button type="button" onclick="document.getElementById('dm-files').click()"
+            class="px-4 border rounded-2xl text-gray-600 hover:bg-gray-50" title="Lampirkan file">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          <input id="dm-files" type="file" multiple class="hidden" onchange="handleDmFiles(this.files)">
+          <input id="dm-input" type="text" placeholder="Ketik pesan, paste screenshot, atau lampirkan file..."
+            class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400"
+            onkeypress="if(event.key === 'Enter') sendDm()">
+          <button onclick="sendDm()"
+            class="px-6 bg-blue-600 text-white rounded-2xl hover:bg-blue-700">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<% if (selectedUser) { %>
+<script>
+const currentUserId = '<%= currentUserId %>';
+const selectedUserId = '<%= selectedUser.id %>';
+const initialMessages = <%- JSON.stringify(messages) %>;
+const socket = io();
+let dmFiles = [];
+
+socket.emit('join-user', currentUserId);
+socket.on('new-direct-message', (message) => {
+  if (message.senderId === selectedUserId || message.receiverId === selectedUserId) {
+    appendDm(message);
+  }
+});
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function renderAttachment(file) {
+  const name = escapeHtml(file.originalName || file.filename);
+  if ((file.mimeType || '').startsWith('image/')) {
+    return `<a href="${file.url}" target="_blank" class="block mt-2"><img src="${file.url}" alt="${name}" class="max-h-64 rounded-2xl border object-contain bg-white"></a>`;
+  }
+  return `<a href="${file.url}" target="_blank" class="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-xl bg-white border text-gray-700 hover:bg-gray-50"><i class="fas fa-file"></i><span>${name}</span></a>`;
+}
+
+function appendDm(message) {
+  const container = document.getElementById('dm-messages');
+  const isMe = message.senderId === currentUserId;
+  const div = document.createElement('div');
+  div.className = `flex ${isMe ? 'justify-end' : ''}`;
+  div.innerHTML = `
+    <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[82%] px-4 py-3 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
+      <div class="text-xs opacity-70 mb-1">${escapeHtml(message.sender?.name || 'User')}</div>
+      ${message.content ? `<div class="whitespace-pre-wrap">${escapeHtml(message.content)}</div>` : ''}
+      ${(message.attachments || []).map(renderAttachment).join('')}
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function refreshDmFilePill() {
+  const pill = document.getElementById('dm-file-pill');
+  if (dmFiles.length === 0) {
+    pill.classList.add('hidden');
+    pill.textContent = '';
+    return;
+  }
+  pill.classList.remove('hidden');
+  pill.textContent = `${dmFiles.length} file siap dikirim`;
+}
+
+function handleDmFiles(files) {
+  dmFiles = [...dmFiles, ...Array.from(files || [])];
+  refreshDmFilePill();
+}
+
+document.addEventListener('paste', (event) => {
+  const files = [];
+  for (const item of event.clipboardData?.items || []) {
+    if (item.kind === 'file') files.push(item.getAsFile());
+  }
+  if (files.length > 0) {
+    handleDmFiles(files.filter(Boolean));
+    event.preventDefault();
+  }
+});
+
+async function sendDm() {
+  const input = document.getElementById('dm-input');
+  const content = input.value.trim();
+  if (!content && dmFiles.length === 0) return;
+
+  const form = new FormData();
+  form.append('content', content);
+  dmFiles.forEach(file => form.append('files', file));
+
+  const res = await fetch(`/inbox/${selectedUserId}/messages`, { method: 'POST', body: form });
+  const result = await res.json();
+  if (result.success) {
+    appendDm(result.message);
+    input.value = '';
+    dmFiles = [];
+    document.getElementById('dm-files').value = '';
+    refreshDmFilePill();
+  } else {
+    alert(result.error || 'Gagal kirim pesan');
+  }
+}
+
+initialMessages.forEach(appendDm);
+</script>
+<% } %>
+
+<%- include('partials/footer') %>

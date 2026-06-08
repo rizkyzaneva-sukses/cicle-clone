@@ -1,0 +1,67 @@
+<%- include('partials/header', { title: 'Search' }) %>
+
+<div class="mb-6">
+  <h1 class="text-3xl font-bold">Search</h1>
+  <p class="text-gray-500">Cari task, proyek, dan user dalam workspace kamu.</p>
+</div>
+
+<form action="/search" method="GET" class="mb-8 flex gap-3">
+  <input type="search" name="q" value="<%= q %>" autofocus placeholder="Cari task, proyek, atau user..."
+    class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
+  <button class="px-6 bg-blue-600 text-white rounded-2xl hover:bg-blue-700">
+    <i class="fas fa-search mr-1"></i> Cari
+  </button>
+</form>
+
+<% if (!q) { %>
+  <div class="bg-white border rounded-3xl p-12 text-center text-gray-400">
+    <i class="fas fa-search text-5xl mb-4 text-gray-200"></i>
+    Ketik kata kunci untuk mulai mencari.
+  </div>
+<% } else { %>
+  <div class="space-y-8">
+    <section>
+      <h2 class="font-bold text-xl mb-3">Task</h2>
+      <div class="bg-white border rounded-3xl divide-y overflow-hidden">
+        <% if (tasks.length === 0) { %><div class="p-5 text-gray-400 text-sm">Tidak ada task.</div><% } %>
+        <% tasks.forEach(task => { %>
+          <a href="/tasks/<%= task.id %>" class="block px-5 py-4 hover:bg-gray-50">
+            <div class="font-semibold"><%= task.title %></div>
+            <div class="text-sm text-gray-500"><%= task.project.name %> • <%= task.project.company.name %> • <%= task.status %></div>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="font-bold text-xl mb-3">Proyek</h2>
+      <div class="bg-white border rounded-3xl divide-y overflow-hidden">
+        <% if (projects.length === 0) { %><div class="p-5 text-gray-400 text-sm">Tidak ada proyek.</div><% } %>
+        <% projects.forEach(project => { %>
+          <a href="/projects/<%= project.id %>" class="block px-5 py-4 hover:bg-gray-50">
+            <div class="font-semibold"><%= project.name %></div>
+            <div class="text-sm text-gray-500"><%= project.company.name %></div>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="font-bold text-xl mb-3">User</h2>
+      <div class="bg-white border rounded-3xl divide-y overflow-hidden">
+        <% if (users.length === 0) { %><div class="p-5 text-gray-400 text-sm">Tidak ada user.</div><% } %>
+        <% users.forEach(user => { %>
+          <a href="/inbox/<%= user.id %>" class="flex items-center gap-3 px-5 py-4 hover:bg-gray-50">
+            <div class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold"><%= user.name.charAt(0).toUpperCase() %></div>
+            <div>
+              <div class="font-semibold"><%= user.name %></div>
+              <div class="text-sm text-gray-500"><%= user.email %></div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

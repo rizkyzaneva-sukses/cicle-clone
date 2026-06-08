@@ -47,9 +47,9 @@
               <%= task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID') : '-' %>
             </td>
             <td class="px-6 py-4 text-right">
-              <a href="/projects/<%= task.project.id %>" 
+              <a href="/tasks/<%= task.id %>" 
                  class="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                Lihat di Board →
+                Buka Detail →
               </a>
             </td>
           </tr>

@@ -6,9 +6,8 @@ const { Server } = require('socket.io');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('./lib/prisma');
 
-const prisma = new PrismaClient();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -38,14 +37,17 @@ app.use(async (req, res, next) => {
   res.locals.currentCompany = null;
   res.locals.userRole = 'member';
   res.locals.unreadNotifications = 0;
+  res.locals.unreadDirectMessages = 0;
 
   if (req.session.user) {
     const { id: userId, platformRole } = req.session.user;
     try {
-      const [unreadCount] = await Promise.all([
-        prisma.notification.count({ where: { userId, isRead: false } })
+      const [unreadCount, directUnreadCount] = await Promise.all([
+        prisma.notification.count({ where: { userId, isRead: false } }),
+        prisma.directMessage.count({ where: { receiverId: userId, readAt: null } })
       ]);
       res.locals.unreadNotifications = unreadCount;
+      res.locals.unreadDirectMessages = directUnreadCount;
 
       // Current company context (untuk sidebar workspace label)
       if (platformRole === 'owner') {
@@ -81,6 +83,9 @@ app.use('/panduan', require('./routes/panduan'));
 app.use('/members', require('./routes/members'));
 app.use('/profile', require('./routes/profile'));
 app.use('/notifications', require('./routes/notifications'));
+app.use('/inbox', require('./routes/inbox'));
+app.use('/search', require('./routes/search'));
+app.use('/reminders', require('./routes/reminders'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {
@@ -165,6 +170,7 @@ io.on('connection', (socket) => {
   socket.on('join-user', (userId) => socket.join(`user-${userId}`));
   socket.on('task-updated', (data) => io.to(`project-${data.projectId}`).emit('task-updated', data));
   socket.on('new-message', (data) => io.to(`project-${data.projectId}`).emit('new-message', data));
+  socket.on('direct-message', (data) => io.to(`user-${data.receiverId}`).emit('new-direct-message', data));
 });
 
 app.use((err, req, res, next) => {

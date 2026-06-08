@@ -1,0 +1,52 @@
+<%- include('partials/header', { title: 'Reminder' }) %>
+
+<div class="mb-6 flex items-center justify-between gap-4 flex-wrap">
+  <div>
+    <h1 class="text-3xl font-bold">Reminder Deadline</h1>
+    <p class="text-gray-500">Pantau task aktif yang punya deadline dan kirim pengingat ke assignee.</p>
+  </div>
+  <form action="/reminders/scan" method="POST">
+    <button class="px-5 py-3 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+      <i class="fas fa-bell mr-1"></i> Kirim Reminder
+    </button>
+  </form>
+</div>
+
+<div class="bg-white border rounded-3xl overflow-hidden">
+  <div class="grid grid-cols-[1fr_160px_160px_120px] gap-4 px-5 py-3 bg-gray-50 text-sm font-semibold text-gray-600 hidden lg:grid">
+    <div>Task</div>
+    <div>Assignee</div>
+    <div>Deadline</div>
+    <div>Status</div>
+  </div>
+
+  <% if (tasks.length === 0) { %>
+    <div class="p-12 text-center text-gray-400">
+      <i class="fas fa-calendar-check text-5xl mb-4 text-gray-200"></i>
+      Tidak ada task aktif dengan deadline.
+    </div>
+  <% } %>
+
+  <div class="divide-y">
+    <% tasks.forEach(task => { %>
+      <% const overdue = task.dueDate && task.dueDate < now; %>
+      <a href="/tasks/<%= task.id %>" class="grid grid-cols-1 lg:grid-cols-[1fr_160px_160px_120px] gap-2 lg:gap-4 px-5 py-4 hover:bg-gray-50">
+        <div>
+          <div class="font-semibold"><%= task.title %></div>
+          <div class="text-sm text-gray-500"><%= task.project.name %> • <%= task.project.company.name %></div>
+        </div>
+        <div class="text-sm text-gray-600"><%= task.assignee ? task.assignee.name : 'Belum ditugaskan' %></div>
+        <div class="text-sm <%= overdue ? 'text-red-600 font-semibold' : 'text-gray-600' %>">
+          <%= new Date(task.dueDate).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %>
+        </div>
+        <div>
+          <span class="px-3 py-1 text-xs rounded-full <%= overdue ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' %>">
+            <%= overdue ? 'Overdue' : 'Upcoming' %>
+          </span>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

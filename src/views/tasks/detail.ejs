@@ -30,6 +30,11 @@
               <i class="fas fa-flag mr-1"></i><%= prioMap[task.priority]?.[1] %>
             </span>
             <% } %>
+            <% task.labels.forEach(tl => { %>
+              <span class="px-3 py-1 text-xs font-semibold rounded-full text-white" style="background:<%= tl.label.color %>">
+                <%= tl.label.name %>
+              </span>
+            <% }) %>
           </div>
           <h1 class="text-2xl font-bold text-gray-900"><%= task.title %></h1>
           <% if (task.description) { %>
@@ -272,6 +277,81 @@
       </div>
     </div>
 
+    <!-- Labels -->
+    <div class="bg-white border rounded-3xl p-5 shadow-sm">
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Label</div>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <% if (task.labels.length === 0) { %>
+          <span class="text-sm text-gray-400">Belum ada label</span>
+        <% } %>
+        <% task.labels.forEach(tl => { %>
+          <form action="/tasks/<%= task.id %>/labels/<%= tl.label.id %>/remove" method="POST">
+            <button type="submit" class="text-xs font-semibold rounded-full px-3 py-1 text-white" style="background:<%= tl.label.color %>" title="Klik untuk hapus">
+              <%= tl.label.name %> ×
+            </button>
+          </form>
+        <% }) %>
+      </div>
+      <form action="/tasks/<%= task.id %>/labels" method="POST" class="space-y-2">
+        <select name="labelId" class="w-full border rounded-xl px-3 py-2 text-sm">
+          <option value="">Buat label baru...</option>
+          <% labels.forEach(label => { %>
+            <option value="<%= label.id %>"><%= label.name %></option>
+          <% }) %>
+        </select>
+        <div class="grid grid-cols-[1fr_44px] gap-2">
+          <input type="text" name="name" placeholder="Nama label baru" class="border rounded-xl px-3 py-2 text-sm">
+          <input type="color" name="color" value="#3B82F6" class="h-10 w-full border rounded-xl p-1">
+        </div>
+        <button type="submit" class="w-full py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700">
+          Tambah Label
+        </button>
+      </form>
+    </div>
+
+    <!-- Attachments -->
+    <div class="bg-white border rounded-3xl p-5 shadow-sm">
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Attachment</div>
+      <div class="space-y-2 mb-4">
+        <% if (task.attachments.length === 0) { %>
+          <div class="text-sm text-gray-400">Belum ada file</div>
+        <% } %>
+        <% task.attachments.forEach(file => { %>
+          <a href="<%= file.url %>" target="_blank" class="block border rounded-2xl overflow-hidden hover:bg-gray-50">
+            <% if (file.mimeType.startsWith('image/')) { %>
+              <img src="<%= file.url %>" alt="<%= file.originalName %>" class="w-full max-h-40 object-cover bg-gray-50">
+            <% } %>
+            <div class="px-3 py-2 text-xs">
+              <div class="font-semibold text-gray-700 truncate"><%= file.originalName %></div>
+              <div class="text-gray-400"><%= Math.ceil(file.size / 1024) %> KB • <%= file.uploadedBy.name %></div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+      <form action="/tasks/<%= task.id %>/attachments" method="POST" enctype="multipart/form-data" class="space-y-2">
+        <input type="file" name="files" multiple class="w-full text-sm border rounded-xl px-3 py-2">
+        <button type="submit" class="w-full py-2 bg-gray-900 text-white rounded-xl text-sm hover:bg-black">
+          Upload File
+        </button>
+      </form>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="bg-white border rounded-3xl p-5 shadow-sm">
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Activity Log</div>
+      <div class="space-y-3 max-h-72 overflow-y-auto">
+        <% if (task.activityLogs.length === 0) { %>
+          <div class="text-sm text-gray-400">Belum ada aktivitas</div>
+        <% } %>
+        <% task.activityLogs.forEach(log => { %>
+          <div class="text-xs border-l-2 border-blue-200 pl-3">
+            <div class="font-semibold text-gray-700"><%= log.action.replaceAll('_', ' ') %></div>
+            <div class="text-gray-400"><%= log.user ? log.user.name : 'System' %> • <%= new Date(log.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %></div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
     <!-- Delete Task -->
     <form onsubmit="return confirmDelete(event, '<%= task.id %>', '<%= task.projectId %>')">
       <button type="submit"
@@ -284,6 +364,10 @@
 
 <script>
 const taskId = '<%= task.id %>';
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
 
 function toggleEditForm() {
   document.getElementById('editForm').classList.toggle('hidden');
@@ -322,7 +406,7 @@ async function addCheck() {
     div.id = `check-${data.item.id}`;
     div.innerHTML = `
       <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-4 h-4 accent-blue-600 cursor-pointer">
-      <span class="flex-1 text-sm text-gray-700">${data.item.content}</span>
+      <span class="flex-1 text-sm text-gray-700">${escapeHtml(data.item.content)}</span>
       <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
         <i class="fas fa-times"></i>
       </button>
@@ -365,7 +449,7 @@ async function addComment() {
       </div>
       <div class="flex-1 bg-gray-50 rounded-2xl px-4 py-3">
         <div class="flex items-center justify-between mb-1">
-          <span class="text-sm font-semibold">${data.comment.user.name}</span>
+          <span class="text-sm font-semibold">${escapeHtml(data.comment.user.name)}</span>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-400">Baru saja</span>
             <button onclick="deleteComment('${data.comment.id}')" class="text-xs text-red-400 hover:text-red-600">
@@ -373,7 +457,7 @@ async function addComment() {
             </button>
           </div>
         </div>
-        <p class="text-sm text-gray-700">${data.comment.content}</p>
+        <p class="text-sm text-gray-700">${escapeHtml(data.comment.content)}</p>
       </div>
     `;
     list.appendChild(div);

@@ -1,20 +1,54 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { logActivity } = require('../lib/activity');
 
 router.use(requireAuth);
+
+async function hasCompanyAccess(user, companyId) {
+  if (user.platformRole === 'owner') return true;
+
+  if (user.platformRole === 'partner') {
+    const access = await prisma.partnerAccess.findUnique({
+      where: { userId_companyId: { userId: user.id, companyId } }
+    });
+    if (access) return true;
+  }
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_companyId: { userId: user.id, companyId } }
+  });
+  return Boolean(membership);
+}
 
 // List projects or create new
 router.get('/', async (req, res) => {
   const userId = req.session.user.id;
+  const platformRole = req.session.user.platformRole || 'user';
+  const companyId = req.query.companyId;
 
-  // Get user's companies
-  const memberships = await prisma.membership.findMany({
-    where: { userId },
-    include: { company: { include: { projects: true } } }
-  });
+  let memberships = [];
+
+  if (platformRole === 'owner') {
+    const companies = await prisma.company.findMany({
+      where: companyId ? { id: companyId } : {},
+      include: { projects: { orderBy: { createdAt: 'desc' } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    memberships = companies.map(company => ({ role: 'owner', company }));
+  } else if (platformRole === 'partner') {
+    const accesses = await prisma.partnerAccess.findMany({
+      where: { userId, ...(companyId ? { companyId } : {}) },
+      include: { company: { include: { projects: { orderBy: { createdAt: 'desc' } } } } }
+    });
+    memberships = accesses.map(access => ({ role: 'partner', company: access.company }));
+  } else {
+    memberships = await prisma.membership.findMany({
+      where: { userId, ...(companyId ? { companyId } : {}) },
+      include: { company: { include: { projects: { orderBy: { createdAt: 'desc' } } } } }
+    });
+  }
 
   res.render('projects/index', { memberships });
 });
@@ -24,12 +58,20 @@ router.post('/create', requireAdmin, async (req, res) => {
   try {
     const { name, description, companyId } = req.body;
 
-    await prisma.project.create({
+    const project = await prisma.project.create({
       data: {
         name,
         description: description || null,
         companyId
       }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'created',
+      entityType: 'project',
+      entityId: project.id,
+      projectId: project.id,
+      metadata: { name: project.name }
     });
 
     req.flash('success', 'Proyek berhasil dibuat!');
@@ -53,6 +95,14 @@ router.get('/:projectId/tasks/:taskId', async (req, res) => {
 
     if (!task) return res.status(404).send('Task tidak ditemukan');
 
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { companyId: true }
+    });
+    if (!project || !await hasCompanyAccess(req.session.user, project.companyId)) {
+      return res.status(403).send('Akses ditolak');
+    }
+
     res.redirect(`/tasks/${task.id}`);
   } catch (error) {
     console.error(error);
@@ -70,7 +120,10 @@ router.get('/:id', async (req, res) => {
     include: {
       company: true,
       tasks: {
-        include: { assignee: true },
+        include: {
+          assignee: true,
+          labels: { include: { label: true } }
+        },
         orderBy: [{ status: 'asc' }, { position: 'asc' }]
       }
     }
@@ -78,6 +131,9 @@ router.get('/:id', async (req, res) => {
 
   if (!project) {
     return res.status(404).send('Proyek tidak ditemukan');
+  }
+  if (!await hasCompanyAccess(req.session.user, project.companyId)) {
+    return res.status(403).send('Akses ditolak');
   }
 
   // Get company members for assignee dropdown
