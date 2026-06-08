@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { uniqueSlug } = require('../lib/slug');
+const { isConfiguredOwner } = require('../lib/owners');
 
 router.get('/register', async (req, res) => {
   const userCount = await prisma.user.count();
@@ -26,7 +27,7 @@ router.post('/register', async (req, res) => {
       return res.render('auth/register', { error: 'Email sudah terdaftar', isFirstUser });
     }
 
-    const platformRole = isFirstUser ? 'owner' : 'user';
+    const platformRole = isFirstUser || isConfiguredOwner(email) ? 'owner' : 'user';
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
@@ -70,11 +71,18 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    let user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.render('auth/login', { error: 'Email atau password salah' });
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.render('auth/login', { error: 'Email atau password salah' });
+
+    if (isConfiguredOwner(user.email) && user.platformRole !== 'owner') {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { platformRole: 'owner' }
+      });
+    }
 
     req.session.user = {
       id: user.id,

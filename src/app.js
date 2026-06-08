@@ -7,6 +7,7 @@ const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
+const { isConfiguredOwner } = require('./lib/owners');
 
 const app = express();
 const server = http.createServer(app);
@@ -40,8 +41,18 @@ app.use(async (req, res, next) => {
   res.locals.unreadDirectMessages = 0;
 
   if (req.session.user) {
-    const { id: userId, platformRole } = req.session.user;
+    let { id: userId, platformRole } = req.session.user;
     try {
+      if (isConfiguredOwner(req.session.user.email) && platformRole !== 'owner') {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { platformRole: 'owner' }
+        });
+        req.session.user.platformRole = 'owner';
+        platformRole = 'owner';
+        res.locals.currentUser = req.session.user;
+      }
+
       const [unreadCount, directUnreadCount] = await Promise.all([
         prisma.notification.count({ where: { userId, isRead: false } }),
         prisma.directMessage.count({ where: { receiverId: userId, readAt: null } })
