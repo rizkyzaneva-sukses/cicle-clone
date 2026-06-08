@@ -47,7 +47,7 @@ router.post('/register', async (req, res) => {
     };
 
     req.flash('success', platformRole === 'owner'
-      ? 'Selamat datang, Owner! Platform Cicle siap digunakan.'
+      ? 'Selamat datang, Owner! Maulana Corp Project Management siap digunakan.'
       : 'Akun berhasil dibuat. Hubungi Owner untuk akses brand.'
     );
     res.redirect('/');

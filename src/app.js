@@ -181,6 +181,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Cicle Clone running on port ${PORT} (listening on 0.0.0.0)`);
+  console.log(`Maulana Corp Project Management running on port ${PORT} (listening on 0.0.0.0)`);
   console.log('Ready for EasyPanel deployment!');
 });
