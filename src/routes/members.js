@@ -130,6 +130,60 @@ router.post('/invite', async (req, res) => {
   }
 });
 
+// Cabut akses partner dari brand (owner only)
+router.post('/partners/:userId/remove', async (req, res) => {
+  const { userId } = req.params;
+  const { companyId } = req.body;
+  const platformRole = req.session.user.platformRole || 'user';
+
+  try {
+    if (platformRole !== 'owner') {
+      req.flash('error', 'Hanya Owner yang bisa mencabut akses Partner');
+      return res.redirect(`/members?companyId=${companyId}`);
+    }
+
+    const access = await prisma.partnerAccess.findUnique({
+      where: { userId_companyId: { userId, companyId } },
+      include: { user: true, company: true }
+    });
+
+    if (!access) {
+      req.flash('error', 'Partner tidak ditemukan di brand ini');
+      return res.redirect(`/members?companyId=${companyId}`);
+    }
+
+    await prisma.partnerAccess.delete({
+      where: { userId_companyId: { userId, companyId } }
+    });
+
+    const remaining = await prisma.partnerAccess.count({ where: { userId } });
+    if (remaining === 0) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { platformRole: 'user' }
+      });
+    }
+
+    await prisma.notification.create({
+      data: {
+        userId,
+        content: `Akses Partner kamu untuk brand "${access.company.name}" sudah dicabut`,
+        link: '/'
+      }
+    });
+
+    const io = req.app.get('io');
+    if (io) io.to(`user-${userId}`).emit('new-notification');
+
+    req.flash('success', `${access.user.name} sudah tidak menjadi Partner di brand ini`);
+    res.redirect(`/members?companyId=${companyId}`);
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal mencabut akses Partner');
+    res.redirect(`/members?companyId=${companyId}`);
+  }
+});
+
 // Ubah role member
 router.post('/:membershipId/role', async (req, res) => {
   const { membershipId } = req.params;

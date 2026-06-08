@@ -67,6 +67,15 @@
         <div>Assigned</div>
         <div><%= new Date(pa.assignedAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %></div>
       </div>
+      <% if (userRole === 'owner') { %>
+      <form action="/members/partners/<%= pa.userId %>/remove" method="POST"
+        onsubmit="return confirm('Cabut akses Partner <%= pa.user.name %> dari brand <%= company.name %>?')">
+        <input type="hidden" name="companyId" value="<%= company.id %>">
+        <button type="submit" class="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-xs font-medium transition">
+          <i class="fas fa-user-slash mr-1"></i> Cabut
+        </button>
+      </form>
+      <% } %>
     </div>
     <% }) %>
   </div>
