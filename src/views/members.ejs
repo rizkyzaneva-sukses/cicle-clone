@@ -2,16 +2,16 @@
 
 <div class="mb-8 flex items-center justify-between flex-wrap gap-4">
   <div>
-    <h1 class="text-3xl font-bold text-gray-900">Anggota Tim</h1>
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Anggota Tim</h1>
     <p class="text-gray-500 mt-1">Brand: <strong><%= company.name %></strong></p>
   </div>
-  <div class="flex items-center gap-3">
-    <div class="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 text-center">
+  <div class="flex items-center gap-3 w-full sm:w-auto">
+    <div class="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 text-center flex-1 sm:flex-none">
       <div class="text-2xl font-bold text-blue-600"><%= members.length %></div>
       <div class="text-xs text-blue-500">Anggota</div>
     </div>
     <% if (partners && partners.length > 0) { %>
-    <div class="bg-purple-50 border border-purple-100 rounded-2xl px-5 py-3 text-center">
+    <div class="bg-purple-50 border border-purple-100 rounded-2xl px-5 py-3 text-center flex-1 sm:flex-none">
       <div class="text-2xl font-bold text-purple-600"><%= partners.length %></div>
       <div class="text-xs text-purple-500">Partner</div>
     </div>
@@ -33,7 +33,7 @@
         class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
     </div>
     <button type="submit"
-      class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition flex items-center gap-2 shrink-0">
+      class="w-full sm:w-auto justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition flex items-center gap-2 shrink-0">
       <i class="fas fa-paper-plane"></i> Undang
     </button>
   </form>
@@ -52,7 +52,7 @@
   </div>
   <div class="divide-y">
     <% partners.forEach(pa => { %>
-    <div class="px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition">
+    <div class="px-4 sm:px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition flex-wrap">
       <div class="w-11 h-11 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
         <%= pa.user.name.charAt(0).toUpperCase() %>
       </div>
