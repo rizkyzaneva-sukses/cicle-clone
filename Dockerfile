@@ -74,11 +74,20 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # Run prisma db push with retries (DB may not be ready immediately in EasyPanel),
 # then start the application.
 CMD ["sh", "-c", "\
+  synced=0; \
   for i in 1 2 3 4 5 6 7 8 9 10; do \
     echo \"Attempt $i: running prisma db push...\"; \
-    npx prisma db push && break || \
-    (echo \"Database not ready yet, waiting 4 seconds...\"; sleep 4); \
-  done && \
+    if npx prisma db push --accept-data-loss; then \
+      synced=1; \
+      break; \
+    fi; \
+    echo \"Prisma sync failed, waiting 4 seconds before retry...\"; \
+    sleep 4; \
+  done; \
+  if [ \"$synced\" != \"1\" ]; then \
+    echo \"Prisma db push failed after 10 attempts.\"; \
+    exit 1; \
+  fi; \
   echo \"Starting application...\"; \
   node src/app.js"]
 
