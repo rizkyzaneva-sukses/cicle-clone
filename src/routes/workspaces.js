@@ -9,6 +9,11 @@ router.use(requireAuth);
 
 router.post('/create', async (req, res) => {
   try {
+    if (req.session.user.platformRole !== 'owner') {
+      req.flash('error', 'Hanya Owner yang bisa membuat workspace baru');
+      return res.redirect('/');
+    }
+
     const name = (req.body.name || '').trim();
     if (!name) {
       req.flash('error', 'Nama workspace wajib diisi');

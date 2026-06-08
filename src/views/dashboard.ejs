@@ -10,9 +10,6 @@
   <div class="lg:col-span-1 bg-white rounded-3xl p-6 shadow-sm border">
     <div class="flex justify-between items-center mb-4">
       <h2 class="font-semibold text-xl">Workspace Anda</h2>
-      <button onclick="showCreateCompanyModal()" class="text-blue-600 text-sm flex items-center gap-1 hover:underline">
-        <i class="fas fa-plus"></i> Buat Baru
-      </button>
     </div>
     
     <% if (companies && companies.length > 0) { %>
@@ -26,7 +23,7 @@
         </div>
       <% }) %>
     <% } else { %>
-      <p class="text-gray-500 text-sm">Belum ada workspace. Klik Buat Baru untuk mulai.</p>
+      <p class="text-gray-500 text-sm">Belum ada workspace. Minta Owner mengundang kamu ke workspace yang sesuai.</p>
     <% } %>
   </div>
 
@@ -86,33 +83,4 @@
   </div>
 </div>
 
-<!-- Create Workspace Modal -->
-<div id="createCompanyModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-3xl p-8 w-full max-w-md">
-    <h3 class="text-xl font-bold mb-4">Buat Workspace Baru</h3>
-    <form action="/workspaces/create" method="POST" class="space-y-5">
-      <div>
-        <label class="block text-sm font-medium mb-1.5">Nama Workspace</label>
-        <input type="text" name="name" required autofocus placeholder="Contoh: Tim Marketing Zaneva"
-          class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
-      </div>
-      <p class="text-xs text-gray-400">
-        Kamu otomatis menjadi Admin di workspace baru ini dan bisa membuat project serta mengundang anggota.
-      </p>
-      <div class="flex gap-3">
-        <button type="button" onclick="hideCreateCompanyModal()" class="flex-1 py-3 bg-gray-200 rounded-2xl">Batal</button>
-        <button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700">Buat</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<script>
-function showCreateCompanyModal() {
-  document.getElementById('createCompanyModal').classList.remove('hidden');
-}
-function hideCreateCompanyModal() {
-  document.getElementById('createCompanyModal').classList.add('hidden');
-}
-</script>
 <%- include('partials/footer') %>

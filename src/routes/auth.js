@@ -4,40 +4,44 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { uniqueSlug } = require('../lib/slug');
 
-router.get('/register', (req, res) => {
-  res.render('auth/register', { error: null });
+router.get('/register', async (req, res) => {
+  const userCount = await prisma.user.count();
+  res.render('auth/register', { error: null, isFirstUser: userCount === 0 });
 });
 
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, companyName } = req.body;
 
-    if (!name || !email || !password || !companyName) {
-      return res.render('auth/register', { error: 'Semua field wajib diisi' });
+    // User pertama yang daftar = Owner platform
+    const userCount = await prisma.user.count();
+    const isFirstUser = userCount === 0;
+
+    if (!name || !email || !password || (isFirstUser && !companyName)) {
+      return res.render('auth/register', { error: 'Semua field wajib diisi', isFirstUser });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.render('auth/register', { error: 'Email sudah terdaftar' });
+      return res.render('auth/register', { error: 'Email sudah terdaftar', isFirstUser });
     }
 
-    // User pertama yang daftar = Owner platform
-    const userCount = await prisma.user.count();
-    const platformRole = userCount === 0 ? 'owner' : 'user';
+    const platformRole = isFirstUser ? 'owner' : 'user';
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: { name, email, password: hashedPassword, platformRole }
     });
 
-    const company = await prisma.company.create({
-      data: { name: companyName, slug: uniqueSlug(companyName) }
-    });
+    if (isFirstUser) {
+      const company = await prisma.company.create({
+        data: { name: companyName, slug: uniqueSlug(companyName) }
+      });
 
-    // Owner & non-owner sama-sama jadi admin di brand yang mereka buat
-    await prisma.membership.create({
-      data: { userId: user.id, companyId: company.id, role: 'admin' }
-    });
+      await prisma.membership.create({
+        data: { userId: user.id, companyId: company.id, role: 'admin' }
+      });
+    }
 
     req.session.user = {
       id: user.id,
@@ -53,7 +57,8 @@ router.post('/register', async (req, res) => {
     res.redirect('/');
   } catch (error) {
     console.error(error);
-    res.render('auth/register', { error: 'Terjadi kesalahan. Coba lagi.' });
+    const userCount = await prisma.user.count().catch(() => 1);
+    res.render('auth/register', { error: 'Terjadi kesalahan. Coba lagi.', isFirstUser: userCount === 0 });
   }
 });
 
