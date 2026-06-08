@@ -41,6 +41,25 @@ router.post('/create', requireAdmin, async (req, res) => {
   }
 });
 
+// Backward-compatible task detail URL:
+// /projects/:projectId/tasks/:taskId -> /tasks/:taskId
+router.get('/:projectId/tasks/:taskId', async (req, res) => {
+  try {
+    const { projectId, taskId } = req.params;
+    const task = await prisma.task.findFirst({
+      where: { id: taskId, projectId },
+      select: { id: true }
+    });
+
+    if (!task) return res.status(404).send('Task tidak ditemukan');
+
+    res.redirect(`/tasks/${task.id}`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Terjadi kesalahan');
+  }
+});
+
 // Project detail + Kanban
 router.get('/:id', async (req, res) => {
   const projectId = req.params.id;
