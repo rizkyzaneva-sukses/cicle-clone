@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
+const { uniqueSlug } = require('../lib/slug');
 
 router.get('/register', (req, res) => {
   res.render('auth/register', { error: null });
@@ -29,9 +30,8 @@ router.post('/register', async (req, res) => {
       data: { name, email, password: hashedPassword, platformRole }
     });
 
-    const slug = companyName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
     const company = await prisma.company.create({
-      data: { name: companyName, slug }
+      data: { name: companyName, slug: uniqueSlug(companyName) }
     });
 
     // Owner & non-owner sama-sama jadi admin di brand yang mereka buat

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth, requireOwner } = require('../middleware/auth');
+const { uniqueSlug } = require('../lib/slug');
 
 router.use(requireAuth, requireOwner);
 
@@ -33,8 +34,18 @@ router.post('/create', async (req, res) => {
       req.flash('error', 'Nama brand wajib diisi');
       return res.redirect('/brands');
     }
-    const slug = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
-    await prisma.company.create({ data: { name, slug } });
+    await prisma.company.create({
+      data: {
+        name,
+        slug: uniqueSlug(name),
+        memberships: {
+          create: {
+            userId: req.session.user.id,
+            role: 'admin'
+          }
+        }
+      }
+    });
     req.flash('success', `Brand "${name}" berhasil dibuat`);
     res.redirect('/brands');
   } catch (err) {

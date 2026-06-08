@@ -86,6 +86,7 @@ app.use('/notifications', require('./routes/notifications'));
 app.use('/inbox', require('./routes/inbox'));
 app.use('/search', require('./routes/search'));
 app.use('/reminders', require('./routes/reminders'));
+app.use('/workspaces', require('./routes/workspaces'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {

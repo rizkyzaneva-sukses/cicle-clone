@@ -22,11 +22,11 @@
             <div class="font-semibold"><%= company.name %></div>
             <div class="text-xs text-gray-500"><%= company.slug %></div>
           </div>
-          <a href="/projects" class="px-4 py-1.5 text-sm bg-white border rounded-full hover:bg-blue-50">Buka</a>
+          <a href="/projects?companyId=<%= company.id %>" class="px-4 py-1.5 text-sm bg-white border rounded-full hover:bg-blue-50">Buka</a>
         </div>
       <% }) %>
     <% } else { %>
-      <p class="text-gray-500 text-sm">Belum ada workspace. Buat perusahaan baru saat register.</p>
+      <p class="text-gray-500 text-sm">Belum ada workspace. Klik Buat Baru untuk mulai.</p>
     <% } %>
   </div>
 
@@ -86,14 +86,23 @@
   </div>
 </div>
 
-<!-- Create Company Modal (simple) -->
+<!-- Create Workspace Modal -->
 <div id="createCompanyModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
   <div class="bg-white rounded-3xl p-8 w-full max-w-md">
     <h3 class="text-xl font-bold mb-4">Buat Workspace Baru</h3>
-    <form action="/auth/register" method="POST">
-      <!-- For simplicity, redirect to register or implement later -->
-      <p class="text-sm text-gray-600 mb-4">Fitur ini tersedia saat registrasi akun baru. Untuk sekarang, gunakan akun yang sudah ada.</p>
-      <button type="button" onclick="hideCreateCompanyModal()" class="w-full py-3 bg-gray-200 rounded-2xl">Tutup</button>
+    <form action="/workspaces/create" method="POST" class="space-y-5">
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Nama Workspace</label>
+        <input type="text" name="name" required autofocus placeholder="Contoh: Tim Marketing Zaneva"
+          class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
+      </div>
+      <p class="text-xs text-gray-400">
+        Kamu otomatis menjadi Admin di workspace baru ini dan bisa membuat project serta mengundang anggota.
+      </p>
+      <div class="flex gap-3">
+        <button type="button" onclick="hideCreateCompanyModal()" class="flex-1 py-3 bg-gray-200 rounded-2xl">Batal</button>
+        <button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700">Buat</button>
+      </div>
     </form>
   </div>
 </div>
