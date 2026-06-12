@@ -18,13 +18,20 @@ async function getContacts(user) {
     where: { userId: user.id },
     select: { companyId: true }
   });
-  const partnerAccess = await prisma.partnerAccess.findMany({
-    where: { userId: user.id },
-    select: { companyId: true }
-  });
+  const [partnerAccess, workspaceAccess] = await Promise.all([
+    prisma.partnerAccess.findMany({
+      where: { userId: user.id },
+      select: { companyId: true }
+    }),
+    prisma.workspacePartner.findMany({
+      where: { userId: user.id },
+      include: { workspace: { select: { brands: { select: { id: true } } } } }
+    })
+  ]);
   const companyIds = [...new Set([
     ...memberships.map(m => m.companyId),
-    ...partnerAccess.map(p => p.companyId)
+    ...partnerAccess.map(p => p.companyId),
+    ...workspaceAccess.flatMap(access => access.workspace.brands.map(brand => brand.id))
   ])];
 
   if (companyIds.length === 0) return [];

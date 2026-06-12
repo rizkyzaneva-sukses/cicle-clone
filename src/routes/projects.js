@@ -14,6 +14,17 @@ async function hasCompanyAccess(user, companyId) {
       where: { userId_companyId: { userId: user.id, companyId } }
     });
     if (access) return true;
+
+    const brand = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { workspaceId: true }
+    });
+    if (brand?.workspaceId) {
+      const workspaceAccess = await prisma.workspacePartner.findUnique({
+        where: { userId_workspaceId: { userId: user.id, workspaceId: brand.workspaceId } }
+      });
+      if (workspaceAccess) return true;
+    }
   }
 
   const membership = await prisma.membership.findUnique({
@@ -38,11 +49,32 @@ router.get('/', async (req, res) => {
     });
     memberships = companies.map(company => ({ role: 'owner', company }));
   } else if (platformRole === 'partner') {
+    const workspaceRoles = await prisma.workspacePartner.findMany({
+      where: { userId },
+      include: {
+        workspace: {
+          include: {
+            brands: { include: { projects: { orderBy: { createdAt: 'desc' } } } }
+          }
+        }
+      }
+    });
     const accesses = await prisma.partnerAccess.findMany({
       where: { userId, ...(companyId ? { companyId } : {}) },
       include: { company: { include: { projects: { orderBy: { createdAt: 'desc' } } } } }
     });
-    memberships = accesses.map(access => ({ role: 'partner', company: access.company }));
+    const rows = [];
+    workspaceRoles.forEach(access => {
+      access.workspace.brands.forEach(company => rows.push({ role: access.role.toLowerCase(), company }));
+    });
+    accesses.forEach(access => rows.push({ role: 'partner', company: access.company }));
+    const seen = new Set();
+    memberships = rows.filter(row => {
+      if (!row.company || seen.has(row.company.id)) return false;
+      if (companyId && row.company.id !== companyId) return false;
+      seen.add(row.company.id);
+      return true;
+    });
   } else {
     memberships = await prisma.membership.findMany({
       where: { userId, ...(companyId ? { companyId } : {}) },

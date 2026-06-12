@@ -38,6 +38,17 @@ async function requireBrandManager(req, res, next) {
         where: { userId_companyId: { userId, companyId } }
       });
       if (access) return next();
+
+      const brand = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { workspaceId: true }
+      });
+      if (brand?.workspaceId) {
+        const workspaceAccess = await prisma.workspacePartner.findUnique({
+          where: { userId_workspaceId: { userId, workspaceId: brand.workspaceId } }
+        });
+        if (workspaceAccess) return next();
+      }
     }
 
     const membership = await prisma.membership.findFirst({

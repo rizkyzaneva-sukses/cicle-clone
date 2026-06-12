@@ -35,7 +35,7 @@
           <% }) %>
         <% } else { %>
           <div class="col-span-full p-8 text-center bg-white border rounded-3xl">
-            <p class="text-gray-500">Belum ada proyek di workspace ini.</p>
+            <p class="text-gray-500">Belum ada proyek di brand ini.</p>
           </div>
         <% } %>
       </div>
@@ -65,7 +65,7 @@
         </div>
         
         <div>
-          <label class="block text-sm mb-1.5 font-medium">Pilih Workspace</label>
+          <label class="block text-sm mb-1.5 font-medium">Pilih Brand</label>
           <select name="companyId" required class="w-full border rounded-2xl px-5 py-3.5">
             <% memberships.forEach(m => { %>
               <option value="<%= m.company.id %>"><%= m.company.name %></option>

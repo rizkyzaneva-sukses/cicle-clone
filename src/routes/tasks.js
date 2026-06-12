@@ -15,6 +15,17 @@ async function hasCompanyAccess(user, companyId) {
       where: { userId_companyId: { userId: user.id, companyId } }
     });
     if (access) return true;
+
+    const brand = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { workspaceId: true }
+    });
+    if (brand?.workspaceId) {
+      const workspaceAccess = await prisma.workspacePartner.findUnique({
+        where: { userId_workspaceId: { userId: user.id, workspaceId: brand.workspaceId } }
+      });
+      if (workspaceAccess) return true;
+    }
   }
 
   const membership = await prisma.membership.findUnique({

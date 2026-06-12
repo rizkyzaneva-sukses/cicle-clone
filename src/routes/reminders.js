@@ -10,14 +10,19 @@ async function getTaskWhere(user) {
     return { status: { not: 'DONE' }, dueDate: { not: null } };
   }
 
-  const [memberships, partnerAccess] = await Promise.all([
+  const [memberships, partnerAccess, workspaceAccess] = await Promise.all([
     prisma.membership.findMany({ where: { userId: user.id }, select: { companyId: true, role: true } }),
-    prisma.partnerAccess.findMany({ where: { userId: user.id }, select: { companyId: true } })
+    prisma.partnerAccess.findMany({ where: { userId: user.id }, select: { companyId: true } }),
+    prisma.workspacePartner.findMany({
+      where: { userId: user.id },
+      include: { workspace: { select: { brands: { select: { id: true } } } } }
+    })
   ]);
 
   const managedCompanyIds = [
     ...memberships.filter(m => m.role === 'admin').map(m => m.companyId),
-    ...partnerAccess.map(p => p.companyId)
+    ...partnerAccess.map(p => p.companyId),
+    ...workspaceAccess.flatMap(access => access.workspace.brands.map(brand => brand.id))
   ];
 
   if (managedCompanyIds.length > 0) {

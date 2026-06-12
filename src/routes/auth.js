@@ -35,12 +35,12 @@ router.post('/register', async (req, res) => {
     });
 
     if (isFirstUser) {
-      const company = await prisma.company.create({
-        data: { name: companyName, slug: uniqueSlug(companyName) }
-      });
-
-      await prisma.membership.create({
-        data: { userId: user.id, companyId: company.id, role: 'admin' }
+      await prisma.workspace.create({
+        data: {
+          name: companyName,
+          slug: uniqueSlug(companyName),
+          ownerId: user.id
+        }
       });
     }
 

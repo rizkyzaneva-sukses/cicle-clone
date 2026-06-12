@@ -21,4 +21,36 @@ async function cleanupOrphanRecords(client = prisma) {
   `;
 }
 
-module.exports = { cleanupOrphanRecords };
+async function ensureDefaultWorkspace(client = prisma, ownerUser = null) {
+  const workspaceCount = await client.workspace.count();
+  if (workspaceCount > 0) {
+    const fallbackWorkspace = await client.workspace.findFirst({ orderBy: { createdAt: 'asc' } });
+    await client.company.updateMany({
+      where: { workspaceId: null },
+      data: { workspaceId: fallbackWorkspace.id }
+    });
+    return fallbackWorkspace;
+  }
+
+  const owner = ownerUser || await client.user.findFirst({
+    where: { platformRole: 'owner' },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  const workspace = await client.workspace.create({
+    data: {
+      name: 'Maulana Corp',
+      slug: 'maulana-corp',
+      ownerId: owner?.id || null
+    }
+  });
+
+  await client.company.updateMany({
+    where: { workspaceId: null },
+    data: { workspaceId: workspace.id }
+  });
+
+  return workspace;
+}
+
+module.exports = { cleanupOrphanRecords, ensureDefaultWorkspace };

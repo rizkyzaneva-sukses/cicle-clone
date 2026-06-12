@@ -43,12 +43,30 @@ router.get('/', async (req, res) => {
     company = c;
     userRole = 'owner';
   } else if (platformRole === 'partner') {
-    const pa = await prisma.partnerAccess.findFirst({
+    const workspaceAccess = await prisma.workspacePartner.findFirst({
+      where: {
+        userId,
+        ...(companyId ? { workspace: { brands: { some: { id: companyId } } } } : {})
+      },
+      include: {
+        workspace: {
+          include: { brands: true }
+        }
+      }
+    });
+    if (workspaceAccess) {
+      company = companyId
+        ? workspaceAccess.workspace.brands.find(brand => brand.id === companyId)
+        : workspaceAccess.workspace.brands[0];
+      userRole = workspaceAccess.role.toLowerCase();
+    } else {
+      const pa = await prisma.partnerAccess.findFirst({
       where: { userId, ...(companyId ? { companyId } : {}) },
       include: { company: true }
-    });
-    company = pa?.company;
-    userRole = 'partner';
+      });
+      company = pa?.company;
+      userRole = 'partner';
+    }
   } else {
     const m = await prisma.membership.findFirst({
       where: { userId, ...(companyId ? { companyId } : {}) },
@@ -72,7 +90,7 @@ router.get('/', async (req, res) => {
     include: { user: true }
   });
 
-  const canManage = ['owner', 'partner', 'admin'].includes(userRole);
+  const canManage = ['owner', 'partner', 'admin', 'ceo', 'coo'].includes(userRole);
 
   res.render('members', {
     title: 'Anggota Tim',
@@ -93,9 +111,11 @@ router.post('/invite', async (req, res) => {
   try {
     // Cek hak akses
     const hasAccess = platformRole === 'owner' ||
-      (platformRole === 'partner' && await prisma.partnerAccess.findUnique({
+      (platformRole === 'partner' && (await prisma.partnerAccess.findUnique({
         where: { userId_companyId: { userId, companyId } }
-      })) ||
+      }) || await prisma.workspacePartner.findFirst({
+        where: { userId, workspace: { brands: { some: { id: companyId } } } }
+      }))) ||
       await prisma.membership.findFirst({ where: { userId, companyId, role: 'admin' } });
 
     if (!hasAccess) {
@@ -199,9 +219,11 @@ router.post('/:membershipId/role', async (req, res) => {
     }
 
     const canChange = platformRole === 'owner' ||
-      (platformRole === 'partner' && await prisma.partnerAccess.findUnique({
+      (platformRole === 'partner' && (await prisma.partnerAccess.findUnique({
         where: { userId_companyId: { userId, companyId: target.companyId } }
-      })) ||
+      }) || await prisma.workspacePartner.findFirst({
+        where: { userId, workspace: { brands: { some: { id: target.companyId } } } }
+      }))) ||
       await prisma.membership.findFirst({ where: { userId, companyId: target.companyId, role: 'admin' } });
 
     if (!canChange) {
@@ -238,9 +260,11 @@ router.post('/:membershipId/remove', async (req, res) => {
     }
 
     const canRemove = platformRole === 'owner' ||
-      (platformRole === 'partner' && await prisma.partnerAccess.findUnique({
+      (platformRole === 'partner' && (await prisma.partnerAccess.findUnique({
         where: { userId_companyId: { userId, companyId: target.companyId } }
-      })) ||
+      }) || await prisma.workspacePartner.findFirst({
+        where: { userId, workspace: { brands: { some: { id: target.companyId } } } }
+      }))) ||
       await prisma.membership.findFirst({ where: { userId, companyId: target.companyId, role: 'admin' } });
 
     if (!canRemove) {

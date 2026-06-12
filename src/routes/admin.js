@@ -24,6 +24,7 @@ router.post('/reset-data', requireAuth, requireOwner, async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const before = {
         users: await tx.user.count(),
+        workspaces: await tx.workspace.count(),
         companies: await tx.company.count(),
         projects: await tx.project.count(),
         tasks: await tx.task.count()
@@ -41,8 +42,10 @@ router.post('/reset-data', requireAuth, requireOwner, async (req, res) => {
       await tx.project.deleteMany({});
       await tx.label.deleteMany({});
       await tx.partnerAccess.deleteMany({});
+      await tx.workspacePartner.deleteMany({});
       await tx.membership.deleteMany({});
       await tx.company.deleteMany({});
+      await tx.workspace.deleteMany({});
       await tx.user.deleteMany({ where: { id: { not: keepUser.id } } });
 
       await tx.user.update({
@@ -63,7 +66,7 @@ router.post('/reset-data', requireAuth, requireOwner, async (req, res) => {
 
     req.flash(
       'success',
-      `Reset selesai. Tersisa akun ${keepUser.email}; terhapus ${result.users - 1} user, ${result.companies} brand, ${result.projects} proyek, ${result.tasks} task.`
+      `Reset selesai. Tersisa akun ${keepUser.email}; terhapus ${result.users - 1} user, ${result.workspaces} workspace, ${result.companies} brand, ${result.projects} proyek, ${result.tasks} task.`
     );
     res.redirect('/');
   } catch (err) {

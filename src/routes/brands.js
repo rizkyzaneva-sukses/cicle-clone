@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth, requireOwner } = require('../middleware/auth');
 const { uniqueSlug } = require('../lib/slug');
-const { cleanupOrphanRecords } = require('../lib/maintenance');
+const { cleanupOrphanRecords, ensureDefaultWorkspace } = require('../lib/maintenance');
 
 router.use(requireAuth, requireOwner);
 
@@ -11,15 +11,23 @@ router.use(requireAuth, requireOwner);
 router.get('/', async (req, res) => {
   try {
     await cleanupOrphanRecords();
+    await ensureDefaultWorkspace(prisma, req.session.user);
 
-    const brands = await prisma.company.findMany({
+    const workspaces = await prisma.workspace.findMany({
       include: {
-        partnerAccess: { include: { user: true } },
-        memberships: true,
-        projects: true
+        partners: { include: { user: true } },
+        brands: {
+          include: {
+            partnerAccess: { include: { user: true } },
+            memberships: true,
+            projects: true
+          },
+          orderBy: { createdAt: 'desc' }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
+    const brands = workspaces.flatMap(workspace => workspace.brands.map(brand => ({ ...brand, workspace })));
 
     // Semua user yang bisa dijadikan partner
     const allUsers = await prisma.user.findMany({
@@ -27,7 +35,7 @@ router.get('/', async (req, res) => {
       orderBy: { name: 'asc' }
     });
 
-    res.render('brands/index', { title: 'Kelola Brand', brands, allUsers });
+    res.render('brands/index', { title: 'Kelola Brand', workspaces, brands, allUsers });
   } catch (err) {
     console.error(err);
     req.flash('error', 'Gagal membuka daftar brand');
@@ -38,15 +46,16 @@ router.get('/', async (req, res) => {
 // Buat brand baru
 router.post('/create', async (req, res) => {
   try {
-    const { name } = req.body;
-    if (!name) {
-      req.flash('error', 'Nama brand wajib diisi');
+    const { name, workspaceId } = req.body;
+    if (!name || !workspaceId) {
+      req.flash('error', 'Nama brand dan workspace wajib diisi');
       return res.redirect('/brands');
     }
     await prisma.company.create({
       data: {
         name,
         slug: uniqueSlug(name),
+        workspaceId,
         memberships: {
           create: {
             userId: req.session.user.id,

@@ -25,20 +25,55 @@ model User {
   directReceived DirectMessage[] @relation("DirectReceived")
   notifications  Notification[]
   partnerAccess  PartnerAccess[]
+  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
+  workspaceRoles  WorkspacePartner[]
   uploads        Attachment[]
   activityLogs   ActivityLog[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  ownerId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner    User?              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  brands   Company[]
+  partners WorkspacePartner[]
+
+  @@index([ownerId])
+}
+
+model WorkspacePartner {
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        String   @default("COO") // CEO, COO
+  assignedAt  DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
 }
 
 model Company {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  workspaceId String?
   createdAt DateTime @default(now())
 
+  workspace     Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   memberships   Membership[]
   projects      Project[]
   partnerAccess PartnerAccess[]
   labels        Label[]
+
+  @@index([workspaceId])
 }
 
 // Menghubungkan Partner ke Brand yang dia kelola

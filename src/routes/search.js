@@ -11,14 +11,19 @@ async function getCompanyIds(user) {
     return companies.map(company => company.id);
   }
 
-  const [memberships, partnerAccess] = await Promise.all([
+  const [memberships, partnerAccess, workspaceAccess] = await Promise.all([
     prisma.membership.findMany({ where: { userId: user.id }, select: { companyId: true } }),
-    prisma.partnerAccess.findMany({ where: { userId: user.id }, select: { companyId: true } })
+    prisma.partnerAccess.findMany({ where: { userId: user.id }, select: { companyId: true } }),
+    prisma.workspacePartner.findMany({
+      where: { userId: user.id },
+      include: { workspace: { select: { brands: { select: { id: true } } } } }
+    })
   ]);
 
   return [...new Set([
     ...memberships.map(m => m.companyId),
-    ...partnerAccess.map(p => p.companyId)
+    ...partnerAccess.map(p => p.companyId),
+    ...workspaceAccess.flatMap(access => access.workspace.brands.map(brand => brand.id))
   ])];
 }
 

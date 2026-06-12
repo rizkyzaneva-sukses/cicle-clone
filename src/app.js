@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { cleanupOrphanRecords } = require('./lib/maintenance');
+const { cleanupOrphanRecords, ensureDefaultWorkspace } = require('./lib/maintenance');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +60,7 @@ app.use(async (req, res, next) => {
         platformRole = 'owner';
         res.locals.currentUser = req.session.user;
       }
+      await ensureDefaultWorkspace(prisma, req.session.user);
 
       const [unreadCount, directUnreadCount] = await Promise.all([
         prisma.notification.count({ where: { userId, isRead: false } }),
@@ -68,15 +69,22 @@ app.use(async (req, res, next) => {
       res.locals.unreadNotifications = unreadCount;
       res.locals.unreadDirectMessages = directUnreadCount;
 
-      // Current company context (untuk sidebar workspace label)
+      // Current workspace/brand context (untuk sidebar label)
       if (platformRole === 'owner') {
-        const c = await prisma.company.findFirst({ orderBy: { createdAt: 'asc' } });
-        res.locals.currentCompany = c;
+        res.locals.currentCompany = await prisma.workspace.findFirst({ orderBy: { createdAt: 'asc' } });
       } else if (platformRole === 'partner') {
-        const pa = await prisma.partnerAccess.findFirst({
-          where: { userId }, include: { company: true }
+        const wp = await prisma.workspacePartner.findFirst({
+          where: { userId },
+          include: { workspace: true }
         });
-        res.locals.currentCompany = pa?.company || null;
+        if (wp) {
+          res.locals.currentCompany = wp.workspace;
+        } else {
+          const pa = await prisma.partnerAccess.findFirst({
+            where: { userId }, include: { company: true }
+          });
+          res.locals.currentCompany = pa?.company || null;
+        }
       } else {
         const m = await prisma.membership.findFirst({
           where: { userId }, include: { company: true }
@@ -116,49 +124,72 @@ app.get('/', async (req, res) => {
     const { id: userId, platformRole } = req.session.user;
 
     if (platformRole === 'owner') {
-    // Owner: semua brand + statistik global
-    const brands = await prisma.company.findMany({
-      include: {
-        partnerAccess: { include: { user: true } },
-        projects: true,
-        memberships: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+      await ensureDefaultWorkspace(prisma, req.session.user);
+      const workspaces = await prisma.workspace.findMany({
+        include: {
+          partners: { include: { user: true } },
+          brands: {
+            include: {
+              partnerAccess: { include: { user: true } },
+              projects: true,
+              memberships: true
+            },
+            orderBy: { createdAt: 'desc' }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      const brands = workspaces.flatMap(workspace => workspace.brands);
 
-    const [totalTasks, tasksDone, tasksPending, totalMembers] = await Promise.all([
+      const [totalTasks, tasksDone, tasksPending, totalMembers] = await Promise.all([
       prisma.task.count(),
       prisma.task.count({ where: { status: 'DONE' } }),
       prisma.task.count({ where: { status: { in: ['TODO', 'IN_PROGRESS'] } } }),
       prisma.membership.count()
-    ]);
+      ]);
 
       return res.render('dashboard-owner', {
       title: 'Dashboard Owner',
-      brands, totalTasks, tasksDone, tasksPending, totalMembers
+      workspaces, brands, totalTasks, tasksDone, tasksPending, totalMembers
       });
     }
 
     if (platformRole === 'partner') {
-    // Partner: brand yang dia kelola
-    const partnerBrands = await prisma.partnerAccess.findMany({
-      where: { userId },
-      include: {
-        company: {
-          include: { projects: true, memberships: true }
+      const workspaceRoles = await prisma.workspacePartner.findMany({
+        where: { userId },
+        include: {
+          workspace: {
+            include: {
+              brands: { include: { projects: true, memberships: true } }
+            }
+          }
         }
-      }
-    });
+      });
+      const workspaceBrands = workspaceRoles.flatMap(role => role.workspace.brands);
+      const partnerBrands = await prisma.partnerAccess.findMany({
+        where: { userId },
+        include: {
+          company: {
+            include: { projects: true, memberships: true }
+          }
+        }
+      });
 
-    const brandIds = partnerBrands.map(p => p.companyId);
-    const [tasksDone, tasksPending] = await Promise.all([
-      prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: 'DONE' } }),
-      prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
-    ]);
+      const brandsById = new Map();
+      [...workspaceBrands, ...partnerBrands.map(p => p.company)].forEach(brand => {
+        if (brand) brandsById.set(brand.id, brand);
+      });
+      const brands = [...brandsById.values()];
+      const brandIds = brands.map(brand => brand.id);
+      const [tasksDone, tasksPending] = await Promise.all([
+        prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: 'DONE' } }),
+        prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
+      ]);
 
       return res.render('dashboard-partner', {
       title: 'Dashboard Partner',
-      brands: partnerBrands.map(p => p.company),
+      workspaceRoles,
+      brands,
       tasksDone, tasksPending
       });
     }
