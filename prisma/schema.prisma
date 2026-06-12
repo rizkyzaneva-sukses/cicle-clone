@@ -30,6 +30,7 @@ model User {
   uploads        Attachment[]
   activityLogs   ActivityLog[]
   chatReactions  ChatReaction[]
+  commentFiles   CommentFile[]
 }
 
 model Workspace {
@@ -140,6 +141,8 @@ model Task {
   labels       TaskLabel[]
   attachments  Attachment[]
   activityLogs ActivityLog[]
+  taskDeps     TaskDependency[] @relation("TaskDeps")
+  depOfDeps    TaskDependency[] @relation("TaskDependents")
 }
 
 model ChecklistItem {
@@ -164,11 +167,49 @@ model Comment {
   content   String
   taskId    String
   userId    String
-  reactions Json?    // { "👍": ["userId1","userId2"], "🔥": ["userId1"] }
+  parentId  String?    // threaded comment
+  reactions Json?
   createdAt DateTime @default(now())
 
-  task Task @relation(fields: [taskId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  task     Task        @relation(fields: [taskId], references: [id])
+  user     User        @relation(fields: [userId], references: [id])
+  parent   Comment?    @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[]   @relation("CommentThread")
+  files    CommentFile[]
+
+  @@index([taskId])
+  @@index([parentId])
+}
+
+model CommentFile {
+  id        String   @id @default(cuid())
+  filename  String
+  originalName String
+  mimeType  String
+  size      Int
+  url       String
+  commentId String
+  uploadedById String
+  createdAt DateTime @default(now())
+
+  comment    Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([commentId])
+}
+
+model TaskDependency {
+  id           String @id @default(cuid())
+  taskId       String
+  dependsOnId  String
+  createdAt    DateTime @default(now())
+
+  task      Task @relation("TaskDeps", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn Task @relation("TaskDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+  @@index([taskId])
+  @@index([dependsOnId])
 }
 
 model ChatReaction {

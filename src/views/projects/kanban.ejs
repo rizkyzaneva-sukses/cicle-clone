@@ -45,6 +45,36 @@
       <i class="fas fa-copy"></i> 
       <span>Dari Template</span>
     </button>
+    <button onclick="toggleBulkMode()" 
+            class="w-full sm:w-auto justify-center flex items-center gap-2 bg-gray-700 hover:bg-gray-800 transition text-white px-5 py-2.5 rounded-2xl text-sm font-medium">
+      <i class="fas fa-check-double"></i> 
+      <span>Bulk Select</span>
+    </button>
+    <button onclick="document.getElementById('shortcuts-help').classList.toggle('hidden')" 
+            class="p-2.5 rounded-2xl border hover:bg-gray-50 text-gray-500" title="Keyboard shortcuts (?)">
+      <i class="fas fa-keyboard"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Bulk action bar -->
+<div id="bulk-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+  <span class="text-sm"><span id="bulk-count" class="font-bold">0</span> task dipilih</span>
+  <button onclick="bulkMove('TODO')" class="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded-xl text-xs font-medium">📋 To Do</button>
+  <button onclick="bulkMove('IN_PROGRESS')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-medium">🔄 Doing</button>
+  <button onclick="bulkMove('DONE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-medium">✅ Done</button>
+  <button onclick="bulkDelete()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-xl text-xs font-medium"><i class="fas fa-trash mr-1"></i>Hapus</button>
+  <button onclick="toggleBulkMode()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-xl text-xs font-medium">Batal</button>
+</div>
+
+<!-- Shortcuts help -->
+<div id="shortcuts-help" class="hidden fixed bottom-6 right-6 bg-white border rounded-2xl shadow-xl p-5 w-64 z-50">
+  <h4 class="font-bold text-sm mb-3">Keyboard Shortcuts</h4>
+  <div class="space-y-2 text-xs">
+    <div class="flex justify-between"><span class="text-gray-600">Buat task baru</span><kbd class="bg-gray-100 px-2 py-0.5 rounded font-mono">N</kbd></div>
+    <div class="flex justify-between"><span class="text-gray-600">Bulk select</span><kbd class="bg-gray-100 px-2 py-0.5 rounded font-mono">B</kbd></div>
+    <div class="flex justify-between"><span class="text-gray-600">Tutup modal/panel</span><kbd class="bg-gray-100 px-2 py-0.5 rounded font-mono">Esc</kbd></div>
+    <div class="flex justify-between"><span class="text-gray-600">Bantuan</span><kbd class="bg-gray-100 px-2 py-0.5 rounded font-mono">?</kbd></div>
   </div>
 </div>
 
@@ -247,8 +277,10 @@ function renderKanban() {
     card.className = 'task-card bg-white border p-4 rounded-2xl cursor-grab active:cursor-grabbing';
     card.draggable = true;
     card.dataset.id = task.id;
+    card.id = `card-${task.id}`;
     card.ondragstart = (e) => drag(e, task.id);
-    card.onclick = () => openPreview(task.id);
+    card.onclick = () => { if (bulkMode) { toggleSelect(task.id); } else { openPreview(task.id); } };
+    if (selectedTasks.has(task.id)) { card.classList.add('ring-2', 'ring-blue-500'); }
 
     // Quick-move button
     let moveBtn = '';
@@ -566,11 +598,81 @@ async function sendMessage() {
 }
 
 // Initialize everything
+// Bulk select
+let selectedTasks = new Set();
+let bulkMode = false;
+
+function toggleBulkMode() {
+  bulkMode = !bulkMode;
+  selectedTasks.clear();
+  document.getElementById('bulk-bar').classList.toggle('hidden', !bulkMode);
+  renderKanban();
+}
+
+function toggleSelect(taskId) {
+  if (selectedTasks.has(taskId)) selectedTasks.delete(taskId);
+  else selectedTasks.add(taskId);
+  document.getElementById(`card-${taskId}`).classList.toggle('ring-2', selectedTasks.has(taskId));
+  document.getElementById(`card-${taskId}`).classList.toggle('ring-blue-500', selectedTasks.has(taskId));
+  document.getElementById('bulk-count').textContent = selectedTasks.size;
+}
+
+async function bulkMove(status) {
+  for (const taskId of selectedTasks) {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      task.status = status;
+      await fetch(`/tasks/${taskId}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+    }
+  }
+  selectedTasks.clear();
+  bulkMode = false;
+  document.getElementById('bulk-bar').classList.add('hidden');
+  renderKanban();
+}
+
+async function bulkDelete() {
+  if (!confirm(`Hapus ${selectedTasks.size} task?`)) return;
+  for (const taskId of selectedTasks) {
+    await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+    tasks = tasks.filter(t => t.id !== taskId);
+  }
+  selectedTasks.clear();
+  bulkMode = false;
+  document.getElementById('bulk-bar').classList.add('hidden');
+  renderKanban();
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  switch(e.key) {
+    case 'n': case 'N':
+      showCreateTaskModal();
+      e.preventDefault();
+      break;
+    case 'b': case 'B':
+      toggleBulkMode();
+      e.preventDefault();
+      break;
+    case 'Escape':
+      hideCreateTaskModal();
+      hideTemplateModal();
+      closePreview();
+      if (bulkMode) toggleBulkMode();
+      break;
+    case '?':
+      document.getElementById('shortcuts-help').classList.toggle('hidden');
+      break;
+  }
+});
+
 function init() {
   renderKanban();
   loadChatMessages();
-
-  // Socket task update listener already set above
   console.log('%c[Maulana Corp] Kanban board initialized with real-time sync', 'color:#666');
 }
 

@@ -91,6 +91,73 @@
       Task, project chat, search, reminder, dan inbox mengikuti batas akses tersebut.
     </p>
   </div>
+
+  <div class="bg-white border rounded-3xl p-6">
+    <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-magic text-purple-600"></i> Fitur Baru</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Sub-Checklist</div>
+        Setiap checklist item bisa punya turunan. Klik tombol <i class="fas fa-plus text-blue-500"></i> yang muncul saat hover untuk menambah sub-checklist.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Task Preview</div>
+        Klik task card di kanban board untuk membuka preview panel slide-in dari kanan. Lihat status, priority, checklist progress, dan item yang belum selesai.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Quick-Move Status</div>
+        Setiap task card punya tombol cepat: "Mulai" (TODO→Doing), "Selesai" (Doing→Done), "Buka" (Done→Todo). Tanpa drag & drop.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Cheers Reactions</div>
+        Tambahkan emoji reaction (👍🔥❤️😂🎉👀) di setiap komentar task. Klik ikon smile untuk memilih emoji.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">@Mention di Komentar</div>
+        Ketik @ di kolom komentar untuk mention nama user. Autocomplete muncul otomatis.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Threaded Comment</div>
+        Reply ke komentar tertentu dengan klik tombol "Reply". Thread muncul dengan indentasi di bawah komentar utama.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">File di Komentar</div>
+        Lampirkan file langsung di komentar. Klik "Lampirkan file" di bawah input komentar. File tersimpan di media project.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Task Dependencies</div>
+        Tambahkan dependency di detail task. Task bisa bergantung pada task lain. Status ditampilkan: ✅ selesai, ⏳ belum selesai.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Task Templates</div>
+        Buat template task + checklist baku. Klik "Dari Template" di kanban untuk membuat task dari template. Cocok untuk task berulang.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Bulk Actions</div>
+        Pilih beberapa task sekaligus (klik "Bulk Select" atau tekan B), lalu pindahkan batch ke status berbeda atau hapus sekaligus.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Keyboard Shortcuts</div>
+        <div class="mt-1 space-y-1">
+          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">N</kbd> — Buat task baru</div>
+          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">B</kbd> — Bulk select mode</div>
+          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">Esc</kbd> — Tutup modal/panel</div>
+          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">?</kbd> — Toggle bantuan</div>
+        </div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Dashboard Kinerja</div>
+        Menu "Kinerja Tim" di sidebar. Lihat performa per member: completion rate, task breakdown, overdue. Filter per brand.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">My Tasks Board</div>
+        Menu "Tugas Saya" di sidebar. View personal lintas project dengan filter status, checklist progress, dan quick-move buttons.
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <div class="font-semibold text-gray-800 mb-1">Invite Link</div>
+        Generate link invite per brand di halaman Kelola Brand. User yang buka link otomatis join brand. 1 user max 1 workspace.
+      </div>
+    </div>
+  </div>
 </div>
 
 <%- include('partials/footer') %>

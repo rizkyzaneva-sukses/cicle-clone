@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
         project: { include: { company: true } },
         assignee: true,
         checklists: { orderBy: { position: 'asc' }, include: { children: { orderBy: { position: 'asc' } } } },
-        comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
+        comments: { where: { parentId: null }, include: { user: true, files: true, replies: { include: { user: true, files: true }, orderBy: { createdAt: 'asc' } } }, orderBy: { createdAt: 'asc' } },
         labels: { include: { label: true } },
         attachments: { include: { uploadedBy: true }, orderBy: { createdAt: 'desc' } },
         activityLogs: { include: { user: true }, orderBy: { createdAt: 'desc' }, take: 30 }
@@ -304,16 +304,42 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Add comment
-router.post('/:id/comments', async (req, res) => {
+router.post('/:id/comments', upload.array('files', 5), async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, parentId } = req.body;
     const userId = req.session.user.id;
     const accessibleTask = await canAccessTask(req.session.user, req.params.id);
     if (!accessibleTask) return res.status(403).json({ error: 'Akses ditolak' });
+    if (!content && (!req.files || req.files.length === 0)) return res.status(400).json({ error: 'Komentar wajib diisi' });
 
     const comment = await prisma.comment.create({
-      data: { content, taskId: req.params.id, userId },
+      data: {
+        content: content || '',
+        taskId: req.params.id,
+        userId,
+        parentId: parentId || null
+      },
       include: { user: true }
+    });
+
+    // Save attached files
+    if (req.files && req.files.length > 0) {
+      await prisma.commentFile.createMany({
+        data: req.files.map(file => ({
+          filename: file.filename || file.originalname,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          url: `/uploads/${file.filename || file.originalname}`,
+          commentId: comment.id,
+          uploadedById: userId
+        }))
+      });
+    }
+
+    const fullComment = await prisma.comment.findUnique({
+      where: { id: comment.id },
+      include: { user: true, files: true }
     });
 
     await logActivity(prisma, req, {
@@ -322,11 +348,12 @@ router.post('/:id/comments', async (req, res) => {
       entityId: req.params.id,
       projectId: accessibleTask.projectId,
       taskId: req.params.id,
-      metadata: { content }
+      metadata: { content, parentId, hasFiles: !!(req.files && req.files.length) }
     });
 
-    res.json({ success: true, comment });
+    res.json({ success: true, comment: fullComment });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Gagal tambah komentar' });
   }
 });
