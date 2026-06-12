@@ -122,6 +122,9 @@
                   <a href="/members?companyId=<%= brand.id %>" class="flex-1 text-center py-2 bg-gray-50 text-gray-700 rounded-xl text-xs font-medium hover:bg-gray-100 transition">
                     <i class="fas fa-users mr-1"></i>Anggota
                   </a>
+                  <button onclick="generateInvite('<%= brand.id %>', this)" class="flex-1 text-center py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-medium hover:bg-emerald-100 transition" title="Salin link invite">
+                    <i class="fas fa-link mr-1"></i>Invite
+                  </button>
                 </div>
               </div>
             <% }) %>
@@ -186,6 +189,36 @@
 function openBrandModal(workspaceId) {
   document.getElementById('brandWorkspaceSelect').value = workspaceId;
   document.getElementById('createBrandModal').classList.remove('hidden');
+}
+
+async function generateInvite(brandId, btn) {
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/invite/brand/${brandId}/generate-token`, { method: 'POST' });
+    const data = await res.json();
+    if (data.link) {
+      await navigator.clipboard.writeText(data.link);
+      btn.innerHTML = '<i class="fas fa-check mr-1"></i>Disalin!';
+      btn.classList.replace('bg-emerald-50', 'bg-green-100');
+      btn.classList.replace('text-emerald-700', 'text-green-700');
+      setTimeout(() => {
+        btn.innerHTML = original;
+        btn.disabled = false;
+        btn.classList.replace('bg-green-100', 'bg-emerald-50');
+        btn.classList.replace('text-green-700', 'text-emerald-700');
+      }, 2500);
+    } else {
+      alert('Gagal generate link: ' + (data.error || 'unknown'));
+      btn.innerHTML = original;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    alert('Gagal generate link');
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
 }
 </script>
 

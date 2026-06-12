@@ -7,7 +7,11 @@ const { isConfiguredOwner } = require('../lib/owners');
 
 router.get('/register', async (req, res) => {
   const userCount = await prisma.user.count();
-  res.render('auth/register', { error: null, isFirstUser: userCount === 0 });
+  // Simpan invite token dari query ke session
+  if (req.query.next && req.query.next === '/invite/join' && req.query.token) {
+    req.session.inviteToken = req.query.token;
+  }
+  res.render('auth/register', { error: null, isFirstUser: userCount === 0, next: req.query.next || '/' });
 });
 
 router.post('/register', async (req, res) => {
@@ -53,13 +57,14 @@ router.post('/register', async (req, res) => {
 
     req.flash('success', platformRole === 'owner'
       ? 'Selamat datang, Owner! Maulana Corp Project Management siap digunakan.'
-      : 'Akun berhasil dibuat. Hubungi Owner untuk akses brand.'
+      : 'Akun berhasil dibuat. Bergabung ke brand via link invite...'
     );
-    res.redirect('/');
+    const nextUrl = req.body.next || '/';
+    res.redirect(nextUrl === '/invite/join' ? '/invite/join' : '/');
   } catch (error) {
     console.error(error);
     const userCount = await prisma.user.count().catch(() => 1);
-    res.render('auth/register', { error: 'Terjadi kesalahan. Coba lagi.', isFirstUser: userCount === 0 });
+    res.render('auth/register', { error: 'Terjadi kesalahan. Coba lagi.', isFirstUser: userCount === 0, next: '/' });
   }
 });
 
@@ -91,7 +96,8 @@ router.post('/login', async (req, res) => {
       platformRole: user.platformRole
     };
 
-    res.redirect('/');
+    const nextUrl = req.query.next || req.body.next || '/';
+    res.redirect(nextUrl === '/invite/join' ? '/invite/join' : '/');
   } catch (error) {
     console.error(error);
     res.render('auth/login', { error: 'Terjadi kesalahan' });

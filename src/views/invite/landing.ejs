@@ -1,0 +1,28 @@
+<%- include('../partials/header', { title: title }) %>
+
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="bg-white rounded-3xl shadow-xl p-10 w-full max-w-md text-center">
+    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-5">
+      <%= brand.name.charAt(0).toUpperCase() %>
+    </div>
+    <h1 class="text-2xl font-bold text-gray-900 mb-1">Kamu diundang ke</h1>
+    <h2 class="text-3xl font-extrabold text-blue-600 mb-1"><%= brand.name %></h2>
+    <% if (workspace) { %>
+      <p class="text-sm text-gray-400 mb-8">Workspace: <span class="font-medium text-gray-600"><%= workspace.name %></span></p>
+    <% } %>
+
+    <div class="flex flex-col gap-3">
+      <a href="/auth/login?next=/invite/join"
+        class="w-full py-3 bg-blue-600 text-white rounded-2xl font-semibold hover:bg-blue-700 transition">
+        <i class="fas fa-sign-in-alt mr-2"></i>Masuk & Bergabung
+      </a>
+      <a href="/auth/register?next=/invite/join"
+        class="w-full py-3 border border-blue-600 text-blue-600 rounded-2xl font-semibold hover:bg-blue-50 transition">
+        <i class="fas fa-user-plus mr-2"></i>Daftar & Bergabung
+      </a>
+    </div>
+    <p class="text-xs text-gray-400 mt-6">Link ini hanya untuk 1 workspace. 1 akun tidak bisa bergabung ke 2 workspace sekaligus.</p>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

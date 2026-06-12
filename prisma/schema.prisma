@@ -61,11 +61,12 @@ model WorkspacePartner {
 }
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
   workspaceId String?
-  createdAt DateTime @default(now())
+  inviteToken String?  @unique
+  createdAt   DateTime @default(now())
 
   workspace     Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   memberships   Membership[]

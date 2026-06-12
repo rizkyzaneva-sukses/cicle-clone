@@ -114,6 +114,7 @@ app.use('/inbox', require('./routes/inbox'));
 app.use('/search', require('./routes/search'));
 app.use('/reminders', require('./routes/reminders'));
 app.use('/workspaces', require('./routes/workspaces'));
+app.use('/invite', require('./routes/invite'));
 app.use('/admin', require('./routes/admin'));
 
 // Dashboard — tampil berbeda per role
