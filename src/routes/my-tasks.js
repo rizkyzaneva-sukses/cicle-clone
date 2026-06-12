@@ -17,7 +17,9 @@ router.get('/', async (req, res) => {
       project: {
         include: { company: true }
       },
-      assignee: true
+      assignee: true,
+      checklists: { select: { id: true, isDone: true } },
+      labels: { include: { label: true } }
     },
     orderBy: [
       { status: 'asc' },

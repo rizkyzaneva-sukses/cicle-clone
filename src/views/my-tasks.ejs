@@ -1,89 +1,139 @@
 <%- include('partials/header', { title: 'Tugas Saya' }) %>
 
-<div class="mb-8">
-  <h1 class="text-2xl sm:text-3xl font-bold">Tugas Saya</h1>
-  <p class="text-gray-600">Semua tugas yang ditugaskan kepada kamu</p>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Tugas Saya</h1>
+  <p class="text-sm text-gray-500 mt-1">Semua task yang assigned ke kamu, lintas project</p>
 </div>
 
-<% if (tasks.length === 0) { %>
-  <div class="bg-white border rounded-3xl p-12 text-center">
-    <i class="fas fa-tasks text-5xl text-gray-300 mb-4"></i>
-    <p class="text-gray-600">Kamu belum punya tugas yang ditugaskan.</p>
+<!-- Stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white border rounded-2xl p-4 text-center shadow-sm">
+    <div class="text-2xl font-bold text-blue-600"><%= tasks.filter(t => t.status === 'TODO').length %></div>
+    <div class="text-xs text-gray-500 mt-1">To Do</div>
   </div>
-<% } else { %>
-  <div class="grid gap-3 md:hidden">
-    <% tasks.forEach(task => { %>
-      <a href="/tasks/<%= task.id %>" class="bg-white border rounded-2xl p-4 block">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="font-semibold text-gray-900 truncate"><%= task.title %></div>
-            <% if (task.description) { %>
-              <div class="text-sm text-gray-500 line-clamp-2 mt-1"><%= task.description %></div>
-            <% } %>
+  <div class="bg-white border rounded-2xl p-4 text-center shadow-sm">
+    <div class="text-2xl font-bold text-amber-600"><%= tasks.filter(t => t.status === 'IN_PROGRESS').length %></div>
+    <div class="text-xs text-gray-500 mt-1">Doing</div>
+  </div>
+  <div class="bg-white border rounded-2xl p-4 text-center shadow-sm">
+    <div class="text-2xl font-bold text-emerald-600"><%= tasks.filter(t => t.status === 'DONE').length %></div>
+    <div class="text-xs text-gray-500 mt-1">Done</div>
+  </div>
+  <div class="bg-white border rounded-2xl p-4 text-center shadow-sm">
+    <div class="text-2xl font-bold text-red-600"><%= tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE').length %></div>
+    <div class="text-xs text-gray-500 mt-1">Overdue</div>
+  </div>
+</div>
+
+<!-- Filter tabs -->
+<div class="flex gap-2 mb-5 flex-wrap">
+  <button onclick="setMyFilter('ALL')" id="myfilter-ALL" class="px-4 py-2 text-sm rounded-xl border bg-blue-600 text-white border-blue-600">Semua</button>
+  <button onclick="setMyFilter('TODO')" id="myfilter-TODO" class="px-4 py-2 text-sm rounded-xl border bg-white">📋 To Do</button>
+  <button onclick="setMyFilter('IN_PROGRESS')" id="myfilter-IN_PROGRESS" class="px-4 py-2 text-sm rounded-xl border bg-white">🔄 Doing</button>
+  <button onclick="setMyFilter('DONE')" id="myfilter-DONE" class="px-4 py-2 text-sm rounded-xl border bg-white">✅ Done</button>
+  <button onclick="setMyFilter('OVERDUE')" id="myfilter-OVERDUE" class="px-4 py-2 text-sm rounded-xl border bg-white text-red-600">⚠️ Overdue</button>
+</div>
+
+<!-- Task list -->
+<div id="my-tasks-list" class="space-y-3">
+  <% if (tasks.length === 0) { %>
+    <div class="bg-white border rounded-2xl p-10 text-center">
+      <i class="fas fa-check-circle text-4xl text-gray-200 mb-3"></i>
+      <p class="text-gray-500">Belum ada task yang di-assign ke kamu</p>
+    </div>
+  <% } %>
+</div>
+
+<script>
+const allTasks = <%- JSON.stringify(tasks) %>;
+let myFilter = 'ALL';
+
+function setMyFilter(f) {
+  myFilter = f;
+  document.querySelectorAll('[id^="myfilter-"]').forEach(btn => {
+    btn.classList.remove('bg-blue-600','text-white','border-blue-600');
+    btn.classList.add('bg-white');
+  });
+  const active = document.getElementById(`myfilter-${f}`);
+  if (active) { active.classList.add('bg-blue-600','text-white','border-blue-600'); active.classList.remove('bg-white'); }
+  renderMyTasks();
+}
+
+function renderMyTasks() {
+  const list = document.getElementById('my-tasks-list');
+  let filtered = allTasks;
+
+  if (myFilter === 'OVERDUE') {
+    filtered = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE');
+  } else if (myFilter !== 'ALL') {
+    filtered = allTasks.filter(t => t.status === myFilter);
+  }
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="bg-white border rounded-2xl p-10 text-center"><p class="text-gray-400">Tidak ada task</p></div>';
+    return;
+  }
+
+  const PRIO = { URGENT: { label: '🔴 Urgent', cls: 'bg-red-100 text-red-700' }, HIGH: { label: '🟠 High', cls: 'bg-orange-100 text-orange-700' }, MEDIUM: { label: '🟡 Medium', cls: 'bg-yellow-100 text-yellow-700' }, LOW: { label: '🟢 Low', cls: 'bg-green-100 text-green-700' }, NONE: { label: '', cls: '' } };
+  const STATUS = { TODO: '📋 To Do', IN_PROGRESS: '🔄 Doing', DONE: '✅ Done' };
+
+  list.innerHTML = filtered.map(task => {
+    const prio = PRIO[task.priority] || PRIO.NONE;
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+    const checklists = task.checklists || [];
+    const doneCount = checklists.filter(c => c.isDone).length;
+    const pct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
+
+    return `<a href="/tasks/${task.id}" class="block bg-white border rounded-2xl p-4 hover:shadow-md transition">
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sm text-gray-900 truncate">${escapeHtml(task.title)}</div>
+          <div class="text-xs text-gray-400 mt-0.5">${escapeHtml(task.project?.name || '')}</div>
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${task.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' : task.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}">${STATUS[task.status]}</span>
+      </div>
+      ${checklists.length > 0 ? `<div class="flex items-center gap-2 mb-2">
+        <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-blue-500'}" style="width:${pct}%"></div></div>
+        <span class="text-[10px] text-gray-400">${doneCount}/${checklists.length}</span>
+      </div>` : ''}
+      <div class="flex items-center gap-2 text-xs flex-wrap">
+        ${prio.label ? `<span class="px-2 py-0.5 rounded-full font-semibold ${prio.cls}">${prio.label}</span>` : ''}
+        ${task.dueDate ? `<span class="${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}"><i class="fas fa-clock mr-0.5"></i>${new Date(task.dueDate).toLocaleDateString('id-ID',{month:'short',day:'numeric'})}</span>` : ''}
+        ${task.status !== 'DONE' ? `
+          <div class="ml-auto flex gap-1">
+            ${task.status === 'TODO' ? `<button onclick="event.preventDefault(); event.stopPropagation(); quickMove('${task.id}','IN_PROGRESS')" class="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-semibold hover:bg-amber-200">Mulai</button>` : ''}
+            ${task.status === 'IN_PROGRESS' ? `<button onclick="event.preventDefault(); event.stopPropagation(); quickMove('${task.id}','DONE')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold hover:bg-emerald-200">Selesai</button>` : ''}
           </div>
-          <span class="px-2.5 py-1 text-[11px] rounded-full shrink-0
-            <%= task.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' : 
-               task.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
-            <%= task.status %>
-          </span>
-        </div>
-        <div class="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500">
-          <span class="truncate"><i class="fas fa-folder mr-1"></i><%= task.project.name %></span>
-          <span><i class="fas fa-calendar mr-1"></i><%= task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID') : '-' %></span>
-        </div>
-      </a>
-    <% }) %>
-  </div>
+        ` : ''}
+      </div>
+    </a>`;
+  }).join('');
+}
 
-  <div class="hidden md:block bg-white border rounded-3xl overflow-hidden mobile-scroll-x">
-    <table class="w-full">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="text-left px-6 py-4 font-semibold">Tugas</th>
-          <th class="text-left px-6 py-4 font-semibold">Proyek</th>
-          <th class="text-left px-6 py-4 font-semibold">Status</th>
-          <th class="text-left px-6 py-4 font-semibold">Deadline</th>
-          <th class="text-right px-6 py-4 font-semibold">Aksi</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y">
-        <% tasks.forEach(task => { %>
-          <tr class="hover:bg-gray-50">
-            <td class="px-6 py-4">
-              <div class="font-medium"><%= task.title %></div>
-              <% if (task.description) { %>
-                <div class="text-sm text-gray-500 line-clamp-1"><%= task.description %></div>
-              <% } %>
-            </td>
-            <td class="px-6 py-4">
-              <a href="/projects/<%= task.project.id %>" class="text-blue-600 hover:underline">
-                <%= task.project.name %>
-              </a>
-            </td>
-            <td class="px-6 py-4">
-              <span class="px-3 py-1 text-xs rounded-full 
-                <%= task.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' : 
-                   task.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
-                <%= task.status %>
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm">
-              <%= task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID') : '-' %>
-            </td>
-            <td class="px-6 py-4 text-right">
-              <a href="/tasks/<%= task.id %>" 
-                 class="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                Buka Detail →
-              </a>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-<% } %>
+async function quickMove(taskId, newStatus) {
+  const task = allTasks.find(t => t.id === taskId);
+  if (!task) return;
+  const old = task.status;
+  task.status = newStatus;
+  renderMyTasks();
+  try {
+    const res = await fetch(`/tasks/${taskId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error('fail');
+  } catch (e) {
+    task.status = old;
+    renderMyTasks();
+  }
+}
 
-<div class="mt-6">
-  <a href="/" class="text-blue-600 hover:underline">← Kembali ke Dashboard</a>
-</div>
+function escapeHtml(v) {
+  return String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+document.addEventListener('DOMContentLoaded', renderMyTasks);
+</script>
+
 <%- include('partials/footer') %>

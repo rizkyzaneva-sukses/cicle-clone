@@ -116,6 +116,8 @@ app.use('/reminders', require('./routes/reminders'));
 app.use('/workspaces', require('./routes/workspaces'));
 app.use('/invite', require('./routes/invite'));
 app.use('/admin', require('./routes/admin'));
+app.use('/templates', require('./routes/templates'));
+app.use('/performance', require('./routes/performance'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {

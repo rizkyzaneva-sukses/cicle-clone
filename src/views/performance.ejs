@@ -1,0 +1,110 @@
+<%- include('partials/header', { title: 'Dashboard Kinerja' }) %>
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Dashboard Kinerja</h1>
+  <p class="text-sm text-gray-500 mt-1">Monitoring performa tim per brand</p>
+</div>
+
+<!-- Brand selector -->
+<div class="flex gap-2 mb-6 flex-wrap">
+  <button onclick="setBrand('ALL')" id="brand-ALL" class="px-4 py-2 text-sm rounded-xl border bg-blue-600 text-white border-blue-600">Semua Brand</button>
+  <% brands.forEach(brand => { %>
+    <button onclick="setBrand('<%= brand.id %>')" id="brand-<%= brand.id %>" class="px-4 py-2 text-sm rounded-xl border bg-white"><%= brand.name %></button>
+  <% }) %>
+</div>
+
+<!-- Overall stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white border rounded-2xl p-5 text-center shadow-sm">
+    <div class="text-3xl font-bold text-blue-600" id="stat-total"><%= stats.total %></div>
+    <div class="text-sm text-gray-500 mt-1">Total Task</div>
+  </div>
+  <div class="bg-white border rounded-2xl p-5 text-center shadow-sm">
+    <div class="text-3xl font-bold text-emerald-600" id="stat-done"><%= stats.done %></div>
+    <div class="text-sm text-gray-500 mt-1">Selesai</div>
+  </div>
+  <div class="bg-white border rounded-2xl p-5 text-center shadow-sm">
+    <div class="text-3xl font-bold text-amber-600" id="stat-active"><%= stats.active %></div>
+    <div class="text-sm text-gray-500 mt-1">Aktif</div>
+  </div>
+  <div class="bg-white border rounded-2xl p-5 text-center shadow-sm">
+    <div class="text-3xl font-bold text-red-600" id="stat-overdue"><%= stats.overdue %></div>
+    <div class="text-sm text-gray-500 mt-1">Overdue</div>
+  </div>
+</div>
+
+<!-- Per member stats -->
+<h2 class="text-lg font-bold mb-4">Performa Per Member</h2>
+<div class="space-y-4" id="member-stats">
+  <% members.forEach(member => { %>
+    <div class="bg-white border rounded-2xl p-5 shadow-sm member-card" data-brand="<%= member.brandId %>">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+          <%= member.name.charAt(0) %>
+        </div>
+        <div>
+          <div class="font-semibold"><%= member.name %></div>
+          <div class="text-xs text-gray-400"><%= member.email %> · <%= member.brandName %></div>
+        </div>
+        <div class="ml-auto text-right">
+          <div class="text-xs text-gray-400">Completion Rate</div>
+          <div class="text-lg font-bold <%= member.completionRate >= 80 ? 'text-emerald-600' : member.completionRate >= 50 ? 'text-amber-600' : 'text-red-600' %>">
+            <%= member.completionRate %>%
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+        <div class="h-full rounded-full transition-all <%= member.completionRate >= 80 ? 'bg-emerald-500' : member.completionRate >= 50 ? 'bg-amber-500' : 'bg-red-500' %>" style="width:<%= member.completionRate %>%"></div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-3 text-center text-xs">
+        <div class="bg-gray-50 rounded-xl p-2">
+          <div class="font-bold text-gray-800"><%= member.totalTasks %></div>
+          <div class="text-gray-500">Total</div>
+        </div>
+        <div class="bg-emerald-50 rounded-xl p-2">
+          <div class="font-bold text-emerald-700"><%= member.doneTasks %></div>
+          <div class="text-emerald-600">Selesai</div>
+        </div>
+        <div class="bg-amber-50 rounded-xl p-2">
+          <div class="font-bold text-amber-700"><%= member.activeTasks %></div>
+          <div class="text-amber-600">Aktif</div>
+        </div>
+        <div class="bg-red-50 rounded-xl p-2">
+          <div class="font-bold text-red-700"><%= member.overdueTasks %></div>
+          <div class="text-red-600">Overdue</div>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+
+  <% if (members.length === 0) { %>
+    <div class="bg-white border rounded-2xl p-10 text-center">
+      <i class="fas fa-users text-4xl text-gray-200 mb-3"></i>
+      <p class="text-gray-500">Belum ada data kinerja</p>
+    </div>
+  <% } %>
+</div>
+
+<script>
+function setBrand(brandId) {
+  document.querySelectorAll('[id^="brand-"]').forEach(btn => {
+    btn.classList.remove('bg-blue-600','text-white','border-blue-600');
+    btn.classList.add('bg-white');
+  });
+  const active = document.getElementById(`brand-${brandId}`);
+  if (active) { active.classList.add('bg-blue-600','text-white','border-blue-600'); active.classList.remove('bg-white'); }
+
+  document.querySelectorAll('.member-card').forEach(card => {
+    if (brandId === 'ALL' || card.dataset.brand === brandId) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
+
+<%- include('partials/footer') %>
