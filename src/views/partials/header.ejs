@@ -71,10 +71,35 @@
     }
     @media (max-width: 767px) {
       #notif-dropdown { width: calc(100vw - 2rem); right: -3.5rem; }
-      main { padding: 1rem !important; }
-      .kanban-column { min-height: 260px; }
+      main { padding: 0.75rem !important; }
+      .kanban-column { min-height: 200px; }
       .mobile-card-grid { grid-template-columns: 1fr !important; }
       .mobile-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Mobile responsive overrides */
+      .mobile-stack { flex-direction: column !important; }
+      .mobile-full { width: 100% !important; }
+      .mobile-p-3 { padding: 0.75rem !important; }
+      .mobile-text-sm { font-size: 0.8rem !important; }
+      .mobile-gap-2 { gap: 0.5rem !important; }
+      /* Task cards */
+      .task-card { padding: 0.75rem !important; font-size: 0.85rem; }
+      .task-card .text-xs { font-size: 0.7rem !important; }
+      /* Buttons */
+      .mobile-btn { padding: 0.5rem 1rem !important; font-size: 0.8rem !important; border-radius: 0.75rem !important; }
+      /* Modals */
+      .mobile-modal { padding: 1rem !important; margin: 0.5rem !important; border-radius: 1rem !important; max-height: 90vh !important; }
+      /* Kanban */
+      #kanban-board { gap: 0.75rem !important; }
+      #kanban-board > div { min-width: 0; }
+      /* Tables / detail */
+      .detail-grid { grid-template-columns: 1fr !important; }
+      /* Preview panel */
+      #preview-panel { max-width: 100% !important; }
+      /* Header */
+      header { padding: 0 0.75rem !important; }
+      header .font-bold.text-xl { font-size: 1rem !important; }
+      /* Bulk bar */
+      #bulk-bar { flex-wrap: wrap; justify-content: center; padding: 0.75rem 1rem !important; gap: 0.5rem !important; bottom: 1rem !important; width: calc(100% - 2rem); transform: none !important; left: 1rem !important; }
     }
   </style>
 </head>

@@ -1,21 +1,21 @@
 <%- include('../partials/header', { title: task.title }) %>
 
 <!-- Breadcrumb -->
-<div class="flex items-center gap-2 text-sm text-gray-500 mb-6">
-  <a href="/" class="hover:text-blue-600">Dashboard</a>
+<div class="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto">
+  <a href="/" class="hover:text-blue-600 whitespace-nowrap">Dashboard</a>
   <i class="fas fa-chevron-right text-xs"></i>
   <a href="/projects/<%= task.projectId %>" class="hover:text-blue-600"><%= task.project.name %></a>
   <i class="fas fa-chevron-right text-xs"></i>
   <span class="text-gray-800 font-medium truncate"><%= task.title %></span>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
   <!-- LEFT: Task Info + Edit -->
   <div class="lg:col-span-2 space-y-5">
 
     <!-- Task Header -->
-    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+    <div class="bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
       <div class="flex items-start justify-between gap-4 mb-4">
         <div class="flex-1">
           <!-- Status + Priority badges -->
@@ -90,7 +90,7 @@
     </div>
 
     <!-- Edit Form (hidden by default) -->
-    <div id="editForm" class="hidden bg-white border rounded-3xl p-6 shadow-sm">
+    <div id="editForm" class="hidden bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
       <h3 class="font-semibold text-lg mb-4">Edit Task</h3>
       <form action="/tasks/<%= task.id %>/update" method="POST">
         <div class="space-y-4">
@@ -148,7 +148,7 @@
     </div>
 
     <!-- Checklist -->
-    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+    <div class="bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold text-lg flex items-center gap-2">
           <i class="fas fa-check-square text-blue-600"></i> Checklist
@@ -225,7 +225,7 @@
     </div>
 
     <!-- Dependencies -->
-    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+    <div class="bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
       <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
         <i class="fas fa-link text-orange-600"></i> Dependencies
         <span class="text-sm text-gray-400 font-normal" id="dep-count"></span>
@@ -242,7 +242,7 @@
     </div>
 
     <!-- Comments -->
-    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+    <div class="bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
       <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
         <i class="fas fa-comments text-blue-600"></i> Komentar
         <span class="text-sm text-gray-400 font-normal">(<%= task.comments.length %>)</span>

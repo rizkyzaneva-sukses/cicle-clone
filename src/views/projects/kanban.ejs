@@ -34,24 +34,24 @@
     <p class="text-gray-600"><%= project.description || 'Proyek kolaborasi tim' %></p>
   </div>
   
-  <div class="flex items-center gap-3">
+  <div class="flex items-center gap-2 flex-wrap">
     <button onclick="showCreateTaskModal()" 
-            class="w-full sm:w-auto justify-center flex items-center gap-2 bg-blue-600 hover:bg-blue-700 transition text-white px-5 py-2.5 rounded-2xl text-sm font-medium">
+            class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
       <i class="fas fa-plus"></i> 
-      <span>Buat Tugas Baru</span>
+      <span>Baru</span>
     </button>
     <button onclick="showTemplateModal()" 
-            class="w-full sm:w-auto justify-center flex items-center gap-2 bg-purple-600 hover:bg-purple-700 transition text-white px-5 py-2.5 rounded-2xl text-sm font-medium">
+            class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
       <i class="fas fa-copy"></i> 
-      <span>Dari Template</span>
+      <span>Template</span>
     </button>
     <button onclick="toggleBulkMode()" 
-            class="w-full sm:w-auto justify-center flex items-center gap-2 bg-gray-700 hover:bg-gray-800 transition text-white px-5 py-2.5 rounded-2xl text-sm font-medium">
+            class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-gray-700 hover:bg-gray-800 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
       <i class="fas fa-check-double"></i> 
-      <span>Bulk Select</span>
+      <span>Bulk</span>
     </button>
     <button onclick="document.getElementById('shortcuts-help').classList.toggle('hidden')" 
-            class="p-2.5 rounded-2xl border hover:bg-gray-50 text-gray-500" title="Keyboard shortcuts (?)">
+            class="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border hover:bg-gray-50 text-gray-500" title="Keyboard shortcuts (?)">
       <i class="fas fa-keyboard"></i>
     </button>
   </div>
@@ -79,59 +79,62 @@
 </div>
 
 <!-- Kanban Board -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="kanban-board">
+<div class="flex lg:grid lg:grid-cols-3 gap-4 lg:gap-6 overflow-x-auto pb-4 lg:pb-0 snap-x snap-mandatory" id="kanban-board" style="-webkit-overflow-scrolling:touch">
   <!-- To Do -->
-  <div class="bg-white rounded-3xl p-5 border shadow-sm">
-    <div class="flex items-center justify-between mb-4 px-1">
+  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start">
+    <div class="flex items-center justify-between mb-3 sm:mb-4 px-1">
       <div class="flex items-center gap-2">
-        <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
-        <span class="font-semibold text-lg">To Do</span>
+        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-400 rounded-full"></div>
+        <span class="font-semibold text-sm sm:text-lg">To Do</span>
       </div>
-      <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-mono" id="count-todo">0</span>
+      <span class="bg-gray-100 text-gray-600 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-mono" id="count-todo">0</span>
     </div>
-    <div id="column-TODO" class="kanban-column space-y-3 min-h-[420px] p-2 rounded-2xl bg-gray-50" 
+    <div id="column-TODO" class="kanban-column space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gray-50" 
          ondrop="drop(event, 'TODO')" ondragover="allowDrop(event)">
       <!-- Tasks populated by JS -->
     </div>
   </div>
 
   <!-- In Progress -->
-  <div class="bg-white rounded-3xl p-5 border shadow-sm">
-    <div class="flex items-center justify-between mb-4 px-1">
+  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start">
+    <div class="flex items-center justify-between mb-3 sm:mb-4 px-1">
       <div class="flex items-center gap-2">
-        <div class="w-3 h-3 bg-amber-400 rounded-full"></div>
-        <span class="font-semibold text-lg">In Progress</span>
+        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-amber-400 rounded-full"></div>
+        <span class="font-semibold text-sm sm:text-lg">Doing</span>
       </div>
-      <span class="bg-amber-100 text-amber-600 text-xs px-3 py-1 rounded-full font-mono" id="count-in_progress">0</span>
+      <span class="bg-amber-100 text-amber-600 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-mono" id="count-in_progress">0</span>
     </div>
-    <div id="column-IN_PROGRESS" class="kanban-column space-y-3 min-h-[420px] p-2 rounded-2xl bg-gray-50" 
+    <div id="column-IN_PROGRESS" class="kanban-column space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gray-50" 
          ondrop="drop(event, 'IN_PROGRESS')" ondragover="allowDrop(event)">
     </div>
   </div>
 
   <!-- Done -->
-  <div class="bg-white rounded-3xl p-5 border shadow-sm">
-    <div class="flex items-center justify-between mb-4 px-1">
+  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start">
+    <div class="flex items-center justify-between mb-3 sm:mb-4 px-1">
       <div class="flex items-center gap-2">
-        <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
-        <span class="font-semibold text-lg">Done</span>
+        <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-500 rounded-full"></div>
+        <span class="font-semibold text-sm sm:text-lg">Done</span>
       </div>
-      <span class="bg-emerald-100 text-emerald-600 text-xs px-3 py-1 rounded-full font-mono" id="count-done">0</span>
+      <span class="bg-emerald-100 text-emerald-600 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-mono" id="count-done">0</span>
     </div>
-    <div id="column-DONE" class="kanban-column space-y-3 min-h-[420px] p-2 rounded-2xl bg-gray-50" 
+    <div id="column-DONE" class="kanban-column space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gray-50" 
          ondrop="drop(event, 'DONE')" ondragover="allowDrop(event)">
     </div>
   </div>
 </div>
 
+<!-- Swipe hint (mobile) -->
+<p class="text-center text-xs text-gray-400 mt-2 lg:hidden"><i class="fas fa-arrows-alt-h mr-1"></i>Geser ke kiri/kanan untuk lihat kolom lain</p>
+
 <!-- Chat Section -->
-<div class="mt-10 bg-white rounded-3xl p-6 border shadow-sm">
-  <h3 class="font-semibold text-xl mb-4 flex items-center gap-2">
+<div class="mt-6 sm:mt-10 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border shadow-sm">
+  <h3 class="font-semibold text-base sm:text-xl mb-3 sm:mb-4 flex items-center gap-2">
     <i class="fas fa-comments text-blue-600"></i> 
     Chat Proyek
   </h3>
   
-  <div id="chat-messages" class="h-72 overflow-y-auto bg-gray-50 rounded-2xl p-4 mb-4 space-y-4 text-sm">
+  <div id="chat-messages" class="h-48 sm:h-72 overflow-y-auto bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4 text-xs sm:text-sm">
     <!-- Messages loaded via JS -->
   </div>
   
@@ -153,8 +156,8 @@
 </div>
 
 <!-- Create Task Modal -->
-<div id="createTaskModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-[100]">
-  <div class="bg-white w-full max-w-lg mx-4 rounded-3xl p-8">
+<div id="createTaskModal" class="hidden fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[100]">
+  <div class="bg-white w-full sm:max-w-lg mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 max-h-[85vh] overflow-y-auto">
     <h3 class="text-2xl font-bold mb-6">Buat Tugas Baru</h3>
     
     <form id="createTaskForm" onsubmit="createTask(event)">
@@ -274,7 +277,7 @@ function renderKanban() {
     const labels = (task.labels || []).map(tl => tl.label).filter(Boolean);
 
     const card = document.createElement('div');
-    card.className = 'task-card bg-white border p-4 rounded-2xl cursor-grab active:cursor-grabbing';
+    card.className = 'task-card bg-white border p-3 sm:p-4 rounded-xl sm:rounded-2xl cursor-grab active:cursor-grabbing';
     card.draggable = true;
     card.dataset.id = task.id;
     card.id = `card-${task.id}`;
@@ -284,9 +287,9 @@ function renderKanban() {
 
     // Quick-move button
     let moveBtn = '';
-    if (task.status === 'TODO') moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','IN_PROGRESS')" class="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-semibold hover:bg-amber-200 transition whitespace-nowrap" title="Pindah ke Doing"><i class="fas fa-play mr-1"></i>Mulai</button>`;
-    else if (task.status === 'IN_PROGRESS') moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','DONE')" class="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold hover:bg-emerald-200 transition whitespace-nowrap" title="Tandai Selesai"><i class="fas fa-check mr-1"></i>Selesai</button>`;
-    else moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','TODO')" class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-semibold hover:bg-gray-200 transition whitespace-nowrap" title="Buka Lagi"><i class="fas fa-undo mr-1"></i>Buka</button>`;
+    if (task.status === 'TODO') moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','IN_PROGRESS')" class="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-amber-100 text-amber-700 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold hover:bg-amber-200 transition whitespace-nowrap" title="Pindah ke Doing"><i class="fas fa-play mr-0.5 sm:mr-1"></i>Mulai</button>`;
+    else if (task.status === 'IN_PROGRESS') moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','DONE')" class="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-emerald-100 text-emerald-700 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold hover:bg-emerald-200 transition whitespace-nowrap" title="Tandai Selesai"><i class="fas fa-check mr-0.5 sm:mr-1"></i>Selesai</button>`;
+    else moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','TODO')" class="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-gray-100 text-gray-600 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold hover:bg-gray-200 transition whitespace-nowrap" title="Buka Lagi"><i class="fas fa-undo mr-0.5 sm:mr-1"></i>Buka</button>`;
 
     // Checklist progress
     const checklists = task.checklists || [];
@@ -750,7 +753,7 @@ closePreview = function() {
 
 <!-- Template Modal -->
 <div id="templateModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-3xl p-8 w-full max-w-lg mx-4 shadow-2xl max-h-[80vh] overflow-y-auto">
+  <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 w-full sm:max-w-lg mx-0 sm:mx-4 shadow-2xl max-h-[85vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-2xl font-bold">Buat dari Template</h3>
       <button onclick="hideTemplateModal()" class="p-2 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button>
