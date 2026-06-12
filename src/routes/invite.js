@@ -3,39 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 
-// Landing invite link
-router.get('/:token', async (req, res) => {
-  try {
-    const { token } = req.params;
-
-    const brand = await prisma.company.findUnique({
-      where: { inviteToken: token },
-      include: { workspace: true }
-    });
-
-    if (!brand) {
-      return res.render('invite/invalid', { title: 'Link Tidak Valid' });
-    }
-
-    // Simpan token di session
-    req.session.inviteToken = token;
-
-    // Kalau sudah login, langsung proses join
-    if (req.session.user) {
-      return res.redirect('/invite/join');
-    }
-
-    // Belum login, tampilkan landing page
-    res.render('invite/landing', {
-      title: `Bergabung ke ${brand.name}`,
-      brand,
-      workspace: brand.workspace
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Server error');
-  }
-});
+// PENTING: /join harus SEBELUM /:token agar tidak tertangkap sebagai token
 
 // Proses join (setelah login/register)
 router.get('/join', async (req, res) => {
@@ -96,7 +64,41 @@ router.get('/join', async (req, res) => {
   }
 });
 
-// Generate/regenerate token (owner/admin only)
+// Landing invite link
+router.get('/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const brand = await prisma.company.findUnique({
+      where: { inviteToken: token },
+      include: { workspace: true }
+    });
+
+    if (!brand) {
+      return res.render('invite/invalid', { title: 'Link Tidak Valid' });
+    }
+
+    // Simpan token di session
+    req.session.inviteToken = token;
+
+    // Kalau sudah login, langsung proses join
+    if (req.session.user) {
+      return res.redirect('/invite/join');
+    }
+
+    // Belum login, tampilkan landing page
+    res.render('invite/landing', {
+      title: `Bergabung ke ${brand.name}`,
+      brand,
+      workspace: brand.workspace
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+// Generate/regenerate token (owner only)
 router.post('/brand/:brandId/generate-token', async (req, res) => {
   try {
     if (!req.session.user || req.session.user.platformRole !== 'owner') {
