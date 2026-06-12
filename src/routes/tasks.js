@@ -68,7 +68,7 @@ router.get('/:id', async (req, res) => {
       include: {
         project: { include: { company: true } },
         assignee: true,
-        checklists: { orderBy: { position: 'asc' } },
+        checklists: { orderBy: { position: 'asc' }, include: { children: { orderBy: { position: 'asc' } } } },
         comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
         labels: { include: { label: true } },
         attachments: { include: { uploadedBy: true }, orderBy: { createdAt: 'desc' } },
@@ -459,3 +459,59 @@ router.post('/:id/labels/:labelId/remove', async (req, res) => {
 });
 
 module.exports = router;
+
+// Get members for @mention autocomplete
+router.get('/:id/members', async (req, res) => {
+  try {
+    const task = await prisma.task.findUnique({
+      where: { id: req.params.id },
+      select: { project: { select: { companyId: true } } }
+    });
+    if (!task) return res.json([]);
+
+    const members = await prisma.membership.findMany({
+      where: { companyId: task.project.companyId },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    });
+
+    const q = (req.query.q || '').toLowerCase();
+    const filtered = q
+      ? members.filter(m => m.user.name.toLowerCase().includes(q) || m.user.email.toLowerCase().includes(q))
+      : members;
+
+    res.json(filtered.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email })));
+  } catch (error) {
+    res.status(500).json([]);
+  }
+});
+
+// Toggle reaction on comment (Cheers)
+router.post('/:id/comments/:commentId/reactions', async (req, res) => {
+  try {
+    const { emoji } = req.body;
+    const userId = req.session.user.id;
+    const comment = await prisma.comment.findUnique({ where: { id: req.params.commentId } });
+    if (!comment) return res.status(404).json({ error: 'Komentar tidak ditemukan' });
+
+    const reactions = comment.reactions || {};
+    const users = reactions[emoji] || [];
+    const idx = users.indexOf(userId);
+
+    if (idx > -1) {
+      users.splice(idx, 1);
+      if (users.length === 0) delete reactions[emoji];
+      else reactions[emoji] = users;
+    } else {
+      reactions[emoji] = [...users, userId];
+    }
+
+    await prisma.comment.update({
+      where: { id: req.params.commentId },
+      data: { reactions }
+    });
+
+    res.json({ success: true, reactions: Object.entries(reactions) });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal update reaction' });
+  }
+});

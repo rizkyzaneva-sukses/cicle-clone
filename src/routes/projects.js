@@ -154,7 +154,8 @@ router.get('/:id', async (req, res) => {
       tasks: {
         include: {
           assignee: true,
-          labels: { include: { label: true } }
+          labels: { include: { label: true } },
+          checklists: { select: { id: true, isDone: true } }
         },
         orderBy: [{ status: 'asc' }, { position: 'asc' }]
       }

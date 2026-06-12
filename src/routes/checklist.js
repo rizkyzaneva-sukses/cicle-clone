@@ -10,8 +10,9 @@ router.use(requireAuth);
 router.get('/task/:taskId', async (req, res) => {
   try {
     const checklists = await prisma.checklistItem.findMany({
-      where: { taskId: req.params.taskId },
-      orderBy: { position: 'asc' }
+      where: { taskId: req.params.taskId, parentId: null },
+      orderBy: { position: 'asc' },
+      include: { children: { orderBy: { position: 'asc' } } }
     });
     res.json(checklists);
   } catch (error) {
@@ -22,12 +23,12 @@ router.get('/task/:taskId', async (req, res) => {
 // Add new checklist item
 router.post('/task/:taskId', async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, parentId } = req.body;
     const taskId = req.params.taskId;
 
-    // Get max position
+    // Get max position (dalam parent yang sama)
     const maxPos = await prisma.checklistItem.aggregate({
-      where: { taskId },
+      where: { taskId, parentId: parentId || null },
       _max: { position: true }
     });
 
@@ -35,6 +36,7 @@ router.post('/task/:taskId', async (req, res) => {
       data: {
         content,
         taskId,
+        parentId: parentId || null,
         position: (maxPos._max.position || 0) + 1
       }
     });

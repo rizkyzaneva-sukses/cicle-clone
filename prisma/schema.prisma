@@ -29,6 +29,7 @@ model User {
   workspaceRoles  WorkspacePartner[]
   uploads        Attachment[]
   activityLogs   ActivityLog[]
+  chatReactions  ChatReaction[]
 }
 
 model Workspace {
@@ -145,10 +146,16 @@ model ChecklistItem {
   content   String
   isDone    Boolean  @default(false)
   taskId    String
+  parentId  String?  // sub-checklist
   position  Int      @default(0)
   createdAt DateTime @default(now())
 
-  task Task @relation(fields: [taskId], references: [id])
+  task     Task            @relation(fields: [taskId], references: [id])
+  parent   ChecklistItem?  @relation("SubChecklist", fields: [parentId], references: [id], onDelete: Cascade)
+  children ChecklistItem[] @relation("SubChecklist")
+
+  @@index([taskId])
+  @@index([parentId])
 }
 
 model Comment {
@@ -156,10 +163,24 @@ model Comment {
   content   String
   taskId    String
   userId    String
+  reactions Json?    // { "👍": ["userId1","userId2"], "🔥": ["userId1"] }
   createdAt DateTime @default(now())
 
   task Task @relation(fields: [taskId], references: [id])
   user User @relation(fields: [userId], references: [id])
+}
+
+model ChatReaction {
+  id            String   @id @default(cuid())
+  chatMessageId String
+  userId        String
+  emoji         String
+  createdAt     DateTime @default(now())
+
+  chatMessage ChatMessage @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatMessageId, userId, emoji])
 }
 
 model ChatMessage {
@@ -169,9 +190,10 @@ model ChatMessage {
   userId    String
   createdAt DateTime @default(now())
 
-  project     Project      @relation(fields: [projectId], references: [id])
-  user        User         @relation(fields: [userId], references: [id])
+  project   Project         @relation(fields: [projectId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
   attachments Attachment[]
+  reactions   ChatReaction[]
 }
 
 model DirectMessage {

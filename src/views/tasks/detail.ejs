@@ -168,17 +168,46 @@
 
       <div id="checklist-list" class="space-y-2 mb-4">
         <% task.checklists.forEach(item => { %>
-          <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group" id="check-<%= item.id %>">
-            <input type="checkbox" <%= item.isDone ? 'checked' : '' %>
-              onchange="toggleCheck('<%= item.id %>', this)"
-              class="w-4 h-4 accent-blue-600 cursor-pointer">
-            <span class="flex-1 text-sm <%= item.isDone ? 'line-through text-gray-400' : 'text-gray-700' %>">
-              <%= item.content %>
-            </span>
-            <button onclick="deleteCheck('<%= item.id %>')"
-              class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
-              <i class="fas fa-times"></i>
-            </button>
+          <div class="checklist-group" id="check-<%= item.id %>">
+            <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group cursor-pointer">
+              <input type="checkbox" <%= item.isDone ? 'checked' : '' %>
+                onchange="toggleCheck('<%= item.id %>', this)"
+                class="w-4 h-4 accent-blue-600 cursor-pointer">
+              <span class="flex-1 text-sm <%= item.isDone ? 'line-through text-gray-400' : 'text-gray-700' %>">
+                <%= item.content %>
+              </span>
+              <button onclick="event.stopPropagation(); showSubCheckForm('<%= item.id %>')" class="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-600 text-xs transition" title="Tambah sub-checklist">
+                <i class="fas fa-plus"></i>
+              </button>
+              <button onclick="deleteCheck('<%= item.id %>')"
+                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <% if (item.children && item.children.length > 0) { %>
+              <div class="ml-8 space-y-1 mt-1">
+                <% item.children.forEach(sub => { %>
+                  <div class="flex items-center gap-3 p-1.5 rounded-lg hover:bg-gray-50 group" id="check-<%= sub.id %>">
+                    <input type="checkbox" <%= sub.isDone ? 'checked' : '' %>
+                      onchange="toggleCheck('<%= sub.id %>', this)"
+                      class="w-3.5 h-3.5 accent-blue-600 cursor-pointer">
+                    <span class="flex-1 text-xs <%= sub.isDone ? 'line-through text-gray-400' : 'text-gray-600' %>">
+                      <%= sub.content %>
+                    </span>
+                    <button onclick="deleteCheck('<%= sub.id %>')"
+                      class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+            <div id="sub-form-<%= item.id %>" class="hidden ml-8 mt-1 flex gap-2">
+              <input type="text" placeholder="Sub-checklist..."
+                class="flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400"
+                onkeypress="if(event.key==='Enter') addSubCheck('<%= item.id %>', this)">
+              <button onclick="addSubCheck('<%= item.id %>', this.previousElementSibling)" class="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700"><i class="fas fa-plus"></i></button>
+            </div>
           </div>
         <% }) %>
       </div>
@@ -221,7 +250,32 @@
                   <% } %>
                 </div>
               </div>
-              <p class="text-sm text-gray-700"><%= comment.content %></p>
+              <p class="text-sm text-gray-700 comment-content"><%= comment.content %></p>
+              <!-- Cheers reactions -->
+              <div class="flex items-center gap-1 mt-2 flex-wrap" id="reactions-<%= comment.id %>">
+                <% const reactions = comment.reactions || {}; %>
+                <% Object.entries(reactions).forEach(([emoji, users]) => { %>
+                  <% if (users && users.length > 0) { %>
+                    <button onclick="toggleReaction('<%= comment.id %>', '<%= emoji %>')"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition <%= users.includes(currentUserId) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-white border-gray-200 hover:bg-gray-100' %>">
+                      <span><%= emoji %></span><span class="font-medium"><%= users.length %></span>
+                    </button>
+                  <% } %>
+                <% }) %>
+                <div class="relative">
+                  <button onclick="toggleCheerMenu('<%= comment.id %>')" class="w-6 h-6 rounded-full bg-white border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-xs text-gray-400 transition">
+                    <i class="fas fa-smile"></i>
+                  </button>
+                  <div id="cheer-menu-<%= comment.id %>" class="hidden absolute bottom-8 left-0 bg-white border rounded-xl shadow-lg p-2 flex gap-1 z-10">
+                    <button onclick="toggleReaction('<%= comment.id %>', '👍')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">👍</button>
+                    <button onclick="toggleReaction('<%= comment.id %>', '🔥')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">🔥</button>
+                    <button onclick="toggleReaction('<%= comment.id %>', '❤️')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">❤️</button>
+                    <button onclick="toggleReaction('<%= comment.id %>', '😂')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">😂</button>
+                    <button onclick="toggleReaction('<%= comment.id %>', '🎉')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">🎉</button>
+                    <button onclick="toggleReaction('<%= comment.id %>', '👀')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">👀</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         <% }) %>
@@ -425,6 +479,131 @@ function updateChecklistMeta() {
   if (bar && all.length > 0) bar.style.width = `${Math.round(done.length/all.length*100)}%`;
 }
 
+// Sub-checklist
+function showSubCheckForm(parentId) {
+  const form = document.getElementById(`sub-form-${parentId}`);
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) form.querySelector('input').focus();
+}
+
+async function addSubCheck(parentId, input) {
+  const content = input.value.trim();
+  if (!content) return;
+  const res = await fetch(`/checklist/task/${taskId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, parentId })
+  });
+  const data = await res.json();
+  if (data.success) {
+    const group = document.getElementById(`check-${parentId}`);
+    let subList = group.querySelector('.sub-checklist');
+    if (!subList) {
+      subList = document.createElement('div');
+      subList.className = 'sub-checklist ml-8 space-y-1 mt-1';
+      group.insertBefore(subList, group.lastElementChild);
+    }
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-3 p-1.5 rounded-lg hover:bg-gray-50 group';
+    div.id = `check-${data.item.id}`;
+    div.innerHTML = `
+      <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-3.5 h-3.5 accent-blue-600 cursor-pointer">
+      <span class="flex-1 text-xs text-gray-600">${escapeHtml(data.item.content)}</span>
+      <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition"><i class="fas fa-times"></i></button>
+    `;
+    subList.appendChild(div);
+    input.value = '';
+    updateChecklistMeta();
+  }
+}
+
+// Cheers reactions
+function toggleCheerMenu(commentId) {
+  document.querySelectorAll('[id^="cheer-menu-"]').forEach(el => el.classList.add('hidden'));
+  const menu = document.getElementById(`cheer-menu-${commentId}`);
+  menu.classList.toggle('hidden');
+}
+
+async function toggleReaction(commentId, emoji) {
+  const res = await fetch(`/tasks/${taskId}/comments/${commentId}/reactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emoji })
+  });
+  const data = await res.json();
+  if (data.success) {
+    const container = document.getElementById(`reactions-${commentId}`);
+    container.innerHTML = data.reactions.map(([e, users]) => `
+      <button onclick="toggleReaction('${commentId}', '${e}')"
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition ${users.includes(currentUser.id) ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-white border-gray-200 hover:bg-gray-100'}">
+        <span>${e}</span><span class="font-medium">${users.length}</span>
+      </button>
+    `).join('') + `
+      <div class="relative">
+        <button onclick="toggleCheerMenu('${commentId}')" class="w-6 h-6 rounded-full bg-white border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-xs text-gray-400 transition"><i class="fas fa-smile"></i></button>
+        <div id="cheer-menu-${commentId}" class="hidden absolute bottom-8 left-0 bg-white border rounded-xl shadow-lg p-2 flex gap-1 z-10">
+          <button onclick="toggleReaction('${commentId}', '👍')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">👍</button>
+          <button onclick="toggleReaction('${commentId}', '🔥')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">🔥</button>
+          <button onclick="toggleReaction('${commentId}', '❤️')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">❤️</button>
+          <button onclick="toggleReaction('${commentId}', '😂')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">😂</button>
+          <button onclick="toggleReaction('${commentId}', '🎉')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">🎉</button>
+          <button onclick="toggleReaction('${commentId}', '👀')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">👀</button>
+        </div>
+      </div>
+    `;
+    toggleCheerMenu(commentId);
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[id^="cheer-menu"]') && !e.target.closest('[onclick*="toggleCheerMenu"]')) {
+    document.querySelectorAll('[id^="cheer-menu-"]').forEach(el => el.classList.add('hidden'));
+  }
+});
+
+// @mention in comments
+function setupMention(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.addEventListener('input', async (e) => {
+    const val = input.value;
+    const atPos = val.lastIndexOf('@');
+    if (atPos === -1) { removeDropdown(); return; }
+    const query = val.slice(atPos + 1);
+    if (query.length < 1) { removeDropdown(); return; }
+    const res = await fetch(`/tasks/${taskId}/members?q=${encodeURIComponent(query)}`);
+    const members = await res.json();
+    showDropdown(members, input, atPos);
+  });
+}
+
+function showDropdown(members, input, atPos) {
+  removeDropdown();
+  if (!members.length) return;
+  const dd = document.createElement('div');
+  dd.id = 'mention-dropdown';
+  dd.className = 'absolute z-50 bg-white border rounded-xl shadow-lg max-h-40 overflow-y-auto';
+  dd.style.cssText = 'bottom:100%;left:0;margin-bottom:4px;width:220px;';
+  members.forEach(m => {
+    const opt = document.createElement('button');
+    opt.className = 'w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex items-center gap-2';
+    opt.innerHTML = `<span class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">${m.name.charAt(0)}</span>${escapeHtml(m.name)}`;
+    opt.onclick = () => {
+      const val = input.value;
+      input.value = val.slice(0, atPos) + '@' + m.name + ' ';
+      removeDropdown();
+      input.focus();
+    };
+    dd.appendChild(opt);
+  });
+  input.parentElement.style.position = 'relative';
+  input.parentElement.appendChild(dd);
+}
+
+function removeDropdown() {
+  document.getElementById('mention-dropdown')?.remove();
+}
+
 // Comments
 async function addComment() {
   const input = document.getElementById('comment-input');
@@ -457,7 +636,20 @@ async function addComment() {
             </button>
           </div>
         </div>
-        <p class="text-sm text-gray-700">${escapeHtml(data.comment.content)}</p>
+        <p class="text-sm text-gray-700 comment-content">${escapeHtml(data.comment.content)}</p>
+        <div class="flex items-center gap-1 mt-2 flex-wrap" id="reactions-${data.comment.id}">
+          <div class="relative">
+            <button onclick="toggleCheerMenu('${data.comment.id}')" class="w-6 h-6 rounded-full bg-white border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-xs text-gray-400 transition"><i class="fas fa-smile"></i></button>
+            <div id="cheer-menu-${data.comment.id}" class="hidden absolute bottom-8 left-0 bg-white border rounded-xl shadow-lg p-2 flex gap-1 z-10">
+              <button onclick="toggleReaction('${data.comment.id}', '👍')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">👍</button>
+              <button onclick="toggleReaction('${data.comment.id}', '🔥')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">🔥</button>
+              <button onclick="toggleReaction('${data.comment.id}', '❤️')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">❤️</button>
+              <button onclick="toggleReaction('${data.comment.id}', '😂')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">😂</button>
+              <button onclick="toggleReaction('${data.comment.id}', '🎉')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">🎉</button>
+              <button onclick="toggleReaction('${data.comment.id}', '👀')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">👀</button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
     list.appendChild(div);
@@ -478,6 +670,9 @@ async function confirmDelete(e, id, projectId) {
   window.location.href = `/projects/${projectId}`;
   return false;
 }
+
+// Initialize @mention on comment input
+document.addEventListener('DOMContentLoaded', () => setupMention('comment-input'));
 </script>
 
 <%- include('../partials/footer') %>

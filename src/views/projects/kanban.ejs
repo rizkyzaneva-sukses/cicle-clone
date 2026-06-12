@@ -243,6 +243,18 @@ function renderKanban() {
     card.draggable = true;
     card.dataset.id = task.id;
     card.ondragstart = (e) => drag(e, task.id);
+    card.onclick = () => openPreview(task.id);
+
+    // Quick-move button
+    let moveBtn = '';
+    if (task.status === 'TODO') moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','IN_PROGRESS')" class="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-semibold hover:bg-amber-200 transition whitespace-nowrap" title="Pindah ke Doing"><i class="fas fa-play mr-1"></i>Mulai</button>`;
+    else if (task.status === 'IN_PROGRESS') moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','DONE')" class="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold hover:bg-emerald-200 transition whitespace-nowrap" title="Tandai Selesai"><i class="fas fa-check mr-1"></i>Selesai</button>`;
+    else moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','TODO')" class="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-semibold hover:bg-gray-200 transition whitespace-nowrap" title="Buka Lagi"><i class="fas fa-undo mr-1"></i>Buka</button>`;
+
+    // Checklist progress
+    const checklists = task.checklists || [];
+    const doneCount = checklists.filter(c => c.isDone).length;
+    const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
 
     card.innerHTML = `
       <div class="flex justify-between items-start mb-2 gap-2">
@@ -251,12 +263,17 @@ function renderKanban() {
       </div>
       ${task.description ? `<p class="text-xs text-gray-500 line-clamp-2 mb-2">${escapeHtml(task.description)}</p>` : ''}
       ${labels.length ? `<div class="flex flex-wrap gap-1 mb-2">${labels.map(label => `<span class="text-[10px] font-semibold rounded-full px-2 py-0.5 text-white" style="background:${escapeHtml(label.color)}">${escapeHtml(label.name)}</span>`).join('')}</div>` : ''}
+      ${checklists.length > 0 ? `<div class="flex items-center gap-2 mb-2">
+        <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all ${checkPct === 100 ? 'bg-emerald-500' : 'bg-blue-500'}" style="width:${checkPct}%"></div></div>
+        <span class="text-[10px] text-gray-400 whitespace-nowrap">${doneCount}/${checklists.length}</span>
+      </div>` : ''}
       <div class="flex items-center justify-between text-xs mt-2 gap-2">
         <div class="flex items-center gap-1.5 flex-wrap">
           ${prio.label ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${prio.cls}">${prio.label}</span>` : ''}
           ${task.dueDate ? `<span class="${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}"><i class="fas fa-clock mr-0.5"></i>${new Date(task.dueDate).toLocaleDateString('id-ID',{month:'short',day:'numeric'})}</span>` : ''}
         </div>
-        <div class="flex gap-0.5 shrink-0">
+        <div class="flex items-center gap-1 shrink-0">
+          ${moveBtn}
           <a href="/tasks/${task.id}" onclick="event.stopPropagation()" class="p-1.5 text-gray-400 hover:text-blue-600" title="Lihat Detail"><i class="fas fa-external-link-alt fa-xs"></i></a>
           <button onclick="event.stopPropagation(); deleteTask('${task.id}')" class="p-1.5 text-gray-400 hover:text-red-500" title="Hapus"><i class="fas fa-trash fa-xs"></i></button>
         </div>
@@ -277,6 +294,77 @@ let draggedTaskId = null;
 function drag(ev, taskId) {
   draggedTaskId = taskId;
   ev.dataTransfer.setData("text", taskId);
+}
+
+// Quick-move status button
+async function moveStatus(taskId, newStatus) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const oldStatus = task.status;
+  task.status = newStatus;
+  renderKanban();
+  try {
+    const res = await fetch(`/tasks/${taskId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) throw new Error('failed');
+    socket.emit('task-updated', { taskId, status: newStatus, projectId });
+  } catch (e) {
+    task.status = oldStatus;
+    renderKanban();
+  }
+}
+
+// Task preview panel
+function openPreview(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const checklists = task.checklists || [];
+  const doneCount = checklists.filter(c => c.isDone).length;
+  const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
+  const pendingItems = checklists.filter(c => !c.isDone);
+
+  const PRIO_MAP = { URGENT: { label: '🔴 Urgent', cls: 'bg-red-100 text-red-700' }, HIGH: { label: '🟠 High', cls: 'bg-orange-100 text-orange-700' }, MEDIUM: { label: '🟡 Medium', cls: 'bg-yellow-100 text-yellow-700' }, LOW: { label: '🟢 Low', cls: 'bg-green-100 text-green-700' }, NONE: { label: '', cls: '' } };
+  const prio = PRIO_MAP[task.priority] || PRIO_MAP.NONE;
+  const STATUS_MAP = { TODO: '📋 To Do', IN_PROGRESS: '🔄 Doing', DONE: '✅ Done' };
+
+  document.getElementById('preview-title').textContent = task.title;
+  document.getElementById('preview-status').textContent = STATUS_MAP[task.status] || task.status;
+  document.getElementById('preview-priority').innerHTML = prio.label ? `<span class="px-2 py-0.5 rounded-full text-xs font-semibold ${prio.cls}">${prio.label}</span>` : '-';
+  document.getElementById('preview-due').textContent = task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+  document.getElementById('preview-assignee').textContent = task.assignee ? task.assignee.name : '-';
+  document.getElementById('preview-desc').textContent = task.description || '-';
+
+  // Checklist progress
+  document.getElementById('preview-check-pct').textContent = checklists.length > 0 ? `${checkPct}%` : '-';
+  document.getElementById('preview-check-bar').style.width = `${checkPct}%`;
+  document.getElementById('preview-check-bar').className = `h-full rounded-full transition-all ${checkPct === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`;
+
+  // Pending items
+  const pendingList = document.getElementById('preview-pending');
+  pendingList.innerHTML = '';
+  if (pendingItems.length > 0) {
+    pendingItems.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-2 text-sm text-gray-600';
+      div.innerHTML = `<i class="far fa-square text-gray-400"></i><span>${escapeHtml(item.content)}</span>`;
+      pendingList.appendChild(div);
+    });
+  } else if (checklists.length > 0) {
+    pendingList.innerHTML = '<p class="text-sm text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Semua selesai!</p>';
+  } else {
+    pendingList.innerHTML = '<p class="text-sm text-gray-400">Belum ada checklist</p>';
+  }
+
+  document.getElementById('preview-detail-link').href = `/tasks/${task.id}`;
+  document.getElementById('preview-panel').classList.remove('translate-x-full');
+}
+
+function closePreview() {
+  document.getElementById('preview-panel').classList.add('translate-x-full');
 }
 
 function allowDrop(ev) {
@@ -483,4 +571,74 @@ function init() {
 
 window.onload = init;
 </script>
+
+<!-- Task Preview Panel (slide-in from right) -->
+<div id="preview-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+  <div class="flex items-center justify-between px-6 py-4 border-b">
+    <h3 class="text-lg font-bold text-gray-900 truncate flex-1" id="preview-title"></h3>
+    <button onclick="closePreview()" class="ml-3 p-2 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times text-lg"></i></button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-6 space-y-5">
+    <!-- Status & Priority -->
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="text-xs text-gray-400 font-medium mb-1">Status</div>
+        <div class="text-sm font-semibold" id="preview-status"></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-400 font-medium mb-1">Priority</div>
+        <div id="preview-priority"></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-400 font-medium mb-1">Due Date</div>
+        <div class="text-sm" id="preview-due"></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-400 font-medium mb-1">Assignee</div>
+        <div class="text-sm" id="preview-assignee"></div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div>
+      <div class="text-xs text-gray-400 font-medium mb-1">Deskripsi</div>
+      <p class="text-sm text-gray-700" id="preview-desc"></p>
+    </div>
+
+    <!-- Checklist Progress -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-gray-400 font-medium">Checklist Progress</span>
+        <span class="text-sm font-bold text-blue-600" id="preview-check-pct"></span>
+      </div>
+      <div class="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+        <div class="h-full bg-blue-500 rounded-full transition-all" id="preview-check-bar" style="width:0%"></div>
+      </div>
+      <div class="text-xs text-gray-400 font-medium mb-2">Belum Selesai:</div>
+      <div class="space-y-1.5" id="preview-pending"></div>
+    </div>
+  </div>
+  <div class="border-t p-4">
+    <a id="preview-detail-link" href="#" class="block w-full py-3 bg-blue-600 text-white rounded-2xl text-center font-semibold hover:bg-blue-700 transition">
+      <i class="fas fa-external-link-alt mr-2"></i>Buka Detail Task
+    </a>
+  </div>
+</div>
+<!-- Overlay -->
+<div id="preview-overlay" onclick="closePreview()" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+<script>
+// Overlay toggle
+const _origOpen = openPreview;
+openPreview = function(taskId) {
+  document.getElementById('preview-overlay').classList.remove('hidden');
+  _origOpen(taskId);
+};
+const _origClose = closePreview;
+closePreview = function() {
+  document.getElementById('preview-overlay').classList.add('hidden');
+  _origClose();
+};
+</script>
+
 <%- include('../partials/footer') %>
