@@ -3,27 +3,36 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth, requireOwner } = require('../middleware/auth');
 const { uniqueSlug } = require('../lib/slug');
+const { cleanupOrphanRecords } = require('../lib/maintenance');
 
 router.use(requireAuth, requireOwner);
 
 // Semua brand + partner per brand
 router.get('/', async (req, res) => {
-  const brands = await prisma.company.findMany({
-    include: {
-      partnerAccess: { include: { user: true } },
-      memberships: true,
-      projects: true
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+  try {
+    await cleanupOrphanRecords();
 
-  // Semua user yang bisa dijadikan partner
-  const allUsers = await prisma.user.findMany({
-    where: { platformRole: { in: ['partner', 'user'] } },
-    orderBy: { name: 'asc' }
-  });
+    const brands = await prisma.company.findMany({
+      include: {
+        partnerAccess: { include: { user: true } },
+        memberships: true,
+        projects: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
-  res.render('brands/index', { title: 'Kelola Brand', brands, allUsers });
+    // Semua user yang bisa dijadikan partner
+    const allUsers = await prisma.user.findMany({
+      where: { platformRole: { in: ['partner', 'user'] } },
+      orderBy: { name: 'asc' }
+    });
+
+    res.render('brands/index', { title: 'Kelola Brand', brands, allUsers });
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal membuka daftar brand');
+    res.redirect('/');
+  }
 });
 
 // Buat brand baru

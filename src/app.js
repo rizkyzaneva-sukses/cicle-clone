@@ -8,11 +8,13 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
+const { cleanupOrphanRecords } = require('./lib/maintenance');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 app.set('io', io);
+let maintenancePromise = null;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -43,6 +45,12 @@ app.use(async (req, res, next) => {
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
+      maintenancePromise ||= cleanupOrphanRecords().catch((err) => {
+        maintenancePromise = null;
+        console.error('Maintenance cleanup failed:', err);
+      });
+      await maintenancePromise;
+
       if (isConfiguredOwner(req.session.user.email) && platformRole !== 'owner') {
         await prisma.user.update({
           where: { id: userId },
@@ -102,11 +110,12 @@ app.use('/admin', require('./routes/admin'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {
-  if (!req.session.user) return res.redirect('/auth/login');
+  try {
+    if (!req.session.user) return res.redirect('/auth/login');
 
-  const { id: userId, platformRole } = req.session.user;
+    const { id: userId, platformRole } = req.session.user;
 
-  if (platformRole === 'owner') {
+    if (platformRole === 'owner') {
     // Owner: semua brand + statistik global
     const brands = await prisma.company.findMany({
       include: {
@@ -124,13 +133,13 @@ app.get('/', async (req, res) => {
       prisma.membership.count()
     ]);
 
-    return res.render('dashboard-owner', {
+      return res.render('dashboard-owner', {
       title: 'Dashboard Owner',
       brands, totalTasks, tasksDone, tasksPending, totalMembers
-    });
-  }
+      });
+    }
 
-  if (platformRole === 'partner') {
+    if (platformRole === 'partner') {
     // Partner: brand yang dia kelola
     const partnerBrands = await prisma.partnerAccess.findMany({
       where: { userId },
@@ -147,34 +156,38 @@ app.get('/', async (req, res) => {
       prisma.task.count({ where: { project: { companyId: { in: brandIds } }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
     ]);
 
-    return res.render('dashboard-partner', {
+      return res.render('dashboard-partner', {
       title: 'Dashboard Partner',
       brands: partnerBrands.map(p => p.company),
       tasksDone, tasksPending
+      });
+    }
+
+    // Admin/Member: brand mereka saja
+    const memberships = await prisma.membership.findMany({
+      where: { userId },
+      include: { company: true }
     });
+    const companies = memberships.map(m => m.company);
+
+    let projects = [], tasksDone = 0, tasksPending = 0;
+    if (companies.length > 0) {
+      const companyId = companies[0].id;
+      [projects, tasksDone, tasksPending] = await Promise.all([
+        prisma.project.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' }, take: 6 }),
+        prisma.task.count({ where: { project: { companyId }, status: 'DONE' } }),
+        prisma.task.count({ where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
+      ]);
+    }
+
+    res.render('dashboard', {
+      title: 'Dashboard',
+      companies, projects, activeCompany: companies[0] || null, tasksDone, tasksPending
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Gagal membuka dashboard. Coba refresh beberapa saat lagi.');
   }
-
-  // Admin/Member: brand mereka saja
-  const memberships = await prisma.membership.findMany({
-    where: { userId },
-    include: { company: true }
-  });
-  const companies = memberships.map(m => m.company);
-
-  let projects = [], tasksDone = 0, tasksPending = 0;
-  if (companies.length > 0) {
-    const companyId = companies[0].id;
-    [projects, tasksDone, tasksPending] = await Promise.all([
-      prisma.project.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' }, take: 6 }),
-      prisma.task.count({ where: { project: { companyId }, status: 'DONE' } }),
-      prisma.task.count({ where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
-    ]);
-  }
-
-  res.render('dashboard', {
-    title: 'Dashboard',
-    companies, projects, activeCompany: companies[0] || null, tasksDone, tasksPending
-  });
 });
 
 // Socket.io
