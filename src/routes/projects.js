@@ -107,7 +107,7 @@ router.post('/create', requireAdmin, async (req, res) => {
     });
 
     req.flash('success', 'Proyek berhasil dibuat!');
-    res.redirect('/');
+    res.redirect(`/projects/${project.id}`);
   } catch (error) {
     console.error(error);
     req.flash('error', 'Gagal membuat proyek');
@@ -155,7 +155,7 @@ router.get('/:id', async (req, res) => {
         include: {
           assignee: true,
           labels: { include: { label: true } },
-          checklists: { select: { id: true, isDone: true } }
+          checklists: { select: { id: true, content: true, isDone: true } }
         },
         orderBy: [{ status: 'asc' }, { position: 'asc' }]
       }

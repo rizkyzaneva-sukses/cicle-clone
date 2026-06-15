@@ -490,7 +490,10 @@ async function createTask(e) {
 
     const result = await res.json();
     if (result.success) {
-      tasks.push(result.task);
+      const newTask = result.task;
+      newTask.labels = newTask.labels || [];
+      newTask.checklists = newTask.checklists || [];
+      tasks.push(newTask);
       renderKanban();
       hideCreateTaskModal();
       form.reset();

@@ -17,6 +17,7 @@
     <% } %>
 
     <form method="POST" action="/auth/register">
+      <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : '/' %>">
       <div class="space-y-5">
         <div>
           <label class="text-sm font-medium">Nama Lengkap</label>

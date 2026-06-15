@@ -34,23 +34,31 @@ async function getContacts(user) {
     ...workspaceAccess.flatMap(access => access.workspace.brands.map(brand => brand.id))
   ])];
 
-  if (companyIds.length === 0) return [];
-
-  const [memberRows, partnerRows, owners] = await Promise.all([
-    prisma.membership.findMany({
+  const [memberRows, partnerRows, owners, dmContacts] = await Promise.all([
+    companyIds.length > 0 ? prisma.membership.findMany({
       where: { companyId: { in: companyIds } },
       include: { user: true }
-    }),
-    prisma.partnerAccess.findMany({
+    }) : [],
+    companyIds.length > 0 ? prisma.partnerAccess.findMany({
       where: { companyId: { in: companyIds } },
       include: { user: true }
-    }),
-    prisma.user.findMany({ where: { platformRole: 'owner' } })
+    }) : [],
+    prisma.user.findMany({ where: { platformRole: 'owner' } }),
+    prisma.directMessage.findMany({
+      where: { OR: [{ receiverId: user.id }, { senderId: user.id }] },
+      select: { senderId: true, receiverId: true, sender: true, receiver: true },
+      distinct: ['senderId', 'receiverId']
+    })
   ]);
 
   const map = new Map();
   [...memberRows.map(m => m.user), ...partnerRows.map(p => p.user), ...owners].forEach(contact => {
     if (contact.id !== user.id) map.set(contact.id, contact);
+  });
+  dmContacts.forEach(dm => {
+    [dm.sender, dm.receiver].forEach(contact => {
+      if (contact && contact.id !== user.id) map.set(contact.id, contact);
+    });
   });
 
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -59,9 +67,18 @@ async function getContacts(user) {
 async function renderInbox(req, res, selectedUserId = null) {
   const currentUser = req.session.user;
   const contacts = await getContacts(currentUser);
-  const selectedUser = selectedUserId
+  let selectedUser = selectedUserId
     ? contacts.find(contact => contact.id === selectedUserId) || null
     : contacts[0] || null;
+
+  // If user came from a notification link, load the sender even if not in contacts yet
+  if (selectedUserId && !selectedUser) {
+    selectedUser = await prisma.user.findUnique({ where: { id: selectedUserId } }) || null;
+    if (selectedUser && !contacts.some(c => c.id === selectedUser.id)) {
+      contacts.push(selectedUser);
+      contacts.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
 
   let messages = [];
   if (selectedUser) {

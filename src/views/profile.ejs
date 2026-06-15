@@ -49,7 +49,7 @@
   </div>
 
   <!-- Change Password -->
-  <div class="bg-white border rounded-3xl p-6 shadow-sm">
+  <div class="bg-white border rounded-3xl p-6 mb-5 shadow-sm">
     <h2 class="font-semibold text-lg mb-5 flex items-center gap-2">
       <i class="fas fa-lock text-blue-600"></i> Ganti Password
     </h2>
@@ -75,6 +75,28 @@
       </button>
     </form>
   </div>
+
+  <% if (user.platformRole === 'owner') { %>
+  <!-- Reset Data Platform (Owner Only) -->
+  <div class="bg-red-50 border border-red-200 rounded-3xl p-6">
+    <h2 class="font-semibold text-lg mb-1 flex items-center gap-2 text-red-700">
+      <i class="fas fa-exclamation-triangle text-red-600"></i> Reset Data Platform
+    </h2>
+    <p class="text-sm text-red-600 mb-5">Hapus semua brand, proyek, task, chat, notifikasi, dan user dummy. Akun yang dipertahankan akan tetap menjadi owner.</p>
+    <form action="/admin/reset-data" method="POST" class="flex flex-col sm:flex-row gap-3"
+      onsubmit="return confirm('Yakin reset semua data platform? Aksi ini tidak bisa dibatalkan.');">
+      <input type="email" name="keepEmail" value="<%= user.email %>" required
+        class="flex-1 border border-red-200 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-red-400"
+        aria-label="Email yang dipertahankan">
+      <input type="text" name="confirmation" placeholder="Ketik RESET" required
+        class="w-full sm:w-36 border border-red-200 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-red-400"
+        aria-label="Ketik RESET">
+      <button type="submit" class="px-6 py-3 bg-red-600 text-white rounded-2xl text-sm font-semibold hover:bg-red-700 transition whitespace-nowrap">
+        Reset Data
+      </button>
+    </form>
+  </div>
+  <% } %>
 </div>
 
 <%- include('partials/footer') %>

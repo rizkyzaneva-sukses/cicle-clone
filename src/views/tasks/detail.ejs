@@ -556,7 +556,17 @@ function updateChecklistMeta() {
   const all = document.querySelectorAll('#checklist-list input[type=checkbox]');
   const done = document.querySelectorAll('#checklist-list input[type=checkbox]:checked');
   document.getElementById('checklist-count').textContent = `${done.length} / ${all.length} selesai`;
-  const bar = document.getElementById('checklist-bar');
+  let bar = document.getElementById('checklist-bar');
+  if (!bar && all.length > 0) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'h-1.5 bg-gray-100 rounded-full mb-4 overflow-hidden';
+    bar = document.createElement('div');
+    bar.id = 'checklist-bar';
+    bar.className = 'h-full bg-blue-500 rounded-full transition-all';
+    bar.style.width = '0%';
+    wrapper.appendChild(bar);
+    document.getElementById('checklist-list').before(wrapper);
+  }
   if (bar && all.length > 0) bar.style.width = `${Math.round(done.length/all.length*100)}%`;
 }
 
