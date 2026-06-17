@@ -66,9 +66,20 @@
     html.dark .hover\:bg-blue-50:hover { background-color: #1d4ed8 !important; color: #fff !important; }
     html.dark .task-card:hover { box-shadow: 0 12px 28px rgb(0 0 0 / 0.45); }
     html.dark img { border-color: #334155; }
+    /* ===== Improved Mobile Sidebar ===== */
     @media (max-width: 1023px) {
-      #sidebar { transform: translateX(-100%); width: min(18rem, 86vw); }
+      #sidebar {
+        transform: translateX(-100%);
+        width: min(18rem, 86vw);
+        transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        will-change: transform;
+      }
       #sidebar.open { transform: translateX(0); }
+      #sidebar-overlay {
+        transition: opacity 0.3s ease;
+        opacity: 0;
+      }
+      #sidebar-overlay.open { opacity: 1; }
     }
     @media (max-width: 767px) {
       #notif-dropdown { width: calc(100vw - 2rem); right: 0; left: auto; }
@@ -234,6 +245,105 @@
       .lg\:px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
       .lg\:hidden { display: none !important; }
     }
+
+    /* ===== Bottom Tab Bar (Mobile) ===== */
+    .bottom-tab-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      z-index: 50;
+      padding-bottom: env(safe-area-inset-bottom);
+      justify-content: space-around;
+      align-items: center;
+      height: 3.5rem;
+    }
+    html.dark .bottom-tab-bar {
+      background: rgba(15, 23, 42, 0.88);
+      border-top-color: rgba(255, 255, 255, 0.08);
+    }
+    .bottom-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 6px 0;
+      min-width: 48px;
+      min-height: 44px;
+      color: #6b7280;
+      text-decoration: none;
+      transition: color 0.15s ease;
+      font-size: 0.625rem;
+      line-height: 1;
+    }
+    .bottom-tab i { font-size: 1.125rem; line-height: 1; }
+    .bottom-tab.active { color: #2563eb; }
+    html.dark .bottom-tab { color: #94a3b8; }
+    html.dark .bottom-tab.active { color: #3b82f6; }
+
+    @media (max-width: 1023px) {
+      .bottom-tab-bar { display: flex; }
+      /* Add bottom padding so content isn't hidden behind tab bar */
+      main { padding-bottom: calc(3.5rem + 1.25rem + env(safe-area-inset-bottom)) !important; }
+    }
+
+    /* ===== Better Touch Targets (Mobile) ===== */
+    @media (max-width: 1023px) {
+      a, button, [role="button"] { min-height: 44px; }
+    }
+
+    /* ===== Smooth Scroll (Mobile) ===== */
+    @media (max-width: 1023px) {
+      html { scroll-behavior: smooth; }
+    }
+
+    /* ===== Bottom Sheet Base Styles (Mobile) ===== */
+    @media (max-width: 1023px) {
+      .bottom-sheet-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      .bottom-sheet-overlay.open { opacity: 1; pointer-events: auto; }
+      .bottom-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 1rem 1rem 0 0;
+        z-index: 100;
+        transform: translateY(100%);
+        transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        max-height: 85vh;
+        padding-bottom: env(safe-area-inset-bottom);
+        overflow-y: auto;
+      }
+      html.dark .bottom-sheet { background: #111827; }
+      .bottom-sheet.open { transform: translateY(0); }
+      .bottom-sheet .drag-handle {
+        width: 2rem;
+        height: 0.25rem;
+        background: #d1d5db;
+        border-radius: 9999px;
+        margin: 0.5rem auto 0;
+      }
+    }
+
+    /* ===== iOS Rubber-Band Overscroll Prevention ===== */
+    @media (max-width: 1023px) {
+      .modal-content, .bottom-sheet { overscroll-behavior: contain; }
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -332,14 +442,14 @@
 
   <!-- Mobile Overlay -->
   <% if (currentUser) { %>
-  <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden" onclick="toggleSidebar()"></div>
+  <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden opacity-0 transition-opacity duration-300" onclick="toggleSidebar()"></div>
   <% } %>
 
   <div class="flex" style="padding-top:64px; min-height:100vh;">
 
     <!-- Sidebar -->
     <% if (currentUser) { %>
-    <aside id="sidebar" class="fixed left-0 top-16 bottom-0 w-56 bg-white border-r z-40 flex flex-col transition-transform duration-200">
+    <aside id="sidebar" class="fixed left-0 top-16 bottom-0 w-56 bg-white border-r z-40 flex flex-col" style="transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform;">
       <nav class="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
 
         <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
@@ -502,9 +612,64 @@ function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   if (!sidebar) return;
-  sidebar.classList.toggle('open');
-  overlay.classList.toggle('hidden');
+  const isOpen = sidebar.classList.contains('open');
+  if (isOpen) {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    setTimeout(() => overlay.classList.add('hidden'), 300);
+  } else {
+    overlay.classList.remove('hidden');
+    // Force reflow so transition triggers
+    overlay.offsetHeight;
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+  }
 }
+
+// ===== Sidebar swipe-to-close (touch gesture) =====
+(function initSidebarSwipe() {
+  let startX = 0, startY = 0, dx = 0, swiping = false;
+  document.addEventListener('touchstart', function(e) {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar || !sidebar.classList.contains('open')) return;
+    // Only start swipe from within the sidebar area
+    const touch = e.touches[0];
+    const rect = sidebar.getBoundingClientRect();
+    if (touch.clientX > rect.right) return;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    dx = 0;
+    swiping = false;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar || !sidebar.classList.contains('open')) return;
+    const touch = e.touches[0];
+    const dy = Math.abs(touch.clientY - startY);
+    // Only horizontal swipe (dx > dy and threshold)
+    if (!swiping && touch.clientX - startX > 10 && dy < 30) {
+      swiping = true;
+    }
+    if (!swiping) return;
+    dx = touch.clientX - startX;
+    if (dx < 0) dx = 0;
+    sidebar.style.transition = 'none';
+    sidebar.style.transform = 'translateX(' + dx + 'px)';
+  }, { passive: true });
+
+  document.addEventListener('touchend', function() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar || !swiping) return;
+    swiping = false;
+    sidebar.style.transition = '';
+    sidebar.style.transform = '';
+    if (dx > 80) {
+      toggleSidebar();
+    }
+    dx = 0;
+  }, { passive: true });
+})();
 
 function syncThemeIcon() {
   const icon = document.getElementById('theme-icon');
@@ -681,3 +846,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 <% } %>
 </script>
+
+<% if (currentUser) { %>
+<!-- Bottom Tab Bar (Mobile) -->
+<nav class="bottom-tab-bar" id="bottom-tab-bar">
+  <a href="/" class="bottom-tab <%- currentPath === '/' ? 'active' : '' %>">
+    <i class="fas fa-home"></i>
+    <span>Dashboard</span>
+  </a>
+  <a href="/projects" class="bottom-tab <%- (currentPath && currentPath.startsWith('/projects')) ? 'active' : '' %>">
+    <i class="fas fa-folder"></i>
+    <span>Proyek</span>
+  </a>
+  <a href="/my-tasks" class="bottom-tab <%- (currentPath && currentPath.startsWith('/my-tasks')) ? 'active' : '' %>">
+    <i class="fas fa-check-square"></i>
+    <span>Tugas</span>
+  </a>
+  <a href="/calendar" class="bottom-tab <%- (currentPath && currentPath.startsWith('/calendar')) ? 'active' : '' %>">
+    <i class="fas fa-calendar-days"></i>
+    <span>Kalender</span>
+  </a>
+  <a href="/profile" class="bottom-tab <%- (currentPath && currentPath.startsWith('/profile')) ? 'active' : '' %>">
+    <i class="fas fa-ellipsis-h"></i>
+    <span>Lainnya</span>
+  </a>
+</nav>
+<% } %>

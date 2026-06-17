@@ -2,26 +2,26 @@
 <% const canManageProject = currentUser.platformRole === 'owner' || currentUser.platformRole === 'partner' || userRole === 'admin'; %>
 
 <!-- Priority Filter Bar -->
-<div class="flex items-center gap-2 mb-5 flex-wrap">
-  <span class="text-sm text-gray-500 font-medium mr-1">Filter:</span>
+<div class="flex items-center gap-2 mb-5 overflow-x-auto pb-2 lg:flex-wrap" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
+  <span class="text-sm text-gray-500 font-medium mr-1 shrink-0">Filter:</span>
   <button onclick="setFilter('ALL')" id="filter-ALL"
-    class="px-3 py-1.5 text-xs rounded-full border font-medium transition bg-blue-600 text-white border-blue-600">
+    class="px-3 py-1.5 text-xs rounded-full border font-medium transition bg-blue-600 text-white border-blue-600 shrink-0">
     Semua
   </button>
   <button onclick="setFilter('URGENT')" id="filter-URGENT"
-    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-red-600 border-red-200 hover:bg-red-50">
+    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-red-600 border-red-200 hover:bg-red-50 shrink-0">
     🔴 Urgent
   </button>
   <button onclick="setFilter('HIGH')" id="filter-HIGH"
-    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-orange-600 border-orange-200 hover:bg-orange-50">
+    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-orange-600 border-orange-200 hover:bg-orange-50 shrink-0">
     🟠 High
   </button>
   <button onclick="setFilter('MEDIUM')" id="filter-MEDIUM"
-    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-yellow-700 border-yellow-200 hover:bg-yellow-50">
+    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-yellow-700 border-yellow-200 hover:bg-yellow-50 shrink-0">
     🟡 Medium
   </button>
   <button onclick="setFilter('LOW')" id="filter-LOW"
-    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-blue-600 border-blue-200 hover:bg-blue-50">
+    class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0">
     🔵 Low
   </button>
 </div>
@@ -35,7 +35,7 @@
     <p class="text-gray-600"><%= project.description || 'Proyek kolaborasi tim' %></p>
   </div>
   
-  <div class="flex items-center gap-2 flex-wrap">
+  <div class="hidden sm:flex items-center gap-2 flex-wrap">
     <button onclick="showCreateTaskModal()" 
             class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
       <i class="fas fa-plus"></i> 
@@ -150,12 +150,23 @@
 <!-- Swipe hint (mobile) -->
 <p class="text-center text-xs text-gray-400 mt-2 lg:hidden"><i class="fas fa-arrows-alt-h mr-1"></i>Geser ke kiri/kanan untuk lihat kolom lain</p>
 
+<!-- Column Indicator Dots (mobile) -->
+<div id="column-dots" class="flex justify-center gap-2 mt-3 lg:hidden">
+  <button onclick="scrollToColumn(0)" class="column-dot w-2.5 h-2.5 rounded-full bg-blue-600 transition-all" data-col="0"></button>
+  <button onclick="scrollToColumn(1)" class="column-dot w-2.5 h-2.5 rounded-full bg-gray-300 transition-all" data-col="1"></button>
+  <button onclick="scrollToColumn(2)" class="column-dot w-2.5 h-2.5 rounded-full bg-gray-300 transition-all" data-col="2"></button>
+</div>
+
 <!-- Chat Section -->
-<div class="mt-6 sm:mt-10 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border shadow-sm">
-  <h3 class="font-semibold text-base sm:text-xl mb-3 sm:mb-4 flex items-center gap-2">
-    <i class="fas fa-comments text-blue-600"></i>
-    Chat Proyek
-  </h3>
+<div class="mt-6 sm:mt-10 bg-white rounded-2xl sm:rounded-3xl border shadow-sm">
+  <button onclick="toggleChat()" id="chat-toggle-btn" class="w-full px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
+    <h3 class="font-semibold text-base sm:text-xl flex items-center gap-2">
+      <i class="fas fa-comments text-blue-600"></i>
+      Chat Proyek
+    </h3>
+    <i class="fas fa-chevron-down text-gray-400 transform transition-transform duration-300 sm:hidden" id="chat-chevron"></i>
+  </button>
+  <div id="chat-content" class="px-4 sm:px-6 pb-4 sm:pb-6">
 
   <div id="pinned-messages" class="hidden mb-3 space-y-1.5"></div>
 
@@ -174,15 +185,20 @@
            class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400"
            onkeypress="if(event.key === 'Enter') sendMessage()">
     <button onclick="sendMessage()" 
-            class="px-5 sm:px-8 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 flex items-center">
+             class="px-5 sm:px-8 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 flex items-center">
       <i class="fas fa-paper-plane"></i>
     </button>
-  </div>
-</div>
+    </div>
+    </div>
+    </div>
 
 <!-- Create Task Modal -->
-<div id="createTaskModal" class="hidden fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[100]">
-  <div class="bg-white w-full sm:max-w-lg mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 max-h-[85vh] overflow-y-auto">
+<div id="createTaskModal" class="hidden fixed inset-0 flex items-end sm:items-center justify-center z-[100]" style="backdrop-filter:blur(4px); background:rgba(0,0,0,0.5);">
+  <div class="bg-white w-full sm:max-w-lg mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 max-h-[85vh] overflow-y-auto transform transition-transform duration-300 translate-y-0">
+    <!-- Drag handle (mobile) -->
+    <div class="flex justify-center mb-4 sm:hidden cursor-grab active:cursor-grabbing" id="create-modal-handle">
+      <div class="w-10 h-1.5 bg-gray-300 rounded-full"></div>
+    </div>
     <h3 class="text-2xl font-bold mb-6">Buat Tugas Baru</h3>
     
     <form id="createTaskForm" onsubmit="createTask(event)">
@@ -237,8 +253,12 @@
 </div>
 
 <!-- Project Members Modal -->
-<div id="membersModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onclick="if(event.target===this) hideMembersModal()">
-  <div class="bg-white w-full sm:max-w-md mx-4 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
+<div id="membersModal" class="hidden fixed inset-0 flex items-end sm:items-center justify-center z-[100]" onclick="if(event.target===this) hideMembersModal()" style="backdrop-filter:blur(4px); background:rgba(0,0,0,0.5);">
+  <div class="bg-white w-full sm:max-w-md mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-y-auto transform transition-transform duration-300 translate-y-0">
+    <!-- Drag handle (mobile) -->
+    <div class="flex justify-center mb-4 sm:hidden cursor-grab active:cursor-grabbing" id="members-modal-handle">
+      <div class="w-10 h-1.5 bg-gray-300 rounded-full"></div>
+    </div>
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-xl font-bold">Anggota Proyek</h3>
       <button onclick="hideMembersModal()" class="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button>
@@ -295,8 +315,12 @@
 </div>
 
 <!-- Recurring Task Modal -->
-<div id="recurringModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onclick="if(event.target===this) hideRecurringModal()">
-  <div class="bg-white w-full sm:max-w-lg mx-4 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
+<div id="recurringModal" class="hidden fixed inset-0 flex items-end sm:items-center justify-center z-[100]" onclick="if(event.target===this) hideRecurringModal()" style="backdrop-filter:blur(4px); background:rgba(0,0,0,0.5);">
+  <div class="bg-white w-full sm:max-w-lg mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-y-auto transform transition-transform duration-300 translate-y-0">
+    <!-- Drag handle (mobile) -->
+    <div class="flex justify-center mb-4 sm:hidden cursor-grab active:cursor-grabbing" id="recurring-modal-handle">
+      <div class="w-10 h-1.5 bg-gray-300 rounded-full"></div>
+    </div>
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-xl font-bold">Tugas Berulang</h3>
       <button onclick="hideRecurringModal()" class="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button>
@@ -1014,6 +1038,287 @@ function init() {
 }
 
 window.onload = init;
+
+// ============================================
+// MOBILE TOUCH INTERACTIONS
+// ============================================
+
+// --- Column Indicator Dots & Scroll ---
+function scrollToColumn(index) {
+  const board = document.getElementById('kanban-board');
+  const columns = board.querySelectorAll(':scope > div');
+  if (columns[index]) {
+    columns[index].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  }
+}
+
+function updateColumnDots() {
+  const board = document.getElementById('kanban-board');
+  if (!board || window.innerWidth >= 1024) return;
+  const columns = Array.from(board.querySelectorAll(':scope > div'));
+  const scrollLeft = board.scrollLeft;
+  const columnWidth = columns[0]?.offsetWidth || 1;
+  const activeIndex = Math.round(scrollLeft / columnWidth);
+  document.querySelectorAll('.column-dot').forEach((dot, i) => {
+    dot.classList.toggle('bg-blue-600', i === activeIndex);
+    dot.classList.toggle('bg-gray-300', i !== activeIndex);
+    dot.classList.toggle('w-6', i === activeIndex);
+    dot.classList.toggle('w-2.5', i !== activeIndex);
+  });
+}
+
+document.getElementById('kanban-board')?.addEventListener('scroll', updateColumnDots);
+window.addEventListener('resize', updateColumnDots);
+
+// --- Toggle Chat (collapsible on mobile) ---
+let chatExpanded = window.innerWidth >= 1024;
+function toggleChat() {
+  chatExpanded = !chatExpanded;
+  const content = document.getElementById('chat-content');
+  const chevron = document.getElementById('chat-chevron');
+  if (chatExpanded) {
+    content.classList.remove('hidden');
+    chevron?.classList.add('rotate-180');
+  } else {
+    content.classList.add('hidden');
+    chevron?.classList.remove('rotate-180');
+  }
+}
+// Initialize chat as collapsed on mobile
+if (window.innerWidth < 1024) {
+  document.getElementById('chat-content')?.classList.add('hidden');
+} else {
+  document.getElementById('chat-chevron')?.classList.add('rotate-180');
+}
+
+// --- Bottom Sheet Swipe-to-Close for Modals ---
+function setupBottomSheetClose(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  const content = modal.querySelector('.bg-white');
+  if (!content) return;
+  
+  let startY = 0;
+  let currentY = 0;
+  let isDragging = false;
+  
+  content.addEventListener('touchstart', (e) => {
+    if (window.innerWidth >= 1024) return;
+    startY = e.touches[0].clientY;
+    isDragging = true;
+    content.style.transition = 'none';
+  }, { passive: true });
+  
+  content.addEventListener('touchmove', (e) => {
+    if (!isDragging || window.innerWidth >= 1024) return;
+    currentY = e.touches[0].clientY - startY;
+    if (currentY > 0) {
+      content.style.transform = `translateY(${currentY}px)`;
+    }
+  }, { passive: true });
+  
+  content.addEventListener('touchend', () => {
+    if (!isDragging || window.innerWidth >= 1024) return;
+    isDragging = false;
+    content.style.transition = 'transform 0.3s ease';
+    if (currentY > 100) {
+      // Close modal
+      modal.classList.add('hidden');
+      content.style.transform = '';
+    } else {
+      content.style.transform = '';
+    }
+    currentY = 0;
+  });
+}
+setupBottomSheetClose('createTaskModal');
+setupBottomSheetClose('membersModal');
+setupBottomSheetClose('recurringModal');
+setupBottomSheetClose('templateModal');
+
+// --- Task Card Touch Interactions (Swipe & Long Press) ---
+let contextMenuTaskId = null;
+let longPressTimer = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchCard = null;
+
+function showContextMenu(taskId, x, y) {
+  contextMenuTaskId = taskId;
+  const menu = document.getElementById('context-menu');
+  menu.classList.remove('hidden');
+  // Position menu
+  const menuRect = menu.getBoundingClientRect();
+  const maxX = window.innerWidth - menuRect.width - 16;
+  const maxY = window.innerHeight - menuRect.height - 16;
+  menu.style.left = Math.min(x, maxX) + 'px';
+  menu.style.top = Math.min(y, maxY) + 'px';
+}
+
+function hideContextMenu() {
+  document.getElementById('context-menu')?.classList.add('hidden');
+  contextMenuTaskId = null;
+}
+
+function contextMenuAction(action) {
+  if (!contextMenuTaskId) return;
+  switch(action) {
+    case 'open': window.location.href = `/tasks/${contextMenuTaskId}`; break;
+    case 'todo': moveStatus(contextMenuTaskId, 'TODO'); break;
+    case 'doing': moveStatus(contextMenuTaskId, 'IN_PROGRESS'); break;
+    case 'done': moveStatus(contextMenuTaskId, 'DONE'); break;
+    case 'delete': deleteTask(contextMenuTaskId); break;
+  }
+  hideContextMenu();
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#context-menu')) hideContextMenu();
+});
+
+// Add touch handlers to kanban board for task cards
+document.getElementById('kanban-board')?.addEventListener('touchstart', (e) => {
+  const card = e.target.closest('.task-card');
+  if (!card) return;
+  
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchCard = card;
+  
+  // Long press detection (500ms)
+  longPressTimer = setTimeout(() => {
+    if (touchCard === card) {
+      // Haptic feedback (vibrate if available)
+      if (navigator.vibrate) navigator.vibrate(50);
+      showContextMenu(card.dataset.id, touchStartX, touchStartY);
+      card.style.transform = 'scale(0.97)';
+      card.style.transition = 'transform 0.15s ease';
+    }
+  }, 500);
+}, { passive: true });
+
+document.getElementById('kanban-board')?.addEventListener('touchmove', (e) => {
+  // Cancel long press if finger moves too much
+  if (touchCard) {
+    const dx = Math.abs(e.touches[0].clientX - touchStartX);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if (dx > 10 || dy > 10) {
+      clearTimeout(longPressTimer);
+    }
+  }
+}, { passive: true });
+
+document.getElementById('kanban-board')?.addEventListener('touchend', (e) => {
+  clearTimeout(longPressTimer);
+  
+  if (!touchCard) return;
+  touchCard.style.transform = '';
+  touchCard.style.transition = '';
+  
+  const touchEndX = e.changedTouches[0].clientX;
+  const touchEndY = e.changedTouches[0].clientY;
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+  
+  // Swipe detection (minimum 50px horizontal, less vertical)
+  if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+    const taskId = touchCard.dataset.id;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(30);
+    
+    const statusOrder = ['TODO', 'IN_PROGRESS', 'DONE'];
+    const currentIndex = statusOrder.indexOf(task.status);
+    
+    if (diffX > 0 && currentIndex < 2) {
+      // Swipe right -> move to next column
+      moveStatus(taskId, statusOrder[currentIndex + 1]);
+      touchCard.style.transform = 'translateX(50px)';
+      touchCard.style.opacity = '0.5';
+      setTimeout(() => {
+        if (touchCard) {
+          touchCard.style.transform = '';
+          touchCard.style.opacity = '';
+        }
+      }, 200);
+    } else if (diffX < 0 && currentIndex > 0) {
+      // Swipe left -> move to previous column
+      moveStatus(taskId, statusOrder[currentIndex - 1]);
+      touchCard.style.transform = 'translateX(-50px)';
+      touchCard.style.opacity = '0.5';
+      setTimeout(() => {
+        if (touchCard) {
+          touchCard.style.transform = '';
+          touchCard.style.opacity = '';
+        }
+      }, 200);
+    }
+  }
+  
+  touchCard = null;
+  touchStartX = 0;
+  touchStartY = 0;
+}, { passive: true });
+
+// --- Pull-to-Refresh Indicator ---
+let pullStartY = 0;
+let pullIndicator = null;
+
+function createPullIndicator() {
+  if (pullIndicator) return;
+  pullIndicator = document.createElement('div');
+  pullIndicator.className = 'fixed top-0 left-0 right-0 flex justify-center z-50 pointer-events-none';
+  pullIndicator.innerHTML = '<div class="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin opacity-0 transition-opacity duration-200" id="pull-spinner"></div>';
+  document.body.appendChild(pullIndicator);
+}
+
+document.addEventListener('touchstart', (e) => {
+  if (window.scrollY === 0) {
+    pullStartY = e.touches[0].clientY;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+  if (pullStartY === 0) return;
+  const diff = e.touches[0].clientY - pullStartY;
+  if (diff > 80 && window.scrollY === 0) {
+    createPullIndicator();
+    const spinner = document.getElementById('pull-spinner');
+    if (spinner) spinner.style.opacity = '1';
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+  const spinner = document.getElementById('pull-spinner');
+  if (spinner && spinner.style.opacity === '1') {
+    // Trigger refresh
+    renderKanban();
+    loadChatMessages();
+    setTimeout(() => { spinner.style.opacity = '0'; }, 1000);
+  }
+  pullStartY = 0;
+}, { passive: true });
+
+// --- FAB auto-hide on scroll ---
+let lastScrollY = 0;
+const fab = document.getElementById('fab-create');
+if (fab) {
+  window.addEventListener('scroll', () => {
+    const currentY = window.scrollY;
+    if (currentY > lastScrollY && currentY > 200) {
+      fab.style.transform = 'scale(0)';
+      fab.style.opacity = '0';
+    } else {
+      fab.style.transform = 'scale(1)';
+      fab.style.opacity = '1';
+    }
+    lastScrollY = currentY;
+  }, { passive: true });
+  fab.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+}
+
 </script>
 
 <!-- Task Preview Panel (slide-in from right) -->
@@ -1130,6 +1435,31 @@ window.onload = init;
 </div>
 <!-- Overlay -->
 <div id="preview-overlay" onclick="closePreview()" class="fixed inset-0 bg-black/30 z-40 hidden"></div>
+
+<!-- Mobile FAB (Floating Action Button) -->
+<button id="fab-create" onclick="showCreateTaskModal()" class="fixed bottom-6 right-6 sm:hidden w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-blue-700 active:scale-95 transition-all duration-200">
+  <i class="fas fa-plus text-xl"></i>
+</button>
+
+<!-- Mobile Context Menu (shown on long press) -->
+<div id="context-menu" class="hidden fixed z-[200] bg-white rounded-2xl shadow-2xl border p-2 w-56" style="backdrop-filter:blur(8px);">
+  <button onclick="contextMenuAction('open')" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition">
+    <i class="fas fa-external-link-alt text-blue-500"></i> Buka Detail
+  </button>
+  <button onclick="contextMenuAction('todo')" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition">
+    <i class="fas fa-circle text-gray-400"></i> Pindah ke To Do
+  </button>
+  <button onclick="contextMenuAction('doing')" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition">
+    <i class="fas fa-circle text-amber-400"></i> Pindah ke Doing
+  </button>
+  <button onclick="contextMenuAction('done')" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition">
+    <i class="fas fa-circle text-emerald-500"></i> Tandai Selesai
+  </button>
+  <div class="border-t my-1"></div>
+  <button onclick="contextMenuAction('delete')" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 rounded-xl transition">
+    <i class="fas fa-trash"></i> Hapus Task
+  </button>
+</div>
 
 <script>
 // Overlay toggle
@@ -1292,8 +1622,12 @@ function initPreviewPopoverState() {
 </script>
 
 <!-- Template Modal -->
-<div id="templateModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 w-full sm:max-w-lg mx-0 sm:mx-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+<div id="templateModal" class="hidden fixed inset-0 flex items-end sm:items-center justify-center z-50" style="backdrop-filter:blur(4px); background:rgba(0,0,0,0.5);">
+  <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 w-full sm:max-w-lg mx-0 sm:mx-4 shadow-2xl max-h-[85vh] overflow-y-auto transform transition-transform duration-300 translate-y-0">
+    <!-- Drag handle (mobile) -->
+    <div class="flex justify-center mb-4 sm:hidden cursor-grab active:cursor-grabbing" id="template-modal-handle">
+      <div class="w-10 h-1.5 bg-gray-300 rounded-full"></div>
+    </div>
     <div class="flex items-center justify-between mb-6">
       <h3 class="text-2xl font-bold">Buat dari Template</h3>
       <button onclick="hideTemplateModal()" class="p-2 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button>

@@ -1,25 +1,202 @@
 <%- include('partials/header', { title: 'Dashboard' }) %>
 
-<div class="mb-8">
-  <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Selamat datang, <%= currentUser.name.split(' ')[0] %>!</h1>
-  <p class="text-gray-600 mt-2">Kelola project dan tugas tim Anda dengan mudah bersama Maulana Corp.</p>
+<style>
+  /* Mobile-optimized styles */
+  @media (max-width: 767px) {
+    .stat-card { padding: 1rem !important; }
+    .stat-card .stat-value { font-size: 1.5rem !important; }
+    .stat-card .stat-label { font-size: 0.7rem !important; }
+    .project-card { padding: 1rem !important; }
+    .project-card .project-title { font-size: 0.95rem !important; }
+    .swipe-hint { display: block !important; }
+  }
+
+  /* Swipe hint for horizontal scroll */
+  .swipe-hint {
+    display: none;
+    animation: hintPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes hintPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* Pull to refresh indicator */
+  .pull-refresh-indicator {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-60px);
+    z-index: 100;
+    transition: transform 0.3s ease;
+  }
+
+  .pull-refresh-indicator.visible {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .pull-refresh-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* FAB Styles */
+  .fab-container {
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    z-index: 50;
+  }
+
+  .fab-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .fab-main:active {
+    transform: scale(0.92);
+  }
+
+  .fab-main.open {
+    transform: rotate(45deg);
+  }
+
+  .fab-menu {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+  }
+
+  .fab-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .fab-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .fab-item:active {
+    transform: scale(0.95);
+    background-color: #f3f4f6;
+  }
+
+  .fab-item i {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 0.75rem;
+  }
+
+  /* Haptic feedback simulation */
+  .tap-feedback {
+    transition: background-color 0.1s ease;
+  }
+
+  .tap-feedback:active {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  html.dark .skeleton {
+    background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+    background-size: 200% 100%;
+  }
+
+  /* Focus states for accessibility */
+  .focus-ring:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+  }
+
+  /* Better touch targets */
+  @media (max-width: 767px) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+</style>
+
+<!-- Pull to Refresh Indicator -->
+<div id="pull-refresh" class="pull-refresh-indicator">
+  <div class="pull-refresh-spinner"></div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="mb-6 sm:mb-8">
+  <h1 class="text-xl sm:text-2xl lg:text-4xl font-bold text-gray-900">Selamat datang, <%= currentUser.name.split(' ')[0] %>!</h1>
+  <p class="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Kelola project dan tugas tim Anda dengan mudah bersama Maulana Corp.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
   <!-- Companies / Workspace -->
-  <div class="lg:col-span-1 bg-white rounded-3xl p-6 shadow-sm border">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="font-semibold text-xl">Workspace Anda</h2>
+  <div class="lg:col-span-1 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border">
+    <div class="flex justify-between items-center mb-3 sm:mb-4">
+      <h2 class="font-semibold text-lg sm:text-xl">Workspace Anda</h2>
     </div>
     
     <% if (companies && companies.length > 0) { %>
       <% companies.forEach(company => { %>
-        <div class="p-4 bg-gray-50 rounded-2xl mb-3 flex items-center justify-between hover:bg-gray-100 transition">
-          <div>
-            <div class="font-semibold"><%= company.name %></div>
-            <div class="text-xs text-gray-500"><%= company.slug %></div>
+        <div class="p-3 sm:p-4 bg-gray-50 rounded-xl sm:rounded-2xl mb-2 sm:mb-3 flex items-center justify-between hover:bg-gray-100 transition tap-feedback">
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold text-sm sm:text-base truncate"><%= company.name %></div>
+            <div class="text-xs text-gray-500 truncate"><%= company.slug %></div>
           </div>
-          <a href="/projects?companyId=<%= company.id %>" class="px-4 py-1.5 text-sm bg-white border rounded-full hover:bg-blue-50">Buka</a>
+          <a href="/projects?companyId=<%= company.id %>" class="px-3 sm:px-4 py-1.5 text-sm bg-white border rounded-full hover:bg-blue-50 touch-target flex-shrink-0 ml-2">Buka</a>
         </div>
       <% }) %>
     <% } else { %>
@@ -28,59 +205,143 @@
   </div>
 
   <!-- Quick Stats -->
-  <div class="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border">
-    <h2 class="font-semibold text-xl mb-4">Ringkasan</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="bg-blue-50 p-5 rounded-2xl text-center">
-        <div class="text-3xl font-bold text-blue-600"><%= projects ? projects.length : 0 %></div>
-        <div class="text-sm text-blue-700 mt-1">Proyek Aktif</div>
+  <div class="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border">
+    <h2 class="font-semibold text-lg sm:text-xl mb-3 sm:mb-4">Ringkasan</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div class="bg-blue-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl text-center stat-card tap-feedback">
+        <div class="text-2xl sm:text-3xl font-bold text-blue-600 stat-value"><%= projects ? projects.length : 0 %></div>
+        <div class="text-xs sm:text-sm text-blue-700 mt-1 stat-label">Proyek Aktif</div>
       </div>
-      <div class="bg-emerald-50 p-5 rounded-2xl text-center">
-        <div class="text-3xl font-bold text-emerald-600"><%= tasksDone || 0 %></div>
-        <div class="text-sm text-emerald-700 mt-1">Tugas Selesai</div>
+      <div class="bg-emerald-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl text-center stat-card tap-feedback">
+        <div class="text-2xl sm:text-3xl font-bold text-emerald-600 stat-value"><%= tasksDone || 0 %></div>
+        <div class="text-xs sm:text-sm text-emerald-700 mt-1 stat-label">Tugas Selesai</div>
       </div>
-      <div class="bg-amber-50 p-5 rounded-2xl text-center">
-        <div class="text-3xl font-bold text-amber-600"><%= tasksPending || 0 %></div>
-        <div class="text-sm text-amber-700 mt-1">Tugas Tertunda</div>
+      <div class="bg-amber-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl text-center stat-card tap-feedback">
+        <div class="text-2xl sm:text-3xl font-bold text-amber-600 stat-value"><%= tasksPending || 0 %></div>
+        <div class="text-xs sm:text-sm text-amber-700 mt-1 stat-label">Tugas Tertunda</div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Recent Projects -->
-<div class="mt-8">
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="font-semibold text-2xl">Proyek Terbaru</h2>
-    <a href="/projects" class="text-blue-600 hover:underline flex items-center gap-1 text-sm">
+<div class="mt-6 sm:mt-8">
+  <div class="flex justify-between items-center mb-3 sm:mb-4">
+    <h2 class="font-semibold text-lg sm:text-2xl">Proyek Terbaru</h2>
+    <a href="/projects" class="text-blue-600 hover:underline flex items-center gap-1 text-sm touch-target">
       Lihat Semua <i class="fas fa-arrow-right"></i>
     </a>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+  <!-- Swipe hint for mobile -->
+  <div class="swipe-hint text-center text-xs text-gray-400 mb-2 md:hidden">
+    <i class="fas fa-hand-pointer mr-1"></i> Geser ke bawah untuk melihat lebih banyak
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
     <% if (projects && projects.length > 0) { %>
       <% projects.forEach(project => { %>
-        <a href="/projects/<%= project.id %>" class="block bg-white border rounded-3xl p-6 hover:shadow-lg transition group">
+        <a href="/projects/<%= project.id %>" class="block bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:shadow-lg transition group project-card tap-feedback">
           <div class="flex justify-between">
-            <div>
-              <h3 class="font-bold text-xl group-hover:text-blue-600 transition"><%= project.name %></h3>
-              <p class="text-gray-500 text-sm mt-1 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
+            <div class="min-w-0 flex-1">
+              <h3 class="font-bold text-base sm:text-xl group-hover:text-blue-600 transition project-title truncate"><%= project.name %></h3>
+              <p class="text-gray-500 text-xs sm:text-sm mt-1 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
             </div>
-            <i class="fas fa-folder text-3xl text-gray-300 group-hover:text-blue-400"></i>
+            <i class="fas fa-folder text-2xl sm:text-3xl text-gray-300 group-hover:text-blue-400 ml-2 flex-shrink-0"></i>
           </div>
-          <div class="mt-6 flex items-center text-xs text-gray-500">
+          <div class="mt-4 sm:mt-6 flex items-center text-xs text-gray-500">
             <i class="fas fa-calendar mr-1.5"></i>
-            Dibuat <%= new Date(project.createdAt).toLocaleDateString('id-ID') %>
+            <span class="truncate">Dibuat <%= new Date(project.createdAt).toLocaleDateString('id-ID') %></span>
           </div>
         </a>
       <% }) %>
     <% } else { %>
-      <div class="col-span-full bg-white border rounded-3xl p-8 sm:p-12 text-center">
-        <i class="fas fa-folder-open text-5xl text-gray-300 mb-4"></i>
-        <p class="text-gray-600">Belum ada proyek. Buat proyek pertama Anda!</p>
-        <a href="/projects" class="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-full text-sm">Buat Proyek Baru</a>
+      <div class="col-span-full bg-white border rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 text-center">
+        <i class="fas fa-folder-open text-4xl sm:text-5xl text-gray-300 mb-3 sm:mb-4"></i>
+        <p class="text-gray-600 text-sm sm:text-base">Belum ada proyek. Buat proyek pertama Anda!</p>
+        <a href="/projects" class="inline-block mt-3 sm:mt-4 px-5 sm:px-6 py-2 bg-blue-600 text-white rounded-full text-sm touch-target">Buat Proyek Baru</a>
       </div>
     <% } %>
   </div>
 </div>
+
+<!-- Floating Action Button (Mobile Only) -->
+<div class="fab-container lg:hidden" id="fab-container">
+  <div class="fab-menu" id="fab-menu">
+    <a href="/projects/new" class="fab-item">
+      <i class="fas fa-folder-plus bg-blue-100 text-blue-600"></i>
+      <span>Proyek Baru</span>
+    </a>
+    <a href="/tasks/new" class="fab-item">
+      <i class="fas fa-plus bg-emerald-100 text-emerald-600"></i>
+      <span>Tugas Baru</span>
+    </a>
+    <a href="/projects" class="fab-item">
+      <i class="fas fa-folder bg-amber-100 text-amber-600"></i>
+      <span>Semua Proyek</span>
+    </a>
+    <a href="/my-tasks" class="fab-item">
+      <i class="fas fa-check-square bg-purple-100 text-purple-600"></i>
+      <span>Tugas Saya</span>
+    </a>
+  </div>
+  <button class="fab-main" id="fab-btn" onclick="toggleFab()" aria-label="Menu cepat">
+    <i class="fas fa-plus text-xl"></i>
+  </button>
+</div>
+
+<script>
+// FAB toggle
+function toggleFab() {
+  const btn = document.getElementById('fab-btn');
+  const menu = document.getElementById('fab-menu');
+  btn.classList.toggle('open');
+  menu.classList.toggle('open');
+}
+
+// Close FAB when clicking outside
+document.addEventListener('click', function(e) {
+  const container = document.getElementById('fab-container');
+  if (container && !container.contains(e.target)) {
+    document.getElementById('fab-btn')?.classList.remove('open');
+    document.getElementById('fab-menu')?.classList.remove('open');
+  }
+});
+
+// Pull to refresh visual indicator
+let startY = 0;
+let pulling = false;
+const pullIndicator = document.getElementById('pull-refresh');
+
+document.addEventListener('touchstart', function(e) {
+  if (window.scrollY === 0) {
+    startY = e.touches[0].pageY;
+    pulling = true;
+  }
+});
+
+document.addEventListener('touchmove', function(e) {
+  if (!pulling) return;
+  const diff = e.touches[0].pageY - startY;
+  if (diff > 80 && window.scrollY === 0) {
+    pullIndicator.classList.add('visible');
+  }
+});
+
+document.addEventListener('touchend', function() {
+  pulling = false;
+  pullIndicator.classList.remove('visible');
+});
+
+// Haptic feedback simulation on tap
+document.querySelectorAll('.tap-feedback').forEach(el => {
+  el.addEventListener('touchstart', function() {
+    this.style.transform = 'scale(0.98)';
+  }, { passive: true });
+  el.addEventListener('touchend', function() {
+    this.style.transform = '';
+  }, { passive: true });
+});
+</script>
 
 <%- include('partials/footer') %>
