@@ -259,18 +259,15 @@ router.post('/:id/unarchive', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     if (req.session.user.platformRole !== 'owner') {
-      req.flash('error', 'Hanya Owner yang bisa menghapus permanen');
-      return res.redirect('/projects/archived');
+      return res.status(403).json({ error: 'Hanya Owner yang bisa menghapus permanen' });
     }
 
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) {
-      req.flash('error', 'Proyek tidak ditemukan');
-      return res.redirect('/projects/archived');
+      return res.status(404).json({ error: 'Proyek tidak ditemukan' });
     }
     if (!project.archivedAt) {
-      req.flash('error', 'Proyek harus diarsipkan dulu sebelum dihapus permanen');
-      return res.redirect('/projects/archived');
+      return res.status(400).json({ error: 'Proyek harus diarsipkan dulu sebelum dihapus permanen' });
     }
 
     await logActivity(prisma, req, {
@@ -283,12 +280,10 @@ router.delete('/:id', async (req, res) => {
 
     await prisma.project.delete({ where: { id: project.id } });
 
-    req.flash('success', `Proyek "${project.name}" dihapus permanen`);
-    res.redirect('/projects/archived');
+    res.json({ success: true });
   } catch (error) {
     console.error(error);
-    req.flash('error', 'Gagal menghapus proyek');
-    res.redirect('/projects/archived');
+    res.status(500).json({ error: 'Gagal menghapus proyek' });
   }
 });
 

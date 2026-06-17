@@ -46,10 +46,15 @@
 <script>
 async function deleteProjectPermanently(id, name) {
   if (!confirm(`Hapus permanen proyek "${name}"? Semua task, chat, dan file di dalamnya akan terhapus dan TIDAK bisa dikembalikan.`)) return;
-  const res = await fetch(`/projects/${id}`, { method: 'DELETE' });
-  if (res.ok) {
-    document.getElementById(`archived-${id}`)?.remove();
-  } else {
+  try {
+    const res = await fetch(`/projects/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById(`archived-${id}`)?.remove();
+    } else {
+      alert(data.error || 'Gagal menghapus proyek');
+    }
+  } catch (e) {
     alert('Gagal menghapus proyek');
   }
 }
