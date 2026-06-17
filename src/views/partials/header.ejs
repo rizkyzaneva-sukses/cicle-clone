@@ -103,14 +103,14 @@
     }
 
     /* ===== Critical Layout Fallbacks (agar layout tetap benar bila Tailwind CDN gagal load) ===== */
-    /* Display */
-    .hidden { display: none !important; }
+    /* Display (.hidden must be defined LAST so it always wins when combined with e.g. "hidden flex") */
     .block { display: block !important; }
     .inline-block { display: inline-block !important; }
     .inline { display: inline !important; }
     .flex { display: flex !important; }
     .inline-flex { display: inline-flex !important; }
     .grid { display: grid !important; }
+    .hidden { display: none !important; }
 
     /* Position */
     .static { position: static !important; }
@@ -195,11 +195,11 @@
       .sm\:inline { display: inline !important; }
       .sm\:inline-flex { display: inline-flex !important; }
       .sm\:flex { display: flex !important; }
-      .sm\:hidden { display: none !important; }
       .sm\:grid { display: grid !important; }
       .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
       .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
       .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+      .sm\:hidden { display: none !important; }
     }
 
     /* Responsive md (768px+) */
@@ -208,11 +208,11 @@
       .md\:inline { display: inline !important; }
       .md\:inline-flex { display: inline-flex !important; }
       .md\:flex { display: flex !important; }
-      .md\:hidden { display: none !important; }
       .md\:grid { display: grid !important; }
       .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
       .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
       .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+      .md\:hidden { display: none !important; }
     }
 
     /* Responsive lg (1024px+) */
@@ -221,7 +221,6 @@
       .lg\:inline { display: inline !important; }
       .lg\:inline-flex { display: inline-flex !important; }
       .lg\:flex { display: flex !important; }
-      .lg\:hidden { display: none !important; }
       .lg\:grid { display: grid !important; }
       .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
       .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
@@ -232,6 +231,7 @@
       .lg\:ml-56 { margin-left: 14rem !important; }
       .lg\:p-8 { padding: 2rem !important; }
       .lg\:px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+      .lg\:hidden { display: none !important; }
     }
   </style>
 </head>
