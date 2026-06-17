@@ -114,6 +114,9 @@ router.get('/', async (req, res) => {
     // Sort by completion rate desc
     memberStats.sort((a, b) => b.completionRate - a.completionRate);
 
+    // Workload view: who's carrying the most active tasks right now
+    const workloadMembers = [...memberStats].sort((a, b) => b.activeTasks - a.activeTasks);
+
     // Team activity feed
     const activityWhere = platformRole === 'owner' ? {} : {
       OR: [
@@ -138,6 +141,7 @@ router.get('/', async (req, res) => {
       brands,
       stats: { total, done, active, overdue },
       members: memberStats,
+      workloadMembers,
       activityLogs
     });
   } catch (error) {

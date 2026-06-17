@@ -41,12 +41,20 @@
       <i class="fas fa-plus"></i> 
       <span>Baru</span>
     </button>
-    <button onclick="showTemplateModal()" 
+    <button onclick="showTemplateModal()"
             class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
-      <i class="fas fa-copy"></i> 
+      <i class="fas fa-copy"></i>
       <span>Template</span>
     </button>
-    <button onclick="toggleBulkMode()" 
+    <% if (canManageProject) { %>
+      <button onclick="showRecurringModal()"
+              class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
+        <i class="fas fa-repeat"></i>
+        <span>Berulang</span>
+        <% if (recurringTemplates.length > 0) { %><span class="bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full"><%= recurringTemplates.length %></span><% } %>
+      </button>
+    <% } %>
+    <button onclick="toggleBulkMode()"
             class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-gray-700 hover:bg-gray-800 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
       <i class="fas fa-check-double"></i> 
       <span>Bulk</span>
@@ -145,10 +153,12 @@
 <!-- Chat Section -->
 <div class="mt-6 sm:mt-10 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border shadow-sm">
   <h3 class="font-semibold text-base sm:text-xl mb-3 sm:mb-4 flex items-center gap-2">
-    <i class="fas fa-comments text-blue-600"></i> 
+    <i class="fas fa-comments text-blue-600"></i>
     Chat Proyek
   </h3>
-  
+
+  <div id="pinned-messages" class="hidden mb-3 space-y-1.5"></div>
+
   <div id="chat-messages" class="h-48 sm:h-72 overflow-y-auto bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 space-y-3 sm:space-y-4 text-xs sm:text-sm">
     <!-- Messages loaded via JS -->
   </div>
@@ -281,6 +291,76 @@
         </div>
       </div>
     <% } %>
+  </div>
+</div>
+
+<!-- Recurring Task Modal -->
+<div id="recurringModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onclick="if(event.target===this) hideRecurringModal()">
+  <div class="bg-white w-full sm:max-w-lg mx-4 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xl font-bold">Tugas Berulang</h3>
+      <button onclick="hideRecurringModal()" class="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button>
+    </div>
+    <p class="text-xs text-gray-400 mb-5">Task baru otomatis dibuat tiap hari/minggu sesuai jadwal, tanpa perlu input manual.</p>
+
+    <div id="recurring-list" class="space-y-2 mb-5">
+      <% if (recurringTemplates.length === 0) { %>
+        <p class="text-sm text-gray-400 text-center py-3" id="recurring-empty">Belum ada tugas berulang.</p>
+      <% } %>
+      <% const freqLabel = { DAILY: 'Setiap hari', WEEKDAYS: 'Senin-Jumat', WEEKLY: 'Mingguan' }; %>
+      <% const weekdayLabel = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu']; %>
+      <% recurringTemplates.forEach(t => { %>
+        <div class="flex items-center gap-3 p-3 rounded-xl border <%= t.active ? '' : 'opacity-50' %>" id="recurring-row-<%= t.id %>">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate"><%= t.title %></div>
+            <div class="text-xs text-gray-400 truncate">
+              <%= freqLabel[t.frequency] %><% if (t.frequency === 'WEEKLY' && t.weekday !== null) { %> (<%= weekdayLabel[t.weekday] %>)<% } %>
+              <% if (t.assignee) { %> • PIC: <%= t.assignee.name %><% } %>
+            </div>
+          </div>
+          <button onclick="toggleRecurring('<%= t.id %>')" class="text-xs px-2 py-1 rounded-lg <%= t.active ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' %>" title="<%= t.active ? 'Jeda' : 'Lanjutkan' %>">
+            <i class="fas <%= t.active ? 'fa-pause' : 'fa-play' %>"></i>
+          </button>
+          <button onclick="deleteRecurring('<%= t.id %>')" class="text-red-400 hover:text-red-600 text-xs p-1.5" title="Hapus">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="border-t pt-4">
+      <label class="block text-xs font-medium text-gray-500 mb-2">Buat tugas berulang baru</label>
+      <div class="space-y-2">
+        <input type="text" id="recurring-title" placeholder="Judul (mis. Posting Konten TikTok)" class="w-full border rounded-xl px-3 py-2 text-sm">
+        <div class="grid grid-cols-2 gap-2">
+          <select id="recurring-frequency" class="border rounded-xl px-3 py-2 text-sm" onchange="document.getElementById('recurring-weekday-wrap').classList.toggle('hidden', this.value !== 'WEEKLY')">
+            <option value="DAILY">Setiap hari</option>
+            <option value="WEEKDAYS">Senin-Jumat</option>
+            <option value="WEEKLY">Mingguan (pilih hari)</option>
+          </select>
+          <select id="recurring-assignee" class="border rounded-xl px-3 py-2 text-sm">
+            <option value="">Belum ditugaskan</option>
+            <% members.forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div id="recurring-weekday-wrap" class="hidden">
+          <select id="recurring-weekday" class="w-full border rounded-xl px-3 py-2 text-sm">
+            <option value="1">Senin</option>
+            <option value="2">Selasa</option>
+            <option value="3">Rabu</option>
+            <option value="4">Kamis</option>
+            <option value="5">Jumat</option>
+            <option value="6">Sabtu</option>
+            <option value="0">Minggu</option>
+          </select>
+        </div>
+        <button onclick="createRecurring()" class="w-full py-2.5 bg-teal-600 text-white rounded-xl text-sm font-medium hover:bg-teal-700">
+          <i class="fas fa-plus mr-1"></i>Buat Tugas Berulang
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -634,6 +714,80 @@ async function removeProjectMember(userId) {
   }
 }
 
+// Recurring tasks
+function showRecurringModal() {
+  document.getElementById('recurringModal').classList.remove('hidden');
+}
+
+function hideRecurringModal() {
+  document.getElementById('recurringModal').classList.add('hidden');
+}
+
+async function createRecurring() {
+  const title = document.getElementById('recurring-title').value.trim();
+  if (!title) return alert('Judul wajib diisi');
+  const frequency = document.getElementById('recurring-frequency').value;
+  const assigneeId = document.getElementById('recurring-assignee').value;
+  const weekday = document.getElementById('recurring-weekday').value;
+
+  try {
+    const res = await fetch(`/projects/${projectId}/recurring`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, frequency, assigneeId, weekday })
+    });
+    const data = await res.json();
+    if (!data.success) return alert(data.error || 'Gagal membuat tugas berulang');
+
+    const freqLabel = { DAILY: 'Setiap hari', WEEKDAYS: 'Senin-Jumat', WEEKLY: 'Mingguan' };
+    const weekdayLabel = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    const t = data.template;
+    document.getElementById('recurring-empty')?.remove();
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 p-3 rounded-xl border';
+    row.id = `recurring-row-${t.id}`;
+    row.innerHTML = `
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium truncate">${escapeHtml(t.title)}</div>
+        <div class="text-xs text-gray-400 truncate">${freqLabel[t.frequency]}${t.frequency === 'WEEKLY' && t.weekday !== null ? ` (${weekdayLabel[t.weekday]})` : ''}${t.assignee ? ` • PIC: ${escapeHtml(t.assignee.name)}` : ''}</div>
+      </div>
+      <button onclick="toggleRecurring('${t.id}')" class="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title="Jeda"><i class="fas fa-pause"></i></button>
+      <button onclick="deleteRecurring('${t.id}')" class="text-red-400 hover:text-red-600 text-xs p-1.5" title="Hapus"><i class="fas fa-trash"></i></button>
+    `;
+    document.getElementById('recurring-list').appendChild(row);
+    document.getElementById('recurring-title').value = '';
+  } catch (e) {
+    alert('Gagal membuat tugas berulang');
+  }
+}
+
+async function toggleRecurring(id) {
+  try {
+    const res = await fetch(`/projects/${projectId}/recurring/${id}/toggle`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) return alert(data.error || 'Gagal update');
+    const row = document.getElementById(`recurring-row-${id}`);
+    const btn = row.querySelector('button');
+    row.classList.toggle('opacity-50', !data.active);
+    btn.className = `text-xs px-2 py-1 rounded-lg ${data.active ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`;
+    btn.innerHTML = `<i class="fas ${data.active ? 'fa-pause' : 'fa-play'}"></i>`;
+  } catch (e) {
+    alert('Gagal update tugas berulang');
+  }
+}
+
+async function deleteRecurring(id) {
+  if (!confirm('Hapus tugas berulang ini? Task yang sudah pernah dibuat tidak akan terhapus.')) return;
+  try {
+    const res = await fetch(`/projects/${projectId}/recurring/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) document.getElementById(`recurring-row-${id}`)?.remove();
+    else alert(data.error || 'Gagal menghapus');
+  } catch (e) {
+    alert('Gagal menghapus');
+  }
+}
+
 // Delete task
 async function deleteTask(taskId) {
   if (!confirm('Hapus tugas ini?')) return;
@@ -649,27 +803,33 @@ async function deleteTask(taskId) {
 
 
 // Chat functions
+let chatMessages = [];
+
 async function loadChatMessages() {
   try {
     const res = await fetch(`/chat/messages/${projectId}`);
     const messages = await res.json();
+    chatMessages = messages;
     const container = document.getElementById('chat-messages');
     container.innerHTML = '';
     messages.forEach(msg => appendMessage(msg, false));
     container.scrollTop = container.scrollHeight;
+    renderPinnedBar();
   } catch (e) {}
 }
 
 function appendMessage(msg, scroll = true) {
   const container = document.getElementById('chat-messages');
   if (msg.id && document.getElementById(`chat-msg-${msg.id}`)) return;
+  if (msg.id && !chatMessages.some(m => m.id === msg.id)) chatMessages.push(msg);
   const isMe = msg.user && msg.user.id === '<%= currentUserId %>';
-  
+
   const div = document.createElement('div');
   if (msg.id) div.id = `chat-msg-${msg.id}`;
-  div.className = `flex ${isMe ? 'justify-end' : ''}`;
+  div.className = `flex ${isMe ? 'justify-end' : ''} group`;
   div.innerHTML = `
-    <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
+    <div class="relative ${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
+      ${msg.id ? `<button onclick="togglePin('${msg.id}')" class="absolute -top-2 ${isMe ? '-left-2' : '-right-2'} w-6 h-6 rounded-full bg-white border shadow text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center ${msg.pinned ? 'text-amber-500 opacity-100' : 'text-gray-400 hover:text-amber-500'}" title="${msg.pinned ? 'Lepas pin' : 'Pin pesan'}"><i class="fas fa-thumbtack"></i></button>` : ''}
       <div class="text-xs opacity-70 mb-0.5">${msg.user ? escapeHtml(msg.user.name) : 'User'}</div>
       ${msg.content ? `<div class="whitespace-pre-wrap">${escapeHtml(msg.content)}</div>` : ''}
       ${(msg.attachments || []).map(renderAttachment).join('')}
@@ -677,6 +837,45 @@ function appendMessage(msg, scroll = true) {
   `;
   container.appendChild(div);
   if (scroll) container.scrollTop = container.scrollHeight;
+}
+
+function renderPinnedBar() {
+  const wrap = document.getElementById('pinned-messages');
+  const pinned = chatMessages.filter(m => m.pinned);
+  if (pinned.length === 0) {
+    wrap.classList.add('hidden');
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = pinned.map(m => `
+    <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs">
+      <i class="fas fa-thumbtack text-amber-500 shrink-0"></i>
+      <span class="font-medium shrink-0">${escapeHtml(m.user?.name || 'User')}:</span>
+      <span class="truncate flex-1">${escapeHtml(m.content || '(file)')}</span>
+      <button onclick="togglePin('${m.id}')" class="text-amber-600 hover:text-amber-800 shrink-0" title="Lepas pin"><i class="fas fa-times"></i></button>
+    </div>
+  `).join('');
+}
+
+async function togglePin(messageId) {
+  try {
+    const res = await fetch(`/chat/messages/${messageId}/pin`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) return;
+    const msg = chatMessages.find(m => m.id === messageId);
+    if (msg) msg.pinned = data.pinned;
+    const btn = document.querySelector(`#chat-msg-${messageId} button[onclick^="togglePin"]`);
+    if (btn) {
+      btn.classList.toggle('text-amber-500', data.pinned);
+      btn.classList.toggle('opacity-100', data.pinned);
+      btn.classList.toggle('text-gray-400', !data.pinned);
+      btn.title = data.pinned ? 'Lepas pin' : 'Pin pesan';
+    }
+    renderPinnedBar();
+  } catch (e) {
+    alert('Gagal pin pesan');
+  }
 }
 
 function refreshChatFilePill() {

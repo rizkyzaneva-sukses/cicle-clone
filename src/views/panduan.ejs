@@ -160,4 +160,62 @@
   </div>
 </div>
 
+<div class="bg-white border rounded-3xl p-6 mt-6">
+  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-rocket text-emerald-600"></i> Produktivitas, Komunikasi & Monitoring</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-lock text-blue-500 mr-1.5"></i>Assign Proyek per-Orang</div>
+      Project sekarang punya akses spesifik. Buka kanban, klik "Anggota", tambah orang yang boleh lihat proyek itu. Owner/Partner/Admin brand selalu bisa lihat semua. Member biasa hanya lihat proyek yang di-assign ke dia.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-repeat text-teal-600 mr-1.5"></i>Tugas Berulang</div>
+      Klik "Berulang" di kanban untuk membuat task yang otomatis dibuat lagi tiap hari, Senin-Jumat, atau hari tertentu setiap minggu. Cocok untuk task rutin seperti posting konten harian.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-calendar-days text-purple-600 mr-1.5"></i>Kalender</div>
+      Menu "Kalender" di sidebar. Lihat semua deadline task lintas proyek dalam tampilan bulanan, warna berbeda untuk akan datang/lewat deadline/selesai.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-calendar-day text-emerald-600 mr-1.5"></i>Tugas Hari Ini</div>
+      Di halaman "Tugas Saya", klik filter "Hari Ini" untuk fokus ke task yang deadline-nya hari ini atau sudah lewat.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-bullhorn text-purple-600 mr-1.5"></i>Pengumuman</div>
+      Owner bisa kirim pengumuman ke semua user lewat menu "Pengumuman". Muncul sebagai banner di atas semua halaman + notifikasi + Telegram (kalau Chat ID sudah diisi).
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-thumbtack text-amber-600 mr-1.5"></i>Pin Pesan Chat</div>
+      Hover pesan di Chat Proyek, klik ikon pin yang muncul. Pesan penting akan selalu tampil di atas chat box sampai di-unpin.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-briefcase text-amber-600 mr-1.5"></i>Beban Kerja Tim</div>
+      Di "Kinerja Tim", section "Beban Kerja Tim" menampilkan jumlah task aktif tiap orang saat ini (bukan completion rate), dengan indikator Santai/Sedang/Berat — gampang lihat siapa kebanyakan kerjaan.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-triangle-exclamation text-red-600 mr-1.5"></i>Eskalasi Overdue</div>
+      Task yang sudah 2 hari lewat deadline otomatis menotif manager/owner brand tersebut, bukan cuma assignee-nya — supaya nggak ada yang kelewat lama tanpa diketahui atasan.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-chart-line text-blue-600 mr-1.5"></i>Laporan Mingguan Otomatis</div>
+      Tiap Senin pagi, manager/owner tiap brand otomatis dapat ringkasan: task selesai minggu lalu, task overdue, dan top performer — via notifikasi + Telegram.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fab fa-telegram text-blue-500 mr-1.5"></i>Reminder Telegram</div>
+      Isi Telegram Chat ID di Profil Saya. Reminder deadline (H-2, H-1, hari H, dan tiap hari kalau sudah lewat deadline) otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-bell text-blue-500 mr-1.5"></i>Notifikasi Desktop (Push)</div>
+      Klik "Aktifkan" di banner biru yang muncul di atas halaman. Notifikasi tetap muncul walau tab browser tertutup, asal browser masih berjalan.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-at text-blue-500 mr-1.5"></i>@Mention di Chat Proyek</div>
+      Ketik @ di kolom chat proyek (bukan cuma komentar task) untuk mention dan notif otomatis ke orang yang di-tag.
+    </div>
+    <div class="bg-gray-50 rounded-2xl p-4">
+      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-box-archive text-amber-600 mr-1.5"></i>Arsip Proyek</div>
+      Proyek yang sudah tidak aktif bisa diarsipkan (bukan dihapus) lewat tombol arsip di kanban. Owner bisa lihat/pulihkan/hapus permanen dari menu Arsip di halaman Semua Proyek.
+    </div>
+  </div>
+</div>
+
 <%- include('partials/footer') %>

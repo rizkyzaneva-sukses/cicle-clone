@@ -1,6 +1,9 @@
 const prisma = require('./prisma');
 const { sendTelegramMessage } = require('./telegram');
 const { notifyUser } = require('./notify');
+const { getCompanyManagerIds } = require('./managers');
+
+const ESCALATE_AFTER_DAYS = 2; // notify managers once a task is this many days overdue
 
 function dateKey(date) {
   return date.toISOString().slice(0, 10);
@@ -34,8 +37,7 @@ function messageFor(bucket, task, daysOverdue) {
   }
 }
 
-async function runDailyReminders(io) {
-  const now = new Date();
+async function runDailyReminders(io, now = new Date()) {
   const today = dateKey(now);
 
   const tasks = await prisma.task.findMany({
@@ -48,48 +50,43 @@ async function runDailyReminders(io) {
     const daysUntilDue = daysBetween(now, new Date(task.dueDate));
     const bucket = bucketFor(daysUntilDue);
     if (!bucket) continue;
+    const daysOverdue = -daysUntilDue;
 
     const alreadySent = await prisma.telegramReminderLog.findUnique({
       where: { taskId_bucket_sentDate: { taskId: task.id, bucket, sentDate: today } }
     });
-    if (alreadySent) continue;
+    if (!alreadySent) {
+      const content = messageFor(bucket, task, daysOverdue);
 
-    const content = messageFor(bucket, task, -daysUntilDue);
+      await notifyUser(io, task.assigneeId, content, `/tasks/${task.id}`);
+      if (task.assignee?.telegramChatId) {
+        await sendTelegramMessage(task.assignee.telegramChatId, content);
+      }
 
-    await notifyUser(io, task.assigneeId, content, `/tasks/${task.id}`);
-    if (task.assignee?.telegramChatId) {
-      await sendTelegramMessage(task.assignee.telegramChatId, content);
+      await prisma.telegramReminderLog.create({ data: { taskId: task.id, bucket, sentDate: today } });
+      sent++;
     }
 
-    await prisma.telegramReminderLog.create({
-      data: { taskId: task.id, bucket, sentDate: today }
-    });
-    sent++;
+    // Escalate to brand managers once a task has been overdue for a while
+    if (bucket === 'OVERDUE' && daysOverdue === ESCALATE_AFTER_DAYS) {
+      const escalateBucket = 'ESCALATE';
+      const alreadyEscalated = await prisma.telegramReminderLog.findUnique({
+        where: { taskId_bucket_sentDate: { taskId: task.id, bucket: escalateBucket, sentDate: today } }
+      });
+      if (!alreadyEscalated) {
+        const escalateContent = `🚨 Eskalasi: tugas "${task.title}" (${task.project.name} • ${task.project.company.name}) sudah ${daysOverdue} hari lewat deadline, PIC: ${task.assignee.name}, masih belum selesai.`;
+        const managerIds = (await getCompanyManagerIds(task.project.companyId)).filter(id => id !== task.assigneeId);
+        for (const managerId of managerIds) {
+          await notifyUser(io, managerId, escalateContent, `/tasks/${task.id}`);
+          const manager = await prisma.user.findUnique({ where: { id: managerId }, select: { telegramChatId: true } });
+          if (manager?.telegramChatId) await sendTelegramMessage(manager.telegramChatId, escalateContent);
+        }
+        await prisma.telegramReminderLog.create({ data: { taskId: task.id, bucket: escalateBucket, sentDate: today } });
+      }
+    }
   }
 
   if (sent > 0) console.log(`[Reminder] Sent ${sent} deadline reminder(s) for ${today}`);
 }
 
-let lastRunDate = null;
-
-// Checks periodically and runs the daily batch once per day, after the given hour (server local time).
-function startReminderScheduler(io, { hour = 8, intervalMs = 30 * 60 * 1000 } = {}) {
-  async function tick() {
-    const now = new Date();
-    const today = dateKey(now);
-    if (now.getHours() >= hour && lastRunDate !== today) {
-      lastRunDate = today;
-      try {
-        await runDailyReminders(io);
-      } catch (err) {
-        console.error('Reminder scheduler failed:', err);
-        lastRunDate = null; // allow retry on next tick
-      }
-    }
-  }
-
-  tick();
-  setInterval(tick, intervalMs);
-}
-
-module.exports = { startReminderScheduler, runDailyReminders };
+module.exports = { runDailyReminders };

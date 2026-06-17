@@ -9,7 +9,10 @@ const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
 const { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers } = require('./lib/maintenance');
-const { startReminderScheduler } = require('./lib/reminderScheduler');
+const { startDailyScheduler } = require('./lib/scheduler');
+const { runDailyReminders } = require('./lib/reminderScheduler');
+const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
+const { maybeRunWeeklyReport } = require('./lib/weeklyReport');
 
 const app = express();
 const server = http.createServer(app);
@@ -42,6 +45,7 @@ app.use(async (req, res, next) => {
   res.locals.userRole = 'member';
   res.locals.unreadNotifications = 0;
   res.locals.unreadDirectMessages = 0;
+  res.locals.latestAnnouncement = null;
 
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
@@ -51,6 +55,8 @@ app.use(async (req, res, next) => {
         console.error('Maintenance cleanup failed:', err);
       });
       await maintenancePromise;
+
+      res.locals.latestAnnouncement = await prisma.announcement.findFirst({ orderBy: { createdAt: 'desc' } });
 
       if (isConfiguredOwner(req.session.user.email) && platformRole !== 'owner') {
         await prisma.user.update({
@@ -120,6 +126,8 @@ app.use('/admin', require('./routes/admin'));
 app.use('/templates', require('./routes/templates'));
 app.use('/performance', require('./routes/performance'));
 app.use('/dependencies', require('./routes/dependencies'));
+app.use('/calendar', require('./routes/calendar'));
+app.use('/announcements', require('./routes/announcements'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {
@@ -244,5 +252,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Maulana Corp Project Management running on port ${PORT} (listening on 0.0.0.0)`);
   console.log('Ready for EasyPanel deployment!');
-  startReminderScheduler(io);
+  startDailyScheduler(io, [runDailyReminders, runRecurringTaskGenerator, maybeRunWeeklyReport]);
 });

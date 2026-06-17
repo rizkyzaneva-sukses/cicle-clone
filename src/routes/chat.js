@@ -128,4 +128,30 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
   }
 });
 
+// Pin/unpin a chat message
+router.post('/messages/:messageId/pin', async (req, res) => {
+  try {
+    const message = await prisma.chatMessage.findUnique({ where: { id: req.params.messageId } });
+    if (!message) return res.status(404).json({ error: 'Pesan tidak ditemukan' });
+
+    const project = await prisma.project.findUnique({
+      where: { id: message.projectId },
+      select: { id: true, companyId: true }
+    });
+    if (!project || !await hasProjectAccess(req.session.user, project)) {
+      return res.status(403).json({ error: 'Akses ditolak' });
+    }
+
+    const updated = await prisma.chatMessage.update({
+      where: { id: message.id },
+      data: { pinned: !message.pinned }
+    });
+
+    res.json({ success: true, pinned: updated.pinned });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal pin pesan' });
+  }
+});
+
 module.exports = router;

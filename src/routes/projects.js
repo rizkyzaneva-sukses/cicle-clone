@@ -176,7 +176,7 @@ router.get('/:id', async (req, res) => {
   }
 
   // Get company members for assignee dropdown + project members for access management
-  const [members, projectMembers] = await Promise.all([
+  const [members, projectMembers, recurringTemplates] = await Promise.all([
     prisma.membership.findMany({
       where: { companyId: project.companyId },
       include: { user: true }
@@ -184,6 +184,11 @@ router.get('/:id', async (req, res) => {
     prisma.projectMember.findMany({
       where: { projectId },
       include: { user: true }
+    }),
+    prisma.recurringTaskTemplate.findMany({
+      where: { projectId },
+      include: { assignee: true },
+      orderBy: { createdAt: 'desc' }
     })
   ]);
 
@@ -191,6 +196,7 @@ router.get('/:id', async (req, res) => {
     project,
     members: members.map(m => m.user),
     projectMembers,
+    recurringTemplates,
     currentUserId: userId
   });
 });
@@ -323,6 +329,63 @@ router.delete('/:id/members/:userId', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal menghapus anggota proyek' });
+  }
+});
+
+// Create a recurring task template (Brand manager / Owner)
+router.post('/:id/recurring', requireAdmin, async (req, res) => {
+  try {
+    const { title, description, priority, assigneeId, frequency, weekday } = req.body;
+    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!project) return res.status(404).json({ error: 'Proyek tidak ditemukan' });
+    if (!title || !frequency) return res.status(400).json({ error: 'Judul dan frekuensi wajib diisi' });
+
+    const template = await prisma.recurringTaskTemplate.create({
+      data: {
+        title,
+        description: description || null,
+        priority: priority || 'NONE',
+        projectId: project.id,
+        assigneeId: assigneeId || null,
+        frequency,
+        weekday: frequency === 'WEEKLY' && weekday !== undefined && weekday !== '' ? parseInt(weekday) : null
+      },
+      include: { assignee: true }
+    });
+
+    res.json({ success: true, template });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal membuat tugas berulang' });
+  }
+});
+
+// Pause/resume a recurring task template (Brand manager / Owner)
+router.post('/:id/recurring/:templateId/toggle', requireAdmin, async (req, res) => {
+  try {
+    const template = await prisma.recurringTaskTemplate.findUnique({ where: { id: req.params.templateId } });
+    if (!template || template.projectId !== req.params.id) return res.status(404).json({ error: 'Template tidak ditemukan' });
+
+    const updated = await prisma.recurringTaskTemplate.update({
+      where: { id: template.id },
+      data: { active: !template.active }
+    });
+
+    res.json({ success: true, active: updated.active });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal update tugas berulang' });
+  }
+});
+
+// Delete a recurring task template (Brand manager / Owner)
+router.delete('/:id/recurring/:templateId', requireAdmin, async (req, res) => {
+  try {
+    await prisma.recurringTaskTemplate.deleteMany({
+      where: { id: req.params.templateId, projectId: req.params.id }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal menghapus tugas berulang' });
   }
 });
 
