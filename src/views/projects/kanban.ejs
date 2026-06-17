@@ -1031,7 +1031,7 @@ window.onload = init;
           <button type="button" onclick="openPreviewPopover('status', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit status"><i class="fas fa-pen text-[9px]"></i></button>
         </div>
         <button type="button" onclick="openPreviewPopover('status', event)" id="preview-status"
-          class="w-full text-left text-sm font-semibold px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition"></button>
+          class="w-full text-left text-sm font-semibold px-2 py-1.5 -mx-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition"></button>
         <div id="preview-popover-status" class="hidden absolute left-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-1.5 w-44">
           <% ['TODO','IN_PROGRESS','DONE'].forEach(s => { %>
             <button type="button" data-value="<%= s %>" class="preview-pop-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm">
@@ -1048,7 +1048,7 @@ window.onload = init;
           <button type="button" onclick="openPreviewPopover('priority', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit prioritas"><i class="fas fa-pen text-[9px]"></i></button>
         </div>
         <button type="button" onclick="openPreviewPopover('priority', event)" id="preview-priority"
-          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition"></button>
+          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition"></button>
         <div id="preview-popover-priority" class="hidden absolute right-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-1.5 w-44">
           <% [
             { v: 'URGENT', l: '🔴 Urgent', c: 'text-red-600' },
@@ -1067,7 +1067,7 @@ window.onload = init;
           <button type="button" onclick="openPreviewPopover('due', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit deadline"><i class="fas fa-pen text-[9px]"></i></button>
         </div>
         <button type="button" onclick="openPreviewPopover('due', event)" id="preview-due"
-          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition"></button>
+          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition"></button>
         <div id="preview-popover-due" class="hidden absolute left-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-3 w-56">
           <input type="date" id="preview-due-input"
             class="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400">
@@ -1084,7 +1084,7 @@ window.onload = init;
           <button type="button" onclick="openPreviewPopover('assignee', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit assignee"><i class="fas fa-pen text-[9px]"></i></button>
         </div>
         <button type="button" onclick="openPreviewPopover('assignee', event)" id="preview-assignee"
-          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition truncate"></button>
+          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition truncate"></button>
         <div id="preview-popover-assignee" class="hidden absolute right-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-1.5 w-56">
           <div class="max-h-60 overflow-y-auto" id="preview-assignee-options">
             <button type="button" data-id="" class="preview-pop-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm">
