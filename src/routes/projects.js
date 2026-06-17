@@ -3,35 +3,10 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { logActivity } = require('../lib/activity');
+const { hasCompanyAccess, hasProjectAccess } = require('../lib/access');
+const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
-
-async function hasCompanyAccess(user, companyId) {
-  if (user.platformRole === 'owner') return true;
-
-  if (user.platformRole === 'partner') {
-    const access = await prisma.partnerAccess.findUnique({
-      where: { userId_companyId: { userId: user.id, companyId } }
-    });
-    if (access) return true;
-
-    const brand = await prisma.company.findUnique({
-      where: { id: companyId },
-      select: { workspaceId: true }
-    });
-    if (brand?.workspaceId) {
-      const workspaceAccess = await prisma.workspacePartner.findUnique({
-        where: { userId_workspaceId: { userId: user.id, workspaceId: brand.workspaceId } }
-      });
-      if (workspaceAccess) return true;
-    }
-  }
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_companyId: { userId: user.id, companyId } }
-  });
-  return Boolean(membership);
-}
 
 // List projects or create new
 router.get('/', async (req, res) => {
@@ -41,7 +16,11 @@ router.get('/', async (req, res) => {
 
   let memberships = [];
 
-  const activeProjects = { where: { archivedAt: null }, orderBy: { createdAt: 'desc' } };
+  const activeProjects = {
+    where: { archivedAt: null },
+    orderBy: { createdAt: 'desc' },
+    include: { projectMembers: { where: { userId }, select: { id: true } } }
+  };
 
   if (platformRole === 'owner') {
     const companies = await prisma.company.findMany({
@@ -83,6 +62,15 @@ router.get('/', async (req, res) => {
       include: { company: { include: { projects: activeProjects } } }
     });
   }
+
+  // Plain "member" only sees projects they're explicitly assigned to.
+  // Brand "admin" (and owner/partner above) see every project in the brand.
+  memberships = memberships.map(m => {
+    if (m.role === 'member') {
+      return { ...m, company: { ...m.company, projects: m.company.projects.filter(p => p.projectMembers.length > 0) } };
+    }
+    return m;
+  });
 
   res.render('projects/index', { memberships, currentRole: platformRole });
 });
@@ -147,9 +135,9 @@ router.get('/:projectId/tasks/:taskId', async (req, res) => {
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { companyId: true }
+      select: { id: true, companyId: true }
     });
-    if (!project || !await hasCompanyAccess(req.session.user, project.companyId)) {
+    if (!project || !await hasProjectAccess(req.session.user, project)) {
       return res.status(403).send('Akses ditolak');
     }
 
@@ -183,19 +171,26 @@ router.get('/:id', async (req, res) => {
   if (!project) {
     return res.status(404).send('Proyek tidak ditemukan');
   }
-  if (!await hasCompanyAccess(req.session.user, project.companyId)) {
+  if (!await hasProjectAccess(req.session.user, project)) {
     return res.status(403).send('Akses ditolak');
   }
 
-  // Get company members for assignee dropdown
-  const members = await prisma.membership.findMany({
-    where: { companyId: project.companyId },
-    include: { user: true }
-  });
+  // Get company members for assignee dropdown + project members for access management
+  const [members, projectMembers] = await Promise.all([
+    prisma.membership.findMany({
+      where: { companyId: project.companyId },
+      include: { user: true }
+    }),
+    prisma.projectMember.findMany({
+      where: { projectId },
+      include: { user: true }
+    })
+  ]);
 
   res.render('projects/kanban', {
     project,
     members: members.map(m => m.user),
+    projectMembers,
     currentUserId: userId
   });
 });
@@ -284,6 +279,50 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal menghapus proyek' });
+  }
+});
+
+// Add a brand member to this project's access list (Brand manager / Owner)
+router.post('/:id/members', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!project) return res.status(404).json({ error: 'Proyek tidak ditemukan' });
+
+    const membership = await prisma.membership.findUnique({
+      where: { userId_companyId: { userId, companyId: project.companyId } },
+      include: { user: true }
+    });
+    if (!membership) return res.status(400).json({ error: 'User bukan anggota brand ini' });
+
+    const projectMember = await prisma.projectMember.upsert({
+      where: { userId_projectId: { userId, projectId: project.id } },
+      update: {},
+      create: { userId, projectId: project.id },
+      include: { user: true }
+    });
+
+    if (userId !== req.session.user.id) {
+      await notifyUser(req.app.get('io'), userId, `Kamu ditambahkan ke proyek "${project.name}"`, `/projects/${project.id}`);
+    }
+
+    res.json({ success: true, member: projectMember });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal menambah anggota proyek' });
+  }
+});
+
+// Remove a member's access to this project (Brand manager / Owner)
+router.delete('/:id/members/:userId', requireAdmin, async (req, res) => {
+  try {
+    await prisma.projectMember.delete({
+      where: { userId_projectId: { userId: req.params.userId, projectId: req.params.id } }
+    }).catch(() => {});
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal menghapus anggota proyek' });
   }
 });
 

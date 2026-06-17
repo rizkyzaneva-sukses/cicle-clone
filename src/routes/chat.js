@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const { upload, attachmentData } = require('../lib/upload');
+const { hasProjectAccess, ensureProjectMember } = require('../lib/access');
+const { notifyUser } = require('../lib/notify');
+const { extractMentionedUserIds } = require('../lib/mentions');
 
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -10,41 +13,13 @@ function requireAuth(req, res, next) {
 
 router.use(requireAuth);
 
-async function hasProjectAccess(user, projectId) {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { companyId: true }
-  });
-  if (!project) return false;
-  if (user.platformRole === 'owner') return true;
-
-  if (user.platformRole === 'partner') {
-    const access = await prisma.partnerAccess.findUnique({
-      where: { userId_companyId: { userId: user.id, companyId: project.companyId } }
-    });
-    if (access) return true;
-
-    const brand = await prisma.company.findUnique({
-      where: { id: project.companyId },
-      select: { workspaceId: true }
-    });
-    if (brand?.workspaceId) {
-      const workspaceAccess = await prisma.workspacePartner.findUnique({
-        where: { userId_workspaceId: { userId: user.id, workspaceId: brand.workspaceId } }
-      });
-      if (workspaceAccess) return true;
-    }
-  }
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_companyId: { userId: user.id, companyId: project.companyId } }
-  });
-  return Boolean(membership);
-}
-
 // Get messages for project
 router.get('/messages/:projectId', async (req, res) => {
-  if (!await hasProjectAccess(req.session.user, req.params.projectId)) {
+  const project = await prisma.project.findUnique({
+    where: { id: req.params.projectId },
+    select: { id: true, companyId: true }
+  });
+  if (!project || !await hasProjectAccess(req.session.user, project)) {
     return res.status(403).json({ error: 'Akses ditolak' });
   }
 
@@ -57,6 +32,27 @@ router.get('/messages/:projectId', async (req, res) => {
   res.json(messages);
 });
 
+// Search project members for @mention autocomplete in chat
+router.get('/members/:projectId', async (req, res) => {
+  const project = await prisma.project.findUnique({
+    where: { id: req.params.projectId },
+    select: { id: true, companyId: true }
+  });
+  if (!project || !await hasProjectAccess(req.session.user, project)) return res.json([]);
+
+  const members = await prisma.membership.findMany({
+    where: { companyId: project.companyId },
+    include: { user: { select: { id: true, name: true, email: true } } }
+  });
+
+  const q = (req.query.q || '').toLowerCase();
+  const filtered = q
+    ? members.filter(m => m.user.name.toLowerCase().includes(q) || m.user.email.toLowerCase().includes(q))
+    : members;
+
+  res.json(filtered.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email })));
+});
+
 // Post new message (fallback if socket fails)
 router.post('/messages/:projectId', upload.array('files', 8), async (req, res) => {
   try {
@@ -65,7 +61,11 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
     const userId = req.session.user.id;
     const files = req.files || [];
 
-    if (!await hasProjectAccess(req.session.user, projectId)) {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, name: true, companyId: true }
+    });
+    if (!project || !await hasProjectAccess(req.session.user, project)) {
       return res.status(403).json({ error: 'Akses ditolak' });
     }
 
@@ -90,6 +90,36 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
       where: { id: message.id },
       include: { user: true, attachments: true }
     });
+
+    // Notify other project members: @mentions get a "kamu disebut" message,
+    // everyone else gets a generic new-chat-message ping so they don't miss it.
+    const [companyMembers, projectMembers] = await Promise.all([
+      prisma.membership.findMany({
+        where: { companyId: project.companyId },
+        include: { user: { select: { id: true, name: true } } }
+      }),
+      prisma.projectMember.findMany({ where: { projectId }, select: { userId: true } })
+    ]);
+
+    const mentionedIds = new Set(
+      extractMentionedUserIds(content, companyMembers.map(m => m.user)).filter(id => id !== userId)
+    );
+    const recipientIds = new Set([
+      ...projectMembers.map(m => m.userId),
+      ...mentionedIds
+    ]);
+    recipientIds.delete(userId);
+
+    const io = req.app.get('io');
+    const snippet = content ? (content.length > 80 ? `${content.slice(0, 80)}...` : content) : '(mengirim file)';
+    for (const recipientId of recipientIds) {
+      if (mentionedIds.has(recipientId)) {
+        await ensureProjectMember(recipientId, projectId);
+        await notifyUser(io, recipientId, `${fullMessage.user.name} menyebut kamu di chat proyek "${project.name}"`, `/projects/${projectId}`);
+      } else {
+        await notifyUser(io, recipientId, `${fullMessage.user.name} di chat proyek "${project.name}": ${snippet}`, `/projects/${projectId}`);
+      }
+    }
 
     res.json({ success: true, message: fullMessage });
   } catch (error) {

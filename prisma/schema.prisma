@@ -14,6 +14,7 @@ model User {
   password     String
   avatar       String?
   platformRole String   @default("user") // owner, partner, user
+  telegramChatId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -31,6 +32,8 @@ model User {
   activityLogs   ActivityLog[]
   chatReactions  ChatReaction[]
   commentFiles   CommentFile[]
+  projectMembers    ProjectMember[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Workspace {
@@ -115,11 +118,40 @@ model Project {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  company      Company       @relation(fields: [companyId], references: [id])
-  tasks        Task[]
-  messages     ChatMessage[]
-  attachments  Attachment[]
-  activityLogs ActivityLog[]
+  company        Company         @relation(fields: [companyId], references: [id])
+  tasks          Task[]
+  messages       ChatMessage[]
+  attachments    Attachment[]
+  activityLogs   ActivityLog[]
+  projectMembers ProjectMember[]
+}
+
+// Siapa yang diberi akses lihat/kerja di proyek ini (selain owner/partner/admin brand yang otomatis full akses)
+model ProjectMember {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  addedAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+}
+
+// Browser push subscription (Web Push API) per device
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Task {
@@ -144,6 +176,22 @@ model Task {
   activityLogs ActivityLog[]
   taskDeps     TaskDependency[] @relation("TaskDeps")
   depOfDeps    TaskDependency[] @relation("TaskDependents")
+  telegramReminderLogs TelegramReminderLog[]
+}
+
+// Tracks which deadline reminder (H-2/H-1/H/OVERDUE) was already sent for a task on a given day,
+// so the daily scheduler doesn't resend the same reminder twice and OVERDUE can resend once per day.
+model TelegramReminderLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  bucket    String   // H-2, H-1, H, OVERDUE
+  sentDate  String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, bucket, sentDate])
+  @@index([taskId])
 }
 
 model ChecklistItem {

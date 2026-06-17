@@ -4,6 +4,7 @@ const prisma = require('../lib/prisma');
 const { requireAuth, requireOwner } = require('../middleware/auth');
 const { uniqueSlug } = require('../lib/slug');
 const { cleanupOrphanRecords, ensureDefaultWorkspace } = require('../lib/maintenance');
+const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth, requireOwner);
 
@@ -124,16 +125,7 @@ router.post('/:id/assign-partner', async (req, res) => {
       data: { userId: targetUser.id, companyId }
     });
 
-    // Notifikasi
-    await prisma.notification.create({
-      data: {
-        userId: targetUser.id,
-        content: `Kamu ditunjuk sebagai Partner untuk brand ini`,
-        link: '/'
-      }
-    });
-    const io = req.app.get('io');
-    if (io) io.to(`user-${targetUser.id}`).emit('new-notification');
+    await notifyUser(req.app.get('io'), targetUser.id, 'Kamu ditunjuk sebagai Partner untuk brand ini', '/');
 
     req.flash('success', `${targetUser.name} berhasil ditambahkan sebagai Partner`);
     res.redirect('/brands');

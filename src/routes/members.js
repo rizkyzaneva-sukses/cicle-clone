@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
+const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
 
@@ -184,16 +185,7 @@ router.post('/partners/:userId/remove', async (req, res) => {
       });
     }
 
-    await prisma.notification.create({
-      data: {
-        userId,
-        content: `Akses Partner kamu untuk brand "${access.company.name}" sudah dicabut`,
-        link: '/'
-      }
-    });
-
-    const io = req.app.get('io');
-    if (io) io.to(`user-${userId}`).emit('new-notification');
+    await notifyUser(req.app.get('io'), userId, `Akses Partner kamu untuk brand "${access.company.name}" sudah dicabut`, '/');
 
     req.flash('success', `${access.user.name} sudah tidak menjadi Partner di brand ini`);
     res.redirect(`/members?companyId=${companyId}`);

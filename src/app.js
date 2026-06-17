@@ -8,7 +8,8 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { cleanupOrphanRecords, ensureDefaultWorkspace } = require('./lib/maintenance');
+const { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers } = require('./lib/maintenance');
+const { startReminderScheduler } = require('./lib/reminderScheduler');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,7 +46,7 @@ app.use(async (req, res, next) => {
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
-      maintenancePromise ||= cleanupOrphanRecords().catch((err) => {
+      maintenancePromise ||= Promise.all([cleanupOrphanRecords(), backfillProjectMembers()]).catch((err) => {
         maintenancePromise = null;
         console.error('Maintenance cleanup failed:', err);
       });
@@ -243,4 +244,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Maulana Corp Project Management running on port ${PORT} (listening on 0.0.0.0)`);
   console.log('Ready for EasyPanel deployment!');
+  startReminderScheduler(io);
 });

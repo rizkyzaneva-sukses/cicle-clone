@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <% if (typeof currentUser !== 'undefined' && currentUser) { %>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/js/mention.js"></script>
   <% } %>
   <style>
     html { color-scheme: light; }
@@ -444,6 +445,20 @@
         </div>
       <% } %>
 
+      <!-- Desktop notification reminder -->
+      <% if (currentUser) { %>
+      <div id="push-banner" class="hidden mb-6 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-xl flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-bell text-blue-500"></i>
+          <span class="text-sm">Aktifkan notifikasi desktop biar nggak ketinggalan chat, tugas baru, dan tag dari tim.</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="dismissPushBanner()" class="text-xs text-blue-600 hover:underline px-2 py-1">Nanti aja</button>
+          <button onclick="enablePushNotifications()" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700">Aktifkan</button>
+        </div>
+      </div>
+      <% } %>
+
 <script>
 // Sidebar toggle (mobile)
 function toggleSidebar() {
@@ -561,6 +576,71 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+});
+
+// Desktop push notifications
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+function dismissPushBanner() {
+  document.getElementById('push-banner')?.classList.add('hidden');
+  localStorage.setItem('pushBannerDismissed', '1');
+}
+
+async function enablePushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('Browser ini tidak mendukung notifikasi desktop');
+    return;
+  }
+  try {
+    const keyRes = await fetch('/notifications/push/public-key');
+    const { enabled, publicKey } = await keyRes.json();
+    if (!enabled || !publicKey) {
+      alert('Notifikasi desktop belum diaktifkan oleh admin platform');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      dismissPushBanner();
+      return;
+    }
+
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+
+    await fetch('/notifications/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub.toJSON())
+    });
+
+    dismissPushBanner();
+  } catch (err) {
+    console.error('Push subscribe failed:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+  if (localStorage.getItem('pushBannerDismissed')) return;
+
+  try {
+    const res = await fetch('/notifications/push/public-key');
+    const { enabled } = await res.json();
+    if (enabled) document.getElementById('push-banner')?.classList.remove('hidden');
+  } catch (e) {}
 });
 <% } %>
 </script>

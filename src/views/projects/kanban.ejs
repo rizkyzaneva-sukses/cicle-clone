@@ -1,4 +1,5 @@
 <%- include('../partials/header', { title: project.name + ' | Kanban' }) %>
+<% const canManageProject = currentUser.platformRole === 'owner' || currentUser.platformRole === 'partner' || userRole === 'admin'; %>
 
 <!-- Priority Filter Bar -->
 <div class="flex items-center gap-2 mb-5 flex-wrap">
@@ -54,7 +55,13 @@
             class="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border hover:bg-gray-50 text-gray-500" title="Keyboard shortcuts (?)">
       <i class="fas fa-keyboard"></i>
     </button>
-    <% if (currentUser.platformRole === 'owner' || currentUser.platformRole === 'partner' || userRole === 'admin') { %>
+    <button onclick="showMembersModal()"
+            class="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2.5 rounded-xl sm:rounded-2xl border hover:bg-gray-50 text-gray-600 text-xs sm:text-sm font-medium" title="Anggota Proyek">
+      <i class="fas fa-user-group"></i>
+      <span class="hidden sm:inline">Anggota</span>
+      <span class="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full"><%= projectMembers.length %></span>
+    </button>
+    <% if (canManageProject) { %>
       <form action="/projects/<%= project.id %>/archive" method="POST"
             onsubmit="return confirm('Arsipkan proyek &quot;<%= project.name %>&quot;? Proyek akan hilang dari daftar tapi datanya tetap tersimpan dan bisa dipulihkan dari Arsip.');">
         <button type="submit" class="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border hover:bg-amber-50 text-gray-500 hover:text-amber-600" title="Arsipkan proyek">
@@ -210,12 +217,70 @@
       </div>
       
       <div class="flex gap-3 mt-8">
-        <button type="button" onclick="hideCreateTaskModal()" 
+        <button type="button" onclick="hideCreateTaskModal()"
                 class="flex-1 py-3.5 border rounded-2xl font-medium">Batal</button>
-        <button type="submit" 
+        <button type="submit"
                 class="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700">Buat Tugas</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Project Members Modal -->
+<div id="membersModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onclick="if(event.target===this) hideMembersModal()">
+  <div class="bg-white w-full sm:max-w-md mx-4 rounded-3xl p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-xl font-bold">Anggota Proyek</h3>
+      <button onclick="hideMembersModal()" class="p-1.5 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times"></i></button>
+    </div>
+    <p class="text-xs text-gray-400 mb-5">
+      <% if (canManageProject) { %>
+        Hanya yang ada di daftar ini yang bisa lihat proyek ini. Owner/Partner/Admin brand selalu bisa lihat semua proyek.
+      <% } else { %>
+        Daftar orang yang punya akses ke proyek ini.
+      <% } %>
+    </p>
+
+    <div id="members-list" class="space-y-2 mb-5">
+      <% if (projectMembers.length === 0) { %>
+        <p class="text-sm text-gray-400 text-center py-3" id="members-empty">Belum ada anggota spesifik ditambahkan.</p>
+      <% } %>
+      <% projectMembers.forEach(pm => { %>
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50" id="member-row-<%= pm.user.id %>">
+          <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <%= pm.user.name.charAt(0).toUpperCase() %>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate"><%= pm.user.name %></div>
+            <div class="text-xs text-gray-400 truncate"><%= pm.user.email %></div>
+          </div>
+          <% if (canManageProject) { %>
+            <button onclick="removeProjectMember('<%= pm.user.id %>')" class="text-red-400 hover:text-red-600 text-xs p-1.5" title="Hapus akses">
+              <i class="fas fa-times"></i>
+            </button>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+
+    <% if (canManageProject) { %>
+      <div class="border-t pt-4">
+        <label class="block text-xs font-medium text-gray-500 mb-2">Tambah anggota brand ke proyek ini</label>
+        <div class="flex gap-2">
+          <select id="add-member-select" class="flex-1 border rounded-xl px-3 py-2 text-sm">
+            <option value="">Pilih anggota...</option>
+            <% members.forEach(m => { %>
+              <% if (!projectMembers.some(pm => pm.user.id === m.id)) { %>
+                <option value="<%= m.id %>"><%= m.name %></option>
+              <% } %>
+            <% }) %>
+          </select>
+          <button onclick="addProjectMember()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+      </div>
+    <% } %>
   </div>
 </div>
 
@@ -512,6 +577,63 @@ async function createTask(e) {
   }
 }
 
+// Project members
+function showMembersModal() {
+  document.getElementById('membersModal').classList.remove('hidden');
+}
+
+function hideMembersModal() {
+  document.getElementById('membersModal').classList.add('hidden');
+}
+
+async function addProjectMember() {
+  const select = document.getElementById('add-member-select');
+  const userId = select.value;
+  if (!userId) return;
+  const name = select.options[select.selectedIndex].textContent;
+
+  try {
+    const res = await fetch(`/projects/${projectId}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    const data = await res.json();
+    if (!data.success) return alert(data.error || 'Gagal menambah anggota');
+
+    document.getElementById('members-empty')?.remove();
+    const list = document.getElementById('members-list');
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50';
+    row.id = `member-row-${userId}`;
+    row.innerHTML = `
+      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">${name.charAt(0).toUpperCase()}</div>
+      <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">${escapeHtml(name)}</div></div>
+      <button onclick="removeProjectMember('${userId}')" class="text-red-400 hover:text-red-600 text-xs p-1.5" title="Hapus akses"><i class="fas fa-times"></i></button>
+    `;
+    list.appendChild(row);
+    select.querySelector(`option[value="${userId}"]`)?.remove();
+    select.value = '';
+  } catch (e) {
+    alert('Gagal menambah anggota');
+  }
+}
+
+async function removeProjectMember(userId) {
+  if (!confirm('Hapus akses proyek untuk anggota ini?')) return;
+  try {
+    const res = await fetch(`/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById(`member-row-${userId}`)?.remove();
+    } else {
+      alert(data.error || 'Gagal menghapus anggota');
+    }
+  } catch (e) {
+    alert('Gagal menghapus anggota');
+  }
+}
+
 // Delete task
 async function deleteTask(taskId) {
   if (!confirm('Hapus tugas ini?')) return;
@@ -688,6 +810,7 @@ document.addEventListener('keydown', (e) => {
 function init() {
   renderKanban();
   loadChatMessages();
+  setupMentionAutocomplete('chat-input', q => `/chat/members/${projectId}?q=${encodeURIComponent(q)}`);
   console.log('%c[Maulana Corp] Kanban board initialized with real-time sync', 'color:#666');
 }
 

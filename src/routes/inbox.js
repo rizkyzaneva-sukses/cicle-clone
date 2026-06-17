@@ -3,6 +3,7 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { upload, attachmentData } = require('../lib/upload');
+const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
 
@@ -170,19 +171,9 @@ router.post('/:userId/messages', upload.array('files', 8), async (req, res) => {
       include: { sender: true, receiver: true, attachments: true }
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: receiverId,
-        content: `${req.session.user.name} mengirim pesan personal`,
-        link: `/inbox/${senderId}`
-      }
-    });
-
     const io = req.app.get('io');
-    if (io) {
-      io.to(`user-${receiverId}`).emit('new-direct-message', fullMessage);
-      io.to(`user-${receiverId}`).emit('new-notification');
-    }
+    await notifyUser(io, receiverId, `${req.session.user.name} mengirim pesan personal`, `/inbox/${senderId}`);
+    if (io) io.to(`user-${receiverId}`).emit('new-direct-message', fullMessage);
 
     res.json({ success: true, message: fullMessage });
   } catch (error) {

@@ -652,49 +652,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// @mention in comments
-function setupMention(inputId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  input.addEventListener('input', async (e) => {
-    const val = input.value;
-    const atPos = val.lastIndexOf('@');
-    if (atPos === -1) { removeDropdown(); return; }
-    const query = val.slice(atPos + 1);
-    if (query.length < 1) { removeDropdown(); return; }
-    const res = await fetch(`/tasks/${taskId}/members?q=${encodeURIComponent(query)}`);
-    const members = await res.json();
-    showDropdown(members, input, atPos);
-  });
-}
-
-function showDropdown(members, input, atPos) {
-  removeDropdown();
-  if (!members.length) return;
-  const dd = document.createElement('div');
-  dd.id = 'mention-dropdown';
-  dd.className = 'absolute z-50 bg-white border rounded-xl shadow-lg max-h-40 overflow-y-auto';
-  dd.style.cssText = 'bottom:100%;left:0;margin-bottom:4px;width:220px;';
-  members.forEach(m => {
-    const opt = document.createElement('button');
-    opt.className = 'w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex items-center gap-2';
-    opt.innerHTML = `<span class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">${m.name.charAt(0)}</span>${escapeHtml(m.name)}`;
-    opt.onclick = () => {
-      const val = input.value;
-      input.value = val.slice(0, atPos) + '@' + m.name + ' ';
-      removeDropdown();
-      input.focus();
-    };
-    dd.appendChild(opt);
-  });
-  input.parentElement.style.position = 'relative';
-  input.parentElement.appendChild(dd);
-}
-
-function removeDropdown() {
-  document.getElementById('mention-dropdown')?.remove();
-}
-
 // File upload helpers
 function showSelectedFiles() {
   const input = document.getElementById('comment-files');
@@ -866,7 +823,7 @@ async function confirmDelete(e, id, projectId) {
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
-  setupMention('comment-input');
+  setupMentionAutocomplete('comment-input', q => `/tasks/${taskId}/members?q=${encodeURIComponent(q)}`);
   loadDependencies();
 });
 </script>

@@ -76,6 +76,36 @@
     </form>
   </div>
 
+  <!-- Telegram Reminder -->
+  <div class="bg-white border rounded-3xl p-6 mb-5 shadow-sm">
+    <h2 class="font-semibold text-lg mb-2 flex items-center gap-2">
+      <i class="fab fa-telegram text-blue-500"></i> Reminder via Telegram
+    </h2>
+    <p class="text-sm text-gray-500 mb-4">
+      Isi Telegram Chat ID kamu biar reminder deadline (H-2, H-1, hari H, dan kalau lewat deadline) otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
+    </p>
+    <ol class="text-xs text-gray-500 mb-4 space-y-1 list-decimal list-inside">
+      <% if (telegramBotUsername) { %>
+        <li>Buka <a href="https://t.me/<%= telegramBotUsername %>" target="_blank" class="text-blue-600 hover:underline">@<%= telegramBotUsername %></a> di Telegram, klik <b>Start</b>.</li>
+      <% } else { %>
+        <li>Buka bot Telegram yang dipakai tim ini, klik <b>Start</b> (tanya admin kalau belum tahu nama bot-nya).</li>
+      <% } %>
+      <li>Cari Chat ID kamu lewat bot seperti <a href="https://t.me/userinfobot" target="_blank" class="text-blue-600 hover:underline">@userinfobot</a> (kirim pesan apa saja, dia balas ID kamu).</li>
+      <li>Tempel ID itu di kolom bawah ini.</li>
+    </ol>
+    <form action="/profile/telegram" method="POST" class="flex flex-col sm:flex-row gap-3">
+      <input type="text" name="telegramChatId" value="<%= user.telegramChatId || '' %>" placeholder="Contoh: 123456789"
+        class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+      <button type="submit"
+        class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition whitespace-nowrap">
+        Simpan
+      </button>
+    </form>
+    <% if (user.telegramChatId) { %>
+      <p class="text-xs text-emerald-600 mt-2"><i class="fas fa-check-circle mr-1"></i>Telegram Chat ID sudah aktif.</p>
+    <% } %>
+  </div>
+
   <% if (user.platformRole === 'owner') { %>
   <!-- Reset Data Platform (Owner Only) -->
   <div class="bg-red-50 border border-red-200 rounded-3xl p-6">

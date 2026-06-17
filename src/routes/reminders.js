@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
+const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
 
@@ -90,9 +91,7 @@ router.post('/scan', async (req, res) => {
       });
 
       if (!existing) {
-        await prisma.notification.create({
-          data: { userId: task.assigneeId, content, link }
-        });
+        await notifyUser(req.app.get('io'), task.assigneeId, content, link);
         created++;
       }
     }

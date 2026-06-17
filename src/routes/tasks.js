@@ -4,35 +4,11 @@ const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { upload, attachmentData } = require('../lib/upload');
 const { logActivity } = require('../lib/activity');
+const { hasProjectAccess, ensureProjectMember } = require('../lib/access');
+const { notifyUser } = require('../lib/notify');
+const { extractMentionedUserIds } = require('../lib/mentions');
 
 router.use(requireAuth);
-
-async function hasCompanyAccess(user, companyId) {
-  if (user.platformRole === 'owner') return true;
-
-  if (user.platformRole === 'partner') {
-    const access = await prisma.partnerAccess.findUnique({
-      where: { userId_companyId: { userId: user.id, companyId } }
-    });
-    if (access) return true;
-
-    const brand = await prisma.company.findUnique({
-      where: { id: companyId },
-      select: { workspaceId: true }
-    });
-    if (brand?.workspaceId) {
-      const workspaceAccess = await prisma.workspacePartner.findUnique({
-        where: { userId_workspaceId: { userId: user.id, workspaceId: brand.workspaceId } }
-      });
-      if (workspaceAccess) return true;
-    }
-  }
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_companyId: { userId: user.id, companyId } }
-  });
-  return Boolean(membership);
-}
 
 async function canAccessProject(user, projectId) {
   const project = await prisma.project.findUnique({
@@ -40,7 +16,7 @@ async function canAccessProject(user, projectId) {
     select: { id: true, companyId: true }
   });
   if (!project) return null;
-  return await hasCompanyAccess(user, project.companyId) ? project : null;
+  return await hasProjectAccess(user, project) ? project : null;
 }
 
 async function canAccessTask(user, taskId) {
@@ -49,7 +25,7 @@ async function canAccessTask(user, taskId) {
     include: { project: { select: { id: true, companyId: true } } }
   });
   if (!task) return null;
-  return await hasCompanyAccess(user, task.project.companyId) ? task : null;
+  return await hasProjectAccess(user, task.project) ? task : null;
 }
 
 async function isValidAssignee(userId, companyId) {
@@ -77,7 +53,7 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!task) return res.status(404).send('Task tidak ditemukan');
-    if (!await hasCompanyAccess(req.session.user, task.project.companyId)) {
+    if (!await hasProjectAccess(req.session.user, task.project)) {
       return res.status(403).send('Akses ditolak');
     }
 
@@ -141,17 +117,12 @@ router.post('/create', async (req, res) => {
       metadata: { title: task.title }
     });
 
-    // Notify assignee
-    if (task.assigneeId && task.assigneeId !== req.session.user.id) {
-      await prisma.notification.create({
-        data: {
-          userId: task.assigneeId,
-          content: `Kamu ditugaskan ke task "${task.title}"`,
-          link: `/tasks/${task.id}`
-        }
-      });
-      const io = req.app.get('io');
-      if (io) io.to(`user-${task.assigneeId}`).emit('new-notification');
+    // Assigning grants project access; notify assignee
+    if (task.assigneeId) {
+      await ensureProjectMember(task.assigneeId, projectId);
+      if (task.assigneeId !== req.session.user.id) {
+        await notifyUser(req.app.get('io'), task.assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+      }
     }
 
     res.json({ success: true, task });
@@ -225,17 +196,12 @@ router.post('/:id/update', async (req, res) => {
       metadata: { title: task.title, status: task.status }
     });
 
-    // Notify new assignee
-    if (assigneeId && assigneeId !== oldTask.assigneeId && assigneeId !== req.session.user.id) {
-      await prisma.notification.create({
-        data: {
-          userId: assigneeId,
-          content: `Kamu ditugaskan ke task "${task.title}"`,
-          link: `/tasks/${task.id}`
-        }
-      });
-      const io = req.app.get('io');
-      if (io) io.to(`user-${assigneeId}`).emit('new-notification');
+    // Assigning grants project access; notify new assignee
+    if (assigneeId && assigneeId !== oldTask.assigneeId) {
+      await ensureProjectMember(assigneeId, oldTask.projectId);
+      if (assigneeId !== req.session.user.id) {
+        await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+      }
     }
 
     res.redirect(`/tasks/${req.params.id}`);
@@ -253,6 +219,12 @@ router.put('/:id', async (req, res) => {
     if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
     if (!await isValidAssignee(assigneeId, existingTask.project.companyId)) {
       return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
+    }
+    if (assigneeId && assigneeId !== existingTask.assigneeId) {
+      await ensureProjectMember(assigneeId, existingTask.projectId);
+      if (assigneeId !== req.session.user.id) {
+        await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${title || existingTask.title}"`, `/tasks/${existingTask.id}`);
+      }
     }
 
     const task = await prisma.task.update({
@@ -350,6 +322,19 @@ router.post('/:id/comments', upload.array('files', 5), async (req, res) => {
       taskId: req.params.id,
       metadata: { content, parentId, hasFiles: !!(req.files && req.files.length) }
     });
+
+    // @mention notifications
+    const companyMembers = await prisma.membership.findMany({
+      where: { companyId: accessibleTask.project.companyId },
+      include: { user: { select: { id: true, name: true } } }
+    });
+    const mentionedIds = extractMentionedUserIds(content, companyMembers.map(m => m.user))
+      .filter(id => id !== userId);
+    const io = req.app.get('io');
+    for (const mentionedId of mentionedIds) {
+      await ensureProjectMember(mentionedId, accessibleTask.projectId);
+      await notifyUser(io, mentionedId, `${fullComment.user.name} menyebut kamu di komentar task "${accessibleTask.title}"`, `/tasks/${req.params.id}`);
+    }
 
     res.json({ success: true, comment: fullComment });
   } catch (error) {

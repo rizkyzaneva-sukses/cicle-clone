@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
+const { botUsername } = require('../lib/telegram');
 
 router.use(requireAuth);
 
@@ -10,7 +11,7 @@ router.get('/', async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.session.user.id }
   });
-  res.render('profile', { title: 'Profil Saya', user });
+  res.render('profile', { title: 'Profil Saya', user, telegramBotUsername: botUsername });
 });
 
 router.post('/update', async (req, res) => {
@@ -36,7 +37,7 @@ router.post('/update', async (req, res) => {
       data: { name, email }
     });
 
-    req.session.user = { id: updated.id, name: updated.name, email: updated.email };
+    req.session.user = { ...req.session.user, id: updated.id, name: updated.name, email: updated.email };
     req.flash('success', 'Profil berhasil diperbarui');
     res.redirect('/profile');
   } catch (err) {
@@ -78,6 +79,22 @@ router.post('/password', async (req, res) => {
   } catch (err) {
     console.error(err);
     req.flash('error', 'Terjadi kesalahan');
+    res.redirect('/profile');
+  }
+});
+
+router.post('/telegram', async (req, res) => {
+  try {
+    const telegramChatId = (req.body.telegramChatId || '').trim();
+    await prisma.user.update({
+      where: { id: req.session.user.id },
+      data: { telegramChatId: telegramChatId || null }
+    });
+    req.flash('success', telegramChatId ? 'Telegram Chat ID disimpan' : 'Telegram Chat ID dihapus');
+    res.redirect('/profile');
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal menyimpan Telegram Chat ID');
     res.redirect('/profile');
   }
 });

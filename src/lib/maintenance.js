@@ -53,4 +53,28 @@ async function ensureDefaultWorkspace(client = prisma, ownerUser = null) {
   return workspace;
 }
 
-module.exports = { cleanupOrphanRecords, ensureDefaultWorkspace };
+// One-time backfill: when per-project access was introduced, every existing brand
+// member already had visibility into all of that brand's projects. Grandfather that in
+// so nobody loses access to a project they could already see; only NEW projects/members
+// require explicit assignment going forward.
+async function backfillProjectMembers(client = prisma) {
+  const existingCount = await client.projectMember.count();
+  if (existingCount > 0) return;
+
+  const memberships = await client.membership.findMany({
+    include: { company: { include: { projects: { select: { id: true } } } } }
+  });
+
+  const rows = [];
+  for (const membership of memberships) {
+    for (const project of membership.company.projects) {
+      rows.push({ userId: membership.userId, projectId: project.id });
+    }
+  }
+
+  if (rows.length > 0) {
+    await client.projectMember.createMany({ data: rows, skipDuplicates: true });
+  }
+}
+
+module.exports = { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers };
