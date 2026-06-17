@@ -46,6 +46,11 @@ router.get('/', async (req, res) => {
   try {
     const userId = req.session.user.id;
     const { platformRole } = req.session.user;
+    
+    // Date range for charts
+    const daysBack = parseInt(req.query.days) || 14;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysBack);
 
     // Get accessible brands
     let brands;
@@ -88,7 +93,7 @@ router.get('/', async (req, res) => {
           assigneeId: membership.userId,
           project: { companyId: membership.companyId }
         },
-        select: { id: true, status: true, dueDate: true }
+        select: { id: true, status: true, dueDate: true, createdAt: true }
       });
 
       const totalTasks = userTasks.length;
@@ -96,6 +101,7 @@ router.get('/', async (req, res) => {
       const activeTasks = userTasks.filter(t => t.status !== 'DONE').length;
       const overdueTasks = userTasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'DONE').length;
       const completionRate = totalTasks > 0 ? Math.round(doneTasks / totalTasks * 100) : 0;
+      const overdueRate = totalTasks > 0 ? Math.round(overdueTasks / totalTasks * 100) : 0;
 
       memberStats.push({
         id: membership.user.id,
@@ -107,7 +113,8 @@ router.get('/', async (req, res) => {
         doneTasks,
         activeTasks,
         overdueTasks,
-        completionRate
+        completionRate,
+        overdueRate
       });
     }
 
@@ -116,6 +123,56 @@ router.get('/', async (req, res) => {
 
     // Workload view: who's carrying the most active tasks right now
     const workloadMembers = [...memberStats].sort((a, b) => b.activeTasks - a.activeTasks);
+
+    // Burndown chart data (tasks remaining over time)
+    const burndownData = [];
+    const allTasks = await prisma.task.findMany({
+      where: { project: { companyId: { in: brandIds } } },
+      select: { createdAt: true, status: true, updatedAt: true }
+    });
+    
+    for (let i = daysBack; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(23, 59, 59, 999);
+      
+      const totalByDate = allTasks.filter(t => new Date(t.createdAt) <= date).length;
+      const doneByDate = allTasks.filter(t => 
+        new Date(t.createdAt) <= date && 
+        t.status === 'DONE' && 
+        new Date(t.updatedAt) <= date
+      ).length;
+      
+      burndownData.push({
+        date: date.toISOString().split('T')[0],
+        remaining: totalByDate - doneByDate
+      });
+    }
+
+    // Velocity chart data (tasks completed per week, last 4 weeks)
+    const velocityData = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - (w * 7 + 6));
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date();
+      weekEnd.setDate(weekEnd.getDate() - w * 7);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      const completedThisWeek = allTasks.filter(t => 
+        t.status === 'DONE' && 
+        new Date(t.updatedAt) >= weekStart && 
+        new Date(t.updatedAt) <= weekEnd
+      ).length;
+      
+      velocityData.push({
+        week: `Minggu ${4 - w}`,
+        count: completedThisWeek,
+        startDate: weekStart.toISOString().split('T')[0],
+        endDate: weekEnd.toISOString().split('T')[0]
+      });
+    }
 
     // Team activity feed
     const activityWhere = platformRole === 'owner' ? {} : {
@@ -142,7 +199,10 @@ router.get('/', async (req, res) => {
       stats: { total, done, active, overdue },
       members: memberStats,
       workloadMembers,
-      activityLogs
+      activityLogs,
+      burndownData,
+      velocityData,
+      daysBack
     });
   } catch (error) {
     console.error(error);

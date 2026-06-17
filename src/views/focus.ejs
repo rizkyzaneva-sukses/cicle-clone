@@ -1,0 +1,291 @@
+<%- include('partials/header', { title: 'Focus Timer' }) %>
+
+<div class="max-w-2xl mx-auto">
+  <!-- Back link -->
+  <a href="/" class="text-blue-600 hover:underline text-sm flex items-center gap-1 mb-6">
+    <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+  </a>
+
+  <div class="bg-white rounded-3xl border shadow-sm p-6 sm:p-8">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">🎯 Focus Timer</h1>
+      <p class="text-gray-500 text-sm">Tingkatkan produktivitasmu dengan teknik Pomodoro</p>
+    </div>
+
+    <!-- Today's Stats -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+      <div class="bg-blue-50 rounded-2xl p-4 text-center">
+        <div class="text-3xl font-bold text-blue-600" id="today-sessions"><%= todaySessions %></div>
+        <div class="text-xs text-blue-500 font-medium mt-1">Sesi Hari Ini</div>
+      </div>
+      <div class="bg-emerald-50 rounded-2xl p-4 text-center">
+        <div class="text-3xl font-bold text-emerald-600" id="today-minutes"><%= totalFocusMinutes %></div>
+        <div class="text-xs text-emerald-500 font-medium mt-1">Menit Fokus</div>
+      </div>
+    </div>
+
+    <!-- Task Selector -->
+    <div class="mb-8">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Fokus pada tugas:</label>
+      <select id="task-selector" class="w-full border rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-blue-400">
+        <option value="">Tanpa tugas spesifik</option>
+        <% tasks.forEach(task => { %>
+          <option value="<%= task.id %>" data-title="<%= task.title %>">
+            [<%= task.project.name %>] <%= task.title %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <!-- Timer Type Selector -->
+    <div class="flex justify-center gap-2 mb-8">
+      <button onclick="setTimerType('work')" id="type-work"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition bg-blue-600 text-white">
+        🍅 Kerja (25m)
+      </button>
+      <button onclick="setTimerType('shortBreak')" id="type-shortBreak"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+        ☕ Istirahat (5m)
+      </button>
+      <button onclick="setTimerType('longBreak')" id="type-longBreak"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+        🌿 Panjang (15m)
+      </button>
+    </div>
+
+    <!-- Circular Timer Display -->
+    <div class="flex justify-center mb-8">
+      <div class="relative w-64 h-64">
+        <!-- Background circle -->
+        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="6" />
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#3b82f6" stroke-width="6"
+            stroke-dasharray="282.74" stroke-dashoffset="0" stroke-linecap="round"
+            id="timer-progress" class="transition-all duration-1000" />
+        </svg>
+        <!-- Time display -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <div class="text-5xl font-bold text-gray-900 font-mono" id="timer-display">25:00</div>
+          <div class="text-sm text-gray-500 mt-1" id="timer-label">Fokus</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex justify-center gap-3">
+      <button onclick="startTimer()" id="btn-start"
+        class="px-8 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700 transition flex items-center gap-2">
+        <i class="fas fa-play"></i> Mulai
+      </button>
+      <button onclick="pauseTimer()" id="btn-pause"
+        class="hidden px-8 py-3 bg-amber-500 text-white rounded-2xl font-medium hover:bg-amber-600 transition flex items-center gap-2">
+        <i class="fas fa-pause"></i> Jeda
+      </button>
+      <button onclick="resetTimer()"
+        class="px-8 py-3 border rounded-2xl font-medium text-gray-600 hover:bg-gray-50 transition flex items-center gap-2">
+        <i class="fas fa-redo"></i> Reset
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Timer state
+  const TIMER_DURATIONS = {
+    work: 25 * 60,
+    shortBreak: 5 * 60,
+    longBreak: 15 * 60
+  };
+
+  const TIMER_LABELS = {
+    work: 'Fokus',
+    shortBreak: 'Istirahat',
+    longBreak: 'Istirahat Panjang'
+  };
+
+  const TIMER_COLORS = {
+    work: '#3b82f6',
+    shortBreak: '#10b981',
+    longBreak: '#8b5cf6'
+  };
+
+  let currentType = 'work';
+  let totalSeconds = TIMER_DURATIONS.work;
+  let remainingSeconds = totalSeconds;
+  let timerInterval = null;
+  let isRunning = false;
+  const circumference = 2 * Math.PI * 45; // ~282.74
+
+  function setTimerType(type) {
+    if (isRunning) {
+      if (!confirm('Timer sedang berjalan. Yakin ingin mengganti mode?')) return;
+      clearInterval(timerInterval);
+      isRunning = false;
+    }
+
+    currentType = type;
+    totalSeconds = TIMER_DURATIONS[type];
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+
+    // Update button styles
+    ['work', 'shortBreak', 'longBreak'].forEach(t => {
+      const btn = document.getElementById('type-' + t);
+      if (t === type) {
+        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition text-white';
+        btn.style.backgroundColor = TIMER_COLORS[t];
+      } else {
+        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200';
+        btn.style.backgroundColor = '';
+      }
+    });
+
+    // Update progress color
+    document.getElementById('timer-progress').style.stroke = TIMER_COLORS[type];
+
+    // Reset buttons
+    document.getElementById('btn-start').classList.remove('hidden');
+    document.getElementById('btn-start').classList.add('flex');
+    document.getElementById('btn-pause').classList.add('hidden');
+  }
+
+  function updateDisplay() {
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    document.getElementById('timer-display').textContent =
+      String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+    // Update progress circle
+    const progress = remainingSeconds / totalSeconds;
+    const offset = circumference * (1 - progress);
+    document.getElementById('timer-progress').style.strokeDashoffset = offset;
+
+    // Update label
+    document.getElementById('timer-label').textContent = TIMER_LABELS[currentType];
+
+    // Update page title
+    document.title = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} - Focus Timer`;
+  }
+
+  function startTimer() {
+    if (isRunning) return;
+    isRunning = true;
+
+    document.getElementById('btn-start').classList.add('hidden');
+    document.getElementById('btn-pause').classList.remove('hidden');
+    document.getElementById('btn-pause').classList.add('flex');
+
+    timerInterval = setInterval(() => {
+      remainingSeconds--;
+
+      if (remainingSeconds <= 0) {
+        clearInterval(timerInterval);
+        isRunning = false;
+        remainingSeconds = 0;
+        updateDisplay();
+        timerComplete();
+        return;
+      }
+
+      updateDisplay();
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    if (!isRunning) return;
+    clearInterval(timerInterval);
+    isRunning = false;
+
+    document.getElementById('btn-pause').classList.add('hidden');
+    document.getElementById('btn-start').classList.remove('hidden');
+    document.getElementById('btn-start').classList.add('flex');
+  }
+
+  function resetTimer() {
+    clearInterval(timerInterval);
+    isRunning = false;
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+
+    document.getElementById('btn-pause').classList.add('hidden');
+    document.getElementById('btn-start').classList.remove('hidden');
+    document.getElementById('btn-start').classList.add('flex');
+  }
+
+  function timerComplete() {
+    // Play sound using Web Audio API
+    playNotificationSound();
+
+    // Log session if work session
+    if (currentType === 'work') {
+      const taskId = document.getElementById('task-selector').value;
+      const minutes = Math.round(totalSeconds / 60);
+
+      fetch('/focus/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, minutes, type: currentType })
+      }).then(() => {
+        // Update stats
+        const sessionsEl = document.getElementById('today-sessions');
+        const minutesEl = document.getElementById('today-minutes');
+        sessionsEl.textContent = parseInt(sessionsEl.textContent) + 1;
+        minutesEl.textContent = parseInt(minutesEl.textContent) + minutes;
+      }).catch(console.error);
+    }
+
+    // Show notification
+    if (Notification.permission === 'granted') {
+      new Notification('Focus Timer Selesai! 🍅', {
+        body: currentType === 'work' ? 'Waktu istirahat!' : 'Waktu fokus lagi!',
+        icon: '/favicon.ico'
+      });
+    }
+
+    // Alert
+    alert(`${TIMER_LABELS[currentType]} selesai! 🎉`);
+
+    // Auto-switch type
+    if (currentType === 'work') {
+      setTimerType('shortBreak');
+    } else {
+      setTimerType('work');
+    }
+  }
+
+  function playNotificationSound() {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Play a pleasant two-tone notification
+      [0, 0.2].forEach((delay, i) => {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.value = i === 0 ? 523.25 : 659.25; // C5, E5
+
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + delay);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.5);
+
+        oscillator.start(audioCtx.currentTime + delay);
+        oscillator.stop(audioCtx.currentTime + delay + 0.5);
+      });
+    } catch (e) {
+      console.log('Audio not available');
+    }
+  }
+
+  // Request notification permission on load
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Initialize display
+  updateDisplay();
+</script>
+
+<%- include('partials/footer') %>

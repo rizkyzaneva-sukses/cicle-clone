@@ -199,11 +199,14 @@ model Task {
   dueDate     DateTime?
   projectId   String
   assigneeId  String?
+  parentId    String?   // parent task for sub-task hierarchy
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee     User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  parent       Task?           @relation("TaskParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Task[]          @relation("TaskParent")
   comments     Comment[]
   checklists   ChecklistItem[]
   labels       TaskLabel[]

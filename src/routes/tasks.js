@@ -44,6 +44,8 @@ router.get('/:id', async (req, res) => {
       include: {
         project: { include: { company: true } },
         assignee: true,
+        parent: { select: { id: true, title: true, status: true } },
+        children: { select: { id: true, title: true, status: true, priority: true, assignee: true }, orderBy: { createdAt: 'asc' } },
         checklists: { orderBy: { position: 'asc' }, include: { children: { orderBy: { position: 'asc' } } } },
         comments: { where: { parentId: null }, include: { user: true, files: true, replies: { include: { user: true, files: true }, orderBy: { createdAt: 'asc' } } }, orderBy: { createdAt: 'asc' } },
         labels: { include: { label: true } },
@@ -72,11 +74,23 @@ router.get('/:id', async (req, res) => {
       orderBy: { name: 'asc' }
     });
 
+    // Get other tasks in same project for parent selector (exclude self and descendants)
+    const siblingTasks = await prisma.task.findMany({
+      where: {
+        projectId: task.projectId,
+        id: { not: task.id },
+        parentId: null // only top-level tasks as potential parents
+      },
+      select: { id: true, title: true, status: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
     res.render('tasks/detail', {
       title: task.title,
       task,
       members: members.map(m => m.user),
       labels,
+      siblingTasks,
       currentUserId: req.session.user.id
     });
   } catch (err) {
@@ -530,6 +544,79 @@ router.post('/:id/labels/:labelId/remove', async (req, res) => {
   }
 });
 
+// Set parent task
+router.post('/:id/set-parent', async (req, res) => {
+  try {
+    const { parentId } = req.body;
+    const task = await canAccessTask(req.session.user, req.params.id);
+    if (!task) return res.status(403).json({ error: 'Akses ditolak' });
+
+    // Validate parent exists and is in same project
+    if (parentId) {
+      const parentTask = await prisma.task.findUnique({ where: { id: parentId } });
+      if (!parentTask) return res.status(404).json({ error: 'Parent task tidak ditemukan' });
+      if (parentTask.projectId !== task.projectId) {
+        return res.status(400).json({ error: 'Parent task harus dari proyek yang sama' });
+      }
+      // Prevent circular reference
+      if (parentId === req.params.id) {
+        return res.status(400).json({ error: 'Task tidak bisa menjadi parent diri sendiri' });
+      }
+      // Check if the proposed parent is already a child of this task
+      const existingChildren = await prisma.task.findMany({ where: { parentId: req.params.id } });
+      if (existingChildren.some(c => c.id === parentId)) {
+        return res.status(400).json({ error: 'Tidak bisa membuat circular reference' });
+      }
+    }
+
+    const updated = await prisma.task.update({
+      where: { id: req.params.id },
+      data: { parentId: parentId || null }
+    });
+
+    await logActivity(prisma, req, {
+      action: parentId ? 'set_parent' : 'removed_parent',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { parentId: parentId || null }
+    });
+
+    res.json({ success: true, task: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal update parent task' });
+  }
+});
+
+// Remove parent task
+router.post('/:id/remove-parent', async (req, res) => {
+  try {
+    const task = await canAccessTask(req.session.user, req.params.id);
+    if (!task) return res.status(403).json({ error: 'Akses ditolak' });
+
+    await prisma.task.update({
+      where: { id: req.params.id },
+      data: { parentId: null }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'removed_parent',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: {}
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal menghapus parent task' });
+  }
+});
+
 module.exports = router;
 
 // Get members for @mention autocomplete
@@ -554,6 +641,42 @@ router.get('/:id/members', async (req, res) => {
     res.json(filtered.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email })));
   } catch (error) {
     res.status(500).json([]);
+  }
+});
+
+// Move task to a different project
+router.patch('/:id/project', async (req, res) => {
+  try {
+    const { projectId: targetProjectId } = req.body;
+    if (!targetProjectId) return res.status(400).json({ error: 'Target project wajib diisi' });
+
+    const existingTask = await canAccessTask(req.session.user, req.params.id);
+    if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
+
+    // Check access to target project
+    const targetProject = await prisma.project.findUnique({ where: { id: targetProjectId }, select: { id: true, companyId: true } });
+    if (!targetProject || !await hasProjectAccess(req.session.user, targetProject)) {
+      return res.status(403).json({ error: 'Akses ke proyek target ditolak' });
+    }
+
+    const task = await prisma.task.update({
+      where: { id: req.params.id },
+      data: { projectId: targetProjectId }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'moved',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: targetProjectId,
+      taskId: task.id,
+      metadata: { fromProjectId: existingTask.projectId, toProjectId: targetProjectId }
+    });
+
+    res.json({ success: true, task });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal memindahkan task' });
   }
 });
 

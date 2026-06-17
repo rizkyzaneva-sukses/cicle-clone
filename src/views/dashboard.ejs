@@ -244,14 +244,29 @@
         <a href="/projects/<%= project.id %>" class="block bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:shadow-lg transition group project-card tap-feedback">
           <div class="flex justify-between">
             <div class="min-w-0 flex-1">
-              <h3 class="font-bold text-base sm:text-xl group-hover:text-blue-600 transition project-title truncate"><%= project.name %></h3>
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-base sm:text-xl group-hover:text-blue-600 transition project-title truncate"><%= project.name %></h3>
+                <% if (project.healthIndicator) { %>
+                  <span class="text-lg" title="Health Score: <%= project.healthScore %>"><%= project.healthIndicator %></span>
+                <% } %>
+              </div>
               <p class="text-gray-500 text-xs sm:text-sm mt-1 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
             </div>
             <i class="fas fa-folder text-2xl sm:text-3xl text-gray-300 group-hover:text-blue-400 ml-2 flex-shrink-0"></i>
           </div>
-          <div class="mt-4 sm:mt-6 flex items-center text-xs text-gray-500">
-            <i class="fas fa-calendar mr-1.5"></i>
-            <span class="truncate">Dibuat <%= new Date(project.createdAt).toLocaleDateString('id-ID') %></span>
+          <div class="mt-4 sm:mt-6 flex items-center justify-between text-xs text-gray-500">
+            <div class="flex items-center">
+              <i class="fas fa-calendar mr-1.5"></i>
+              <span class="truncate">Dibuat <%= new Date(project.createdAt).toLocaleDateString('id-ID') %></span>
+            </div>
+            <% if (project.healthScore !== undefined) { %>
+              <span class="px-2 py-0.5 rounded-full 
+                <%= project.healthScore > 80 ? 'bg-emerald-100 text-emerald-700' : 
+                    project.healthScore >= 50 ? 'bg-amber-100 text-amber-700' : 
+                    'bg-red-100 text-red-700' %>">
+                Score: <%= project.healthScore %>
+              </span>
+            <% } %>
           </div>
         </a>
       <% }) %>
@@ -272,10 +287,10 @@
       <i class="fas fa-folder-plus bg-blue-100 text-blue-600"></i>
       <span>Proyek Baru</span>
     </a>
-    <a href="/tasks/new" class="fab-item">
+    <button onclick="openQuickTaskSheet()" class="fab-item">
       <i class="fas fa-plus bg-emerald-100 text-emerald-600"></i>
-      <span>Tugas Baru</span>
-    </a>
+      <span>Quick Task</span>
+    </button>
     <a href="/projects" class="fab-item">
       <i class="fas fa-folder bg-amber-100 text-amber-600"></i>
       <span>Semua Proyek</span>
@@ -342,6 +357,195 @@ document.querySelectorAll('.tap-feedback').forEach(el => {
     this.style.transform = '';
   }, { passive: true });
 });
+</script>
+<!-- Quick Task Bottom Sheet -->
+<div id="quickTaskSheet" class="fixed inset-0 z-[100] hidden" style="background:rgba(0,0,0,0.5);">
+  <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 translate-y-full max-h-[90vh] overflow-y-auto" id="quickTaskSheetContent">
+    <div class="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing" id="quickTaskHandle">
+      <div class="w-10 h-1.5 bg-gray-300 rounded-full"></div>
+    </div>
+    <div class="px-6 pb-8">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-xl font-bold text-gray-900">Quick Task</h3>
+        <button onclick="closeQuickTaskSheet()" class="p-2 rounded-xl hover:bg-gray-100 text-gray-500">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="quickTaskForm" onsubmit="submitQuickTask(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Judul Tugas *</label>
+            <input type="text" id="qt-title" required placeholder="Apa yang harus dikerjakan?"
+              class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Proyek *</label>
+            <select id="qt-project" required class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400">
+              <option value="">Pilih proyek...</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Prioritas</label>
+              <select id="qt-priority" class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400">
+                <option value="NONE">Tanpa Prioritas</option>
+                <option value="LOW">🔵 Low</option>
+                <option value="MEDIUM">🟡 Medium</option>
+                <option value="HIGH">🟠 High</option>
+                <option value="URGENT">🔴 Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Deadline</label>
+              <input type="date" id="qt-due" class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Ditugaskan ke</label>
+            <select id="qt-assignee" class="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400">
+              <option value="">Belum ditugaskan</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="w-full mt-6 py-3.5 bg-blue-600 text-white rounded-2xl font-semibold hover:bg-blue-700 transition active:scale-95">
+          <i class="fas fa-plus mr-2"></i>Buat Tugas
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Quick Task Sheet logic
+let qtProjectsLoaded = false;
+
+async function openQuickTaskSheet() {
+  // Close FAB first
+  document.getElementById('fab-btn')?.classList.remove('open');
+  document.getElementById('fab-menu')?.classList.remove('open');
+
+  const sheet = document.getElementById('quickTaskSheet');
+  const content = document.getElementById('quickTaskSheetContent');
+  sheet.classList.remove('hidden');
+  // Trigger slide-up animation
+  requestAnimationFrame(() => {
+    content.classList.remove('translate-y-full');
+    content.classList.add('translate-y-0');
+  });
+
+  // Load projects if not loaded
+  if (!qtProjectsLoaded) {
+    await loadQuickTaskProjects();
+  }
+
+  document.getElementById('qt-title').focus();
+}
+
+function closeQuickTaskSheet() {
+  const sheet = document.getElementById('quickTaskSheet');
+  const content = document.getElementById('quickTaskSheetContent');
+  content.classList.remove('translate-y-0');
+  content.classList.add('translate-y-full');
+  setTimeout(() => sheet.classList.add('hidden'), 350);
+  document.getElementById('quickTaskForm').reset();
+}
+
+// Close when clicking backdrop
+document.getElementById('quickTaskSheet')?.addEventListener('click', function(e) {
+  if (e.target === this) closeQuickTaskSheet();
+});
+
+async function loadQuickTaskProjects() {
+  try {
+    const res = await fetch('/projects?json=1');
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    const select = document.getElementById('qt-project');
+    data.projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+    qtProjectsLoaded = true;
+  } catch (e) {
+    // Fallback: use server-rendered projects if available
+    <%
+      const qtProjects = typeof projects !== 'undefined' ? projects : [];
+    %>
+    const select = document.getElementById('qt-project');
+    <% qtProjects.forEach(p => { %>
+      const opt = document.createElement('option');
+      opt.value = '<%= p.id %>';
+      opt.textContent = '<%= p.name %>';
+      select.appendChild(opt);
+    <% }) %>
+    qtProjectsLoaded = true;
+  }
+
+  // Load members when project changes
+  document.getElementById('qt-project').addEventListener('change', async function() {
+    const projectId = this.value;
+    const assigneeSelect = document.getElementById('qt-assignee');
+    assigneeSelect.innerHTML = '<option value="">Memuat anggota...</option>';
+
+    if (!projectId) {
+      assigneeSelect.innerHTML = '<option value="">Belum ditugaskan</option>';
+      return;
+    }
+
+    try {
+      const res = await fetch(`/chat/members/${projectId}`);
+      const members = await res.json();
+      assigneeSelect.innerHTML = '<option value="">Belum ditugaskan</option>';
+      members.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        assigneeSelect.appendChild(opt);
+      });
+    } catch (e) {
+      assigneeSelect.innerHTML = '<option value="">Gagal memuat</option>';
+    }
+  });
+}
+
+async function submitQuickTask(e) {
+  e.preventDefault();
+  const title = document.getElementById('qt-title').value.trim();
+  const projectId = document.getElementById('qt-project').value;
+  if (!title || !projectId) return alert('Judul dan proyek wajib diisi');
+
+  const body = {
+    title,
+    projectId,
+    priority: document.getElementById('qt-priority').value,
+    dueDate: document.getElementById('qt-due').value || null,
+    assigneeId: document.getElementById('qt-assignee').value || null
+  };
+
+  try {
+    const res = await fetch('/tasks/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const result = await res.json();
+    if (result.success) {
+      closeQuickTaskSheet();
+      // Show success feedback
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-lg z-[200] flex items-center gap-2 text-sm font-medium';
+      toast.innerHTML = '<i class="fas fa-check-circle"></i> Tugas berhasil dibuat!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    } else {
+      alert(result.error || 'Gagal membuat tugas');
+    }
+  } catch (err) {
+    alert('Gagal membuat tugas');
+  }
+}
 </script>
 
 <%- include('partials/footer') %>

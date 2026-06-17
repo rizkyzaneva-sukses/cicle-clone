@@ -46,11 +46,19 @@ router.get('/members/:projectId', async (req, res) => {
   });
 
   const q = (req.query.q || '').toLowerCase();
+  
+  // Add @team option at the beginning
+  const teamOption = { id: '__team__', name: 'team', email: 'Semua anggota tim' };
+  
   const filtered = q
-    ? members.filter(m => m.user.name.toLowerCase().includes(q) || m.user.email.toLowerCase().includes(q))
-    : members;
+    ? [teamOption, ...members.filter(m => 
+        m.user.name.toLowerCase().includes(q) || 
+        m.user.email.toLowerCase().includes(q) ||
+        'team'.includes(q)
+      ).map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email }))]
+    : [teamOption, ...members.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email }))];
 
-  res.json(filtered.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email })));
+  res.json(filtered);
 });
 
 // Post new message (fallback if socket fails)
@@ -101,19 +109,39 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
       prisma.projectMember.findMany({ where: { projectId }, select: { userId: true } })
     ]);
 
+    // Get all member IDs for @team mention
+    const allMemberIds = companyMembers.map(m => m.user.id);
+    
     const mentionedIds = new Set(
-      extractMentionedUserIds(content, companyMembers.map(m => m.user)).filter(id => id !== userId)
+      extractMentionedUserIds(content, companyMembers.map(m => m.user), allMemberIds).filter(id => id !== userId)
     );
+    
+    // Determine if @team was used
+    const isTeamMention = content.includes('@team');
+    
     const recipientIds = new Set([
       ...projectMembers.map(m => m.userId),
       ...mentionedIds
     ]);
     recipientIds.delete(userId);
 
+    // Check for @team mention — notify ALL project members (not just mentioned)
+    const isTeamBroadcast = /@team\b/i.test(content);
+    if (isTeamBroadcast) {
+      // Add all project members to recipients
+      for (const pm of projectMembers) {
+        recipientIds.add(pm.userId);
+      }
+      recipientIds.delete(userId);
+    }
+
     const io = req.app.get('io');
     const snippet = content ? (content.length > 80 ? `${content.slice(0, 80)}...` : content) : '(mengirim file)';
     for (const recipientId of recipientIds) {
-      if (mentionedIds.has(recipientId)) {
+      if (isTeamMention && mentionedIds.has(recipientId)) {
+        await ensureProjectMember(recipientId, projectId);
+        await notifyUser(io, recipientId, `${fullMessage.user.name} menyebut @team di chat proyek "${project.name}"`, `/projects/${projectId}`);
+      } else if (mentionedIds.has(recipientId)) {
         await ensureProjectMember(recipientId, projectId);
         await notifyUser(io, recipientId, `${fullMessage.user.name} menyebut kamu di chat proyek "${project.name}"`, `/projects/${projectId}`);
       } else {

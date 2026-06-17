@@ -1,5 +1,5 @@
 const prisma = require('./prisma');
-const { sendTelegramMessage } = require('./telegram');
+const { sendTelegramMessage, sendDeadlineAlert } = require('./telegram');
 const { notifyUser } = require('./notify');
 const { getCompanyManagerIds } = require('./managers');
 
@@ -60,7 +60,8 @@ async function runDailyReminders(io, now = new Date()) {
 
       await notifyUser(io, task.assigneeId, content, `/tasks/${task.id}`);
       if (task.assignee?.telegramChatId) {
-        await sendTelegramMessage(task.assignee.telegramChatId, content);
+        // Use the new sendDeadlineAlert for better formatting
+        await sendDeadlineAlert(task.assignee.telegramChatId, task);
       }
 
       await prisma.telegramReminderLog.create({ data: { taskId: task.id, bucket, sentDate: today } });

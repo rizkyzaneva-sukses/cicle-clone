@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
-const { botUsername } = require('../lib/telegram');
+const { botUsername, getDeepLink } = require('../lib/telegram');
 
 router.use(requireAuth);
 
@@ -11,7 +11,12 @@ router.get('/', async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.session.user.id }
   });
-  res.render('profile', { title: 'Profil Saya', user, telegramBotUsername: botUsername });
+  res.render('profile', { 
+    title: 'Profil Saya', 
+    user, 
+    telegramBotUsername: botUsername,
+    telegramDeepLink: getDeepLink()
+  });
 });
 
 router.post('/update', async (req, res) => {

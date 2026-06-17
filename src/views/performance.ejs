@@ -1,12 +1,100 @@
 <%- include('partials/header', { title: 'Dashboard Kinerja' }) %>
 
+<style>
+  /* Print-friendly styles */
+  @media print {
+    .no-print { display: none !important; }
+    .print-break { page-break-before: always; }
+    body { font-size: 12px; }
+    .bg-white { border: 1px solid #e5e7eb; }
+  }
+  
+  /* Chart styles */
+  .chart-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 200px;
+    padding: 10px 0;
+  }
+  
+  .chart-bar {
+    flex: 1;
+    background: linear-gradient(to top, #3b82f6, #60a5fa);
+    border-radius: 4px 4px 0 0;
+    min-width: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .chart-bar:hover {
+    opacity: 0.8;
+  }
+  
+  .chart-bar .tooltip {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  
+  .chart-bar:hover .tooltip {
+    display: block;
+  }
+  
+  .velocity-bar {
+    background: linear-gradient(to top, #10b981, #34d399);
+  }
+  
+  .chart-label {
+    font-size: 10px;
+    color: #6b7280;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  /* Dark mode support */
+  html.dark .chart-bar {
+    background: linear-gradient(to top, #2563eb, #3b82f6);
+  }
+  
+  html.dark .velocity-bar {
+    background: linear-gradient(to top, #059669, #10b981);
+  }
+</style>
+
 <div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-900">Dashboard Kinerja</h1>
-  <p class="text-sm text-gray-500 mt-1">Monitoring performa tim per brand</p>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Dashboard Kinerja</h1>
+      <p class="text-sm text-gray-500 mt-1">Monitoring performa tim per brand</p>
+    </div>
+    <div class="flex gap-2 no-print">
+      <select id="daysSelect" onchange="changeDays(this.value)" 
+        class="px-3 py-2 text-sm border rounded-xl bg-white">
+        <option value="7" <%= daysBack === 7 ? 'selected' : '' %>>7 Hari</option>
+        <option value="14" <%= daysBack === 14 ? 'selected' : '' %>>14 Hari</option>
+        <option value="30" <%= daysBack === 30 ? 'selected' : '' %>>30 Hari</option>
+      </select>
+      <button onclick="window.print()" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-xl">
+        <i class="fas fa-print mr-1"></i>Cetak
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Brand selector -->
-<div class="flex gap-2 mb-6 flex-wrap">
+<div class="flex gap-2 mb-6 flex-wrap no-print">
   <button onclick="setBrand('ALL')" id="brand-ALL" class="px-4 py-2 text-sm rounded-xl border bg-blue-600 text-white border-blue-600">Semua Brand</button>
   <% brands.forEach(brand => { %>
     <button onclick="setBrand('<%= brand.id %>')" id="brand-<%= brand.id %>" class="px-4 py-2 text-sm rounded-xl border bg-white"><%= brand.name %></button>
@@ -30,6 +118,53 @@
   <div class="bg-white border rounded-2xl p-5 text-center shadow-sm">
     <div class="text-3xl font-bold text-red-600" id="stat-overdue"><%= stats.overdue %></div>
     <div class="text-sm text-gray-500 mt-1">Overdue</div>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <!-- Burndown Chart -->
+  <div class="bg-white border rounded-2xl p-5 shadow-sm">
+    <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+      <i class="fas fa-fire text-orange-500"></i> Burndown Chart
+      <span class="text-xs text-gray-400 font-normal">(Sisa task per hari)</span>
+    </h3>
+    <div class="chart-container">
+      <% const maxBurndown = Math.max(...burndownData.map(d => d.remaining), 1); %>
+      <% burndownData.forEach((d, i) => { %>
+        <% if (i % Math.ceil(burndownData.length / 7) === 0 || i === burndownData.length - 1) { %>
+          <div class="flex flex-col items-center" style="flex: 1;">
+            <div class="chart-bar w-full" style="height: <%= (d.remaining / maxBurndown) * 100 %>%">
+              <span class="tooltip"><%= d.date %>: <%= d.remaining %> task</span>
+            </div>
+            <span class="chart-label mt-1"><%= d.date.slice(5) %></span>
+          </div>
+        <% } else { %>
+          <div class="chart-bar" style="height: <%= (d.remaining / maxBurndown) * 100 %>%">
+            <span class="tooltip"><%= d.date %>: <%= d.remaining %> task</span>
+          </div>
+        <% } %>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Velocity Chart -->
+  <div class="bg-white border rounded-2xl p-5 shadow-sm">
+    <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+      <i class="fas fa-tachometer-alt text-emerald-500"></i> Velocity Chart
+      <span class="text-xs text-gray-400 font-normal">(Task selesai per minggu)</span>
+    </h3>
+    <div class="chart-container">
+      <% const maxVelocity = Math.max(...velocityData.map(d => d.count), 1); %>
+      <% velocityData.forEach(d => { %>
+        <div class="flex flex-col items-center" style="flex: 1;">
+          <div class="chart-bar velocity-bar w-full" style="height: <%= (d.count / maxVelocity) * 100 %>%">
+            <span class="tooltip"><%= d.week %>: <%= d.count %> task</span>
+          </div>
+          <span class="chart-label mt-1"><%= d.week.replace('Minggu ', 'M') %></span>
+        </div>
+      <% }) %>
+    </div>
   </div>
 </div>
 
@@ -59,7 +194,7 @@
         <div class="h-full rounded-full transition-all <%= member.completionRate >= 80 ? 'bg-emerald-500' : member.completionRate >= 50 ? 'bg-amber-500' : 'bg-red-500' %>" style="width:<%= member.completionRate %>%"></div>
       </div>
 
-      <div class="grid grid-cols-4 gap-3 text-center text-xs">
+      <div class="grid grid-cols-5 gap-3 text-center text-xs">
         <div class="bg-gray-50 rounded-xl p-2">
           <div class="font-bold text-gray-800"><%= member.totalTasks %></div>
           <div class="text-gray-500">Total</div>
@@ -75,6 +210,10 @@
         <div class="bg-red-50 rounded-xl p-2">
           <div class="font-bold text-red-700"><%= member.overdueTasks %></div>
           <div class="text-red-600">Overdue</div>
+        </div>
+        <div class="bg-purple-50 rounded-xl p-2">
+          <div class="font-bold text-purple-700"><%= member.overdueRate %>%</div>
+          <div class="text-purple-600">Rate</div>
         </div>
       </div>
     </div>
@@ -166,6 +305,10 @@ function setBrand(brandId) {
       card.style.display = 'none';
     }
   });
+}
+
+function changeDays(days) {
+  window.location.href = `/performance?days=${days}`;
 }
 </script>
 

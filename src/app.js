@@ -128,6 +128,9 @@ app.use('/performance', require('./routes/performance'));
 app.use('/dependencies', require('./routes/dependencies'));
 app.use('/calendar', require('./routes/calendar'));
 app.use('/announcements', require('./routes/announcements'));
+app.use('/focus', require('./routes/focus'));
+app.use('/telegram', require('./routes/telegram'));
+app.use('/activity', require('./routes/activity'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {
@@ -222,6 +225,14 @@ app.get('/', async (req, res) => {
         prisma.task.count({ where: { project: { companyId }, status: 'DONE' } }),
         prisma.task.count({ where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
       ]);
+      
+      // Calculate health scores for projects
+      const { calculateProjectHealthScore, getHealthIndicator } = require('../lib/health');
+      for (const project of projects) {
+        const { score } = await calculateProjectHealthScore(project.id);
+        project.healthScore = score;
+        project.healthIndicator = getHealthIndicator(score);
+      }
     }
 
     res.render('dashboard', {

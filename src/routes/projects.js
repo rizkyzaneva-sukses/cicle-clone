@@ -158,8 +158,8 @@ router.get('/:projectId/tasks/:taskId', async (req, res) => {
   }
 });
 
-// Project detail + Kanban
-router.get('/:id', async (req, res) => {
+// Gantt Chart View
+router.get('/:id/gantt', async (req, res) => {
   const projectId = req.params.id;
   const userId = req.session.user.id;
 
@@ -185,8 +185,48 @@ router.get('/:id', async (req, res) => {
     return res.status(403).send('Akses ditolak');
   }
 
+  const members = await prisma.membership.findMany({
+    where: { companyId: project.companyId },
+    include: { user: true }
+  });
+
+  res.render('projects/gantt', {
+    project,
+    members: members.map(m => m.user),
+    currentUserId: userId
+  });
+});
+
+// Project detail + Kanban
+router.get('/:id', async (req, res) => {
+  const projectId = req.params.id;
+  const userId = req.session.user.id;
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      company: true,
+      tasks: {
+        include: {
+          assignee: true,
+          labels: { include: { label: true } },
+          checklists: { select: { id: true, content: true, isDone: true } },
+          children: { select: { id: true } }
+        },
+        orderBy: [{ status: 'asc' }, { position: 'asc' }]
+      }
+    }
+  });
+
+  if (!project) {
+    return res.status(404).send('Proyek tidak ditemukan');
+  }
+  if (!await hasProjectAccess(req.session.user, project)) {
+    return res.status(403).send('Akses ditolak');
+  }
+
   // Get company members for assignee dropdown + project members for access management
-  const [members, projectMembers, recurringTemplates] = await Promise.all([
+  const [members, projectMembers, recurringTemplates, allProjects] = await Promise.all([
     prisma.membership.findMany({
       where: { companyId: project.companyId },
       include: { user: true }
@@ -199,15 +239,30 @@ router.get('/:id', async (req, res) => {
       where: { projectId },
       include: { assignee: true },
       orderBy: { createdAt: 'desc' }
+    }),
+    // All projects in the same company for bulk move dropdown
+    prisma.project.findMany({
+      where: { companyId: project.companyId, archivedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
     })
   ]);
+
+  // Calculate health score
+  const { calculateProjectHealthScore, getHealthIndicator, getHealthStatus } = require('../lib/health');
+  const healthData = await calculateProjectHealthScore(projectId);
 
   res.render('projects/kanban', {
     project,
     members: members.map(m => m.user),
     projectMembers,
     recurringTemplates,
-    currentUserId: userId
+    currentUserId: userId,
+    healthScore: healthData.score,
+    healthBreakdown: healthData.breakdown,
+    healthIndicator: getHealthIndicator(healthData.score),
+    healthStatus: getHealthStatus(healthData.score),
+    projects: allProjects
   });
 });
 

@@ -93,6 +93,18 @@
       <li>Cari Chat ID kamu lewat bot seperti <a href="https://t.me/userinfobot" target="_blank" class="text-blue-600 hover:underline">@userinfobot</a> (kirim pesan apa saja, dia balas ID kamu).</li>
       <li>Tempel ID itu di kolom bawah ini.</li>
     </ol>
+    
+    <!-- Connect Telegram Button -->
+    <% if (telegramDeepLink) { %>
+      <div class="mb-4">
+        <a href="<%= telegramDeepLink %>" target="_blank" 
+          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition">
+          <i class="fab fa-telegram"></i> Hubungkan Telegram
+        </a>
+        <p class="text-xs text-gray-400 mt-1">Klik tombol di atas untuk langsung menghubungkan akun Telegram kamu</p>
+      </div>
+    <% } %>
+    
     <form action="/profile/telegram" method="POST" class="flex flex-col sm:flex-row gap-3">
       <input type="text" name="telegramChatId" value="<%= user.telegramChatId || '' %>" placeholder="Contoh: 123456789"
         class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
@@ -102,7 +114,12 @@
       </button>
     </form>
     <% if (user.telegramChatId) { %>
-      <p class="text-xs text-emerald-600 mt-2"><i class="fas fa-check-circle mr-1"></i>Telegram Chat ID sudah aktif.</p>
+      <div class="flex items-center gap-3 mt-3">
+        <p class="text-xs text-emerald-600"><i class="fas fa-check-circle mr-1"></i>Telegram Chat ID sudah aktif.</p>
+        <a href="/telegram/test" class="text-xs text-blue-600 hover:underline">
+          <i class="fas fa-paper-plane mr-1"></i>Kirim Pesan Test
+        </a>
+      </div>
     <% } %>
   </div>
 

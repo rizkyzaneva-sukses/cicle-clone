@@ -31,12 +31,45 @@
     <a href="/" class="text-blue-600 hover:underline text-sm flex items-center gap-1 mb-1">
       <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
     </a>
-    <h1 class="text-3xl font-bold"><%= project.name %></h1>
+    <div class="flex items-center gap-3">
+      <h1 class="text-3xl font-bold"><%= project.name %></h1>
+      <% if (typeof healthScore !== 'undefined') { %>
+        <div class="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
+          <%= healthScore > 80 ? 'bg-emerald-100 text-emerald-700' : 
+              healthScore >= 50 ? 'bg-amber-100 text-amber-700' : 
+              'bg-red-100 text-red-700' %>">
+          <span><%= healthIndicator %></span>
+          <span>Health: <%= healthScore %></span>
+        </div>
+      <% } %>
+    </div>
     <p class="text-gray-600"><%= project.description || 'Proyek kolaborasi tim' %></p>
+    
+    <% if (typeof healthBreakdown !== 'undefined' && healthBreakdown.overdue) { %>
+      <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+        <span title="Overdue Rate (40% weight)">
+          <i class="fas fa-clock text-red-400"></i> Overdue: <%= healthBreakdown.overdue.rate %>%
+        </span>
+        <span title="Completion Rate (30% weight)">
+          <i class="fas fa-check-circle text-emerald-400"></i> Completion: <%= healthBreakdown.completion.rate %>%
+        </span>
+        <span title="Activity Level (20% weight)">
+          <i class="fas fa-comments text-blue-400"></i> Activity: <%= healthBreakdown.activity.messages %> msgs
+        </span>
+        <span title="Member Engagement (10% weight)">
+          <i class="fas fa-users text-purple-400"></i> Engagement: <%= healthBreakdown.engagement.rate %>%
+        </span>
+      </div>
+    <% } %>
   </div>
   
   <div class="hidden sm:flex items-center gap-2 flex-wrap">
-    <button onclick="showCreateTaskModal()" 
+    <a href="/projects/<%= project.id %>/gantt"
+       class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
+      <i class="fas fa-chart-gantt"></i>
+      <span>Gantt</span>
+    </a>
+    <button onclick="showCreateTaskModal()"
             class="flex-1 sm:flex-none justify-center flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 transition text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium">
       <i class="fas fa-plus"></i> 
       <span>Baru</span>
@@ -82,12 +115,43 @@
 
 <!-- Bulk action bar -->
 <div id="bulk-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
-  <span class="text-sm"><span id="bulk-count" class="font-bold">0</span> task dipilih</span>
-  <button onclick="bulkMove('TODO')" class="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded-xl text-xs font-medium">📋 To Do</button>
-  <button onclick="bulkMove('IN_PROGRESS')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-medium">🔄 Doing</button>
-  <button onclick="bulkMove('DONE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-medium">✅ Done</button>
-  <button onclick="bulkDelete()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-xl text-xs font-medium"><i class="fas fa-trash mr-1"></i>Hapus</button>
-  <button onclick="toggleBulkMode()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-xl text-xs font-medium">Batal</button>
+  <div class="flex items-center gap-3 flex-wrap justify-center">
+    <span class="text-sm font-medium whitespace-nowrap"><i class="fas fa-check-double mr-1"></i><span id="bulk-count" class="font-bold">0</span> dipilih</span>
+    <div class="h-5 w-px bg-gray-600 hidden sm:block"></div>
+    <div class="flex items-center gap-2 flex-wrap justify-center">
+      <button onclick="bulkMove('TODO')" class="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded-xl text-xs font-medium">📋 To Do</button>
+      <button onclick="bulkMove('IN_PROGRESS')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 rounded-xl text-xs font-medium">🔄 Doing</button>
+      <button onclick="bulkMove('DONE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-medium">✅ Done</button>
+    </div>
+    <div class="h-5 w-px bg-gray-600 hidden sm:block"></div>
+    <!-- Bulk Assign -->
+    <div class="relative">
+      <select id="bulk-assign-select" onchange="bulkAssign()" class="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-xl border border-gray-600 focus:outline-none focus:border-blue-400 cursor-pointer">
+        <option value="">👤 Assign</option>
+        <option value="__clear__">✕ Hapus Assign</option>
+        <% members.forEach(m => { %>
+          <option value="<%= m.id %>"><%= m.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <!-- Bulk Deadline -->
+    <div class="relative">
+      <input type="date" id="bulk-deadline" onchange="bulkSetDeadline()" class="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-xl border border-gray-600 focus:outline-none focus:border-blue-400 cursor-pointer w-28">
+    </div>
+    <!-- Bulk Move to Project -->
+    <div class="relative">
+      <select id="bulk-project-select" onchange="bulkMoveToProject()" class="bg-gray-700 text-white text-xs px-2 py-1.5 rounded-xl border border-gray-600 focus:outline-none focus:border-blue-400 cursor-pointer max-w-[140px]">
+        <option value="">📁 Pindah Proyek</option>
+        <% projects.forEach(p => { %>
+          <% if (p.id !== project.id) { %>
+            <option value="<%= p.id %>"><%= p.name %></option>
+          <% } %>
+        <% }) %>
+      </select>
+    </div>
+    <button onclick="bulkDelete()" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-xl text-xs font-medium whitespace-nowrap"><i class="fas fa-trash mr-1"></i>Hapus</button>
+    <button onclick="toggleBulkMode()" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-xl text-xs font-medium whitespace-nowrap">Batal</button>
+  </div>
 </div>
 
 <!-- Shortcuts help -->
@@ -474,6 +538,9 @@ function renderKanban() {
     const doneCount = checklists.filter(c => c.isDone).length;
     const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
 
+    // Children count
+    const childrenCount = task.children ? task.children.length : 0;
+
     card.innerHTML = `
       <div class="flex justify-between items-start mb-2 gap-2">
         <a href="/tasks/${task.id}" onclick="event.stopPropagation()" class="font-semibold text-sm hover:text-blue-600 leading-tight flex-1">${escapeHtml(task.title)}</a>
@@ -489,6 +556,7 @@ function renderKanban() {
         <div class="flex items-center gap-1.5 flex-wrap">
           ${prio.label ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${prio.cls}">${prio.label}</span>` : ''}
           ${task.dueDate ? `<span class="${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}"><i class="fas fa-clock mr-0.5"></i>${new Date(task.dueDate).toLocaleDateString('id-ID',{month:'short',day:'numeric'})}</span>` : ''}
+          ${childrenCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700"><i class="fas fa-sitemap mr-0.5"></i>${childrenCount}</span>` : ''}
         </div>
         <div class="flex items-center gap-1 shrink-0">
           ${moveBtn}
@@ -1003,6 +1071,74 @@ async function bulkDelete() {
   selectedTasks.clear();
   bulkMode = false;
   document.getElementById('bulk-bar').classList.add('hidden');
+  renderKanban();
+}
+
+async function bulkAssign() {
+  const select = document.getElementById('bulk-assign-select');
+  const assigneeId = select.value;
+  if (!assigneeId) return;
+
+  const isClear = assigneeId === '__clear__';
+  const body = { assigneeId: isClear ? null : assigneeId };
+
+  for (const taskId of selectedTasks) {
+    await fetch(`/tasks/${taskId}/assignee`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      task.assignee = isClear ? null : { id: assigneeId, name: select.options[select.selectedIndex].textContent };
+    }
+  }
+  select.value = '';
+  renderKanban();
+}
+
+async function bulkSetDeadline() {
+  const input = document.getElementById('bulk-deadline');
+  const dueDate = input.value || null;
+  const body = { dueDate };
+
+  for (const taskId of selectedTasks) {
+    await fetch(`/tasks/${taskId}/due-date`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      task.dueDate = dueDate ? new Date(dueDate).toISOString() : null;
+    }
+  }
+  input.value = '';
+  renderKanban();
+}
+
+async function bulkMoveToProject() {
+  const select = document.getElementById('bulk-project-select');
+  const targetProjectId = select.value;
+  if (!targetProjectId) return;
+  if (!confirm(`Pindahkan ${selectedTasks.size} task ke proyek ini?`)) {
+    select.value = '';
+    return;
+  }
+
+  for (const taskId of selectedTasks) {
+    await fetch(`/tasks/${taskId}/project`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: targetProjectId })
+    });
+    // Remove from local list since it moved
+    tasks = tasks.filter(t => t.id !== taskId);
+  }
+  selectedTasks.clear();
+  bulkMode = false;
+  document.getElementById('bulk-bar').classList.add('hidden');
+  select.value = '';
   renderKanban();
 }
 

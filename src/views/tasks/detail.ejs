@@ -135,6 +135,61 @@
           <div class="font-medium mt-0.5"><%= new Date(task.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}) %></div>
         </div>
       </div>
+
+      <!-- Parent Task Section -->
+      <div class="mt-4 pt-4 border-t">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-500">Parent Task</span>
+        </div>
+        <% if (task.parent) { %>
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+            <i class="fas fa-link text-gray-400"></i>
+            <a href="/tasks/<%= task.parent.id %>" class="text-sm text-blue-600 hover:underline flex-1 truncate"><%= task.parent.title %></a>
+            <span class="px-2 py-0.5 text-[10px] rounded-full font-medium
+              <%= task.parent.status === 'DONE' ? 'bg-emerald-100 text-emerald-700' : task.parent.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
+              <%= task.parent.status === 'DONE' ? 'Done' : task.parent.status === 'IN_PROGRESS' ? 'In Progress' : 'To Do' %>
+            </span>
+            <button onclick="removeParent()" class="text-gray-400 hover:text-red-500 p-1" title="Hapus parent">
+              <i class="fas fa-times text-xs"></i>
+            </button>
+          </div>
+        <% } else { %>
+          <div class="relative">
+            <select id="parent-selector" onchange="setParent(this.value)"
+              class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-gray-50">
+              <option value="">Pilih parent task...</option>
+              <% if (typeof siblingTasks !== 'undefined') { %>
+                <% siblingTasks.forEach(st => { %>
+                  <option value="<%= st.id %>"><%= st.title %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Children Tasks Section -->
+      <% if (task.children && task.children.length > 0) { %>
+      <div class="mt-4 pt-4 border-t">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-500">Sub-tasks (<%= task.children.length %>)</span>
+        </div>
+        <div class="space-y-1.5">
+          <% task.children.forEach(child => { %>
+            <a href="/tasks/<%= child.id %>" class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 hover:bg-gray-100 transition">
+              <span class="w-2 h-2 rounded-full shrink-0
+                <%= child.status === 'DONE' ? 'bg-emerald-500' : child.status === 'IN_PROGRESS' ? 'bg-amber-400' : 'bg-gray-400' %>"></span>
+              <span class="text-sm flex-1 truncate <%= child.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-700' %>"><%= child.title %></span>
+              <% if (child.assignee) { %>
+                <div class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" title="<%= child.assignee.name %>">
+                  <%= child.assignee.name.charAt(0) %>
+                </div>
+              <% } %>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
     </div>
 
     <!-- Edit Form (hidden by default, full-screen on mobile) -->
@@ -577,6 +632,46 @@ function escapeHtml(value) {
 
 function toggleEditForm() {
   document.getElementById('editForm').classList.toggle('hidden');
+}
+
+// Parent/Child task functions
+async function setParent(parentId) {
+  if (!parentId) return;
+  try {
+    const res = await fetch('/tasks/<%= task.id %>/set-parent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Gagal mengatur parent task');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Terjadi kesalahan');
+  }
+}
+
+async function removeParent() {
+  if (!confirm('Hapus hubungan parent task?')) return;
+  try {
+    const res = await fetch('/tasks/<%= task.id %>/remove-parent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      window.location.reload();
+    } else {
+      alert(data.error || 'Gagal menghapus parent task');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Terjadi kesalahan');
+  }
 }
 
 // Checklist
