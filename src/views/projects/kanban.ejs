@@ -213,6 +213,7 @@
 
 <script>
 const projectId = '<%= project.id %>';
+const companyId = '<%= project.companyId %>';
 let tasks = <%- JSON.stringify(project.tasks) %>;
 const socket = io();
 let pendingChatFiles = [];

@@ -101,6 +101,138 @@
       /* Bulk bar */
       #bulk-bar { flex-wrap: wrap; justify-content: center; padding: 0.75rem 1rem !important; gap: 0.5rem !important; bottom: 1rem !important; width: calc(100% - 2rem); transform: none !important; left: 1rem !important; }
     }
+
+    /* ===== Critical Layout Fallbacks (agar layout tetap benar bila Tailwind CDN gagal load) ===== */
+    /* Display */
+    .hidden { display: none !important; }
+    .block { display: block !important; }
+    .inline-block { display: inline-block !important; }
+    .inline { display: inline !important; }
+    .flex { display: flex !important; }
+    .inline-flex { display: inline-flex !important; }
+    .grid { display: grid !important; }
+
+    /* Position */
+    .static { position: static !important; }
+    .relative { position: relative !important; }
+    .absolute { position: absolute !important; }
+    .fixed { position: fixed !important; }
+    .sticky { position: sticky !important; }
+    .inset-0 { inset: 0 !important; }
+    .top-0 { top: 0 !important; }
+    .top-1 { top: 0.25rem !important; }
+    .top-12 { top: 3rem !important; }
+    .top-16 { top: 4rem !important; }
+    .right-0 { right: 0 !important; }
+    .right-1 { right: 0.25rem !important; }
+    .bottom-0 { bottom: 0 !important; }
+    .left-0 { left: 0 !important; }
+
+    /* Z-index */
+    .z-10 { z-index: 10 !important; }
+    .z-20 { z-index: 20 !important; }
+    .z-30 { z-index: 30 !important; }
+    .z-40 { z-index: 40 !important; }
+    .z-50 { z-index: 50 !important; }
+
+    /* Flex utilities */
+    .flex-col { flex-direction: column !important; }
+    .flex-row { flex-direction: row !important; }
+    .flex-wrap { flex-wrap: wrap !important; }
+    .flex-1 { flex: 1 1 0% !important; }
+    .flex-none { flex: none !important; }
+    .shrink-0 { flex-shrink: 0 !important; }
+    .grow { flex-grow: 1 !important; }
+    .items-start { align-items: flex-start !important; }
+    .items-center { align-items: center !important; }
+    .items-end { align-items: flex-end !important; }
+    .justify-start { justify-content: flex-start !important; }
+    .justify-center { justify-content: center !important; }
+    .justify-between { justify-content: space-between !important; }
+    .justify-end { justify-content: flex-end !important; }
+
+    /* Grid columns */
+    .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+    .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .col-span-2 { grid-column: span 2 / span 2; }
+    .col-span-3 { grid-column: span 3 / span 3; }
+    .col-span-full { grid-column: 1 / -1; }
+
+    /* Gap */
+    .gap-1 { gap: 0.25rem !important; }
+    .gap-2 { gap: 0.5rem !important; }
+    .gap-3 { gap: 0.75rem !important; }
+    .gap-4 { gap: 1rem !important; }
+    .gap-5 { gap: 1.25rem !important; }
+    .gap-6 { gap: 1.5rem !important; }
+    .gap-8 { gap: 2rem !important; }
+
+    /* Margin & spacing helpers */
+    .ml-auto { margin-left: auto !important; }
+    .mr-auto { margin-right: auto !important; }
+    .min-w-0 { min-width: 0 !important; }
+
+    /* Width / Height */
+    .w-full { width: 100% !important; }
+    .h-full { height: 100% !important; }
+    .min-h-screen { min-height: 100vh !important; }
+    .w-56 { width: 14rem !important; }
+    .max-w-md { max-width: 28rem !important; }
+    .max-w-7xl { max-width: 80rem !important; }
+
+    /* Overflow */
+    .overflow-hidden { overflow: hidden !important; }
+    .overflow-y-auto { overflow-y: auto !important; }
+    .overflow-x-auto { overflow-x: auto !important; }
+
+    /* Responsive sm (640px+) */
+    @media (min-width: 640px) {
+      .sm\:block { display: block !important; }
+      .sm\:inline { display: inline !important; }
+      .sm\:inline-flex { display: inline-flex !important; }
+      .sm\:flex { display: flex !important; }
+      .sm\:hidden { display: none !important; }
+      .sm\:grid { display: grid !important; }
+      .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+      .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    }
+
+    /* Responsive md (768px+) */
+    @media (min-width: 768px) {
+      .md\:block { display: block !important; }
+      .md\:inline { display: inline !important; }
+      .md\:inline-flex { display: inline-flex !important; }
+      .md\:flex { display: flex !important; }
+      .md\:hidden { display: none !important; }
+      .md\:grid { display: grid !important; }
+      .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+      .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    }
+
+    /* Responsive lg (1024px+) */
+    @media (min-width: 1024px) {
+      .lg\:block { display: block !important; }
+      .lg\:inline { display: inline !important; }
+      .lg\:inline-flex { display: inline-flex !important; }
+      .lg\:flex { display: flex !important; }
+      .lg\:hidden { display: none !important; }
+      .lg\:grid { display: grid !important; }
+      .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+      .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+      .lg\:col-span-2 { grid-column: span 2 / span 2 !important; }
+      .lg\:col-span-3 { grid-column: span 3 / span 3 !important; }
+      .lg\:min-w-0 { min-width: 0 !important; }
+      .lg\:ml-56 { margin-left: 14rem !important; }
+      .lg\:p-8 { padding: 2rem !important; }
+      .lg\:px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+    }
   </style>
 </head>
 <body class="bg-gray-50">
