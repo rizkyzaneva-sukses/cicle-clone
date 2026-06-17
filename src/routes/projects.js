@@ -19,7 +19,17 @@ router.get('/', async (req, res) => {
   const activeProjects = {
     where: { archivedAt: null },
     orderBy: { createdAt: 'desc' },
-    include: { projectMembers: { where: { userId }, select: { id: true } } }
+    include: {
+      projectMembers: {
+        include: { user: { select: { id: true, name: true, avatar: true } } }
+      },
+      tasks: {
+        where: { status: { not: 'DONE' }, dueDate: { not: null } },
+        orderBy: { dueDate: 'asc' },
+        take: 1,
+        select: { dueDate: true }
+      }
+    }
   };
 
   if (platformRole === 'owner') {
@@ -67,7 +77,7 @@ router.get('/', async (req, res) => {
   // Brand "admin" (and owner/partner above) see every project in the brand.
   memberships = memberships.map(m => {
     if (m.role === 'member') {
-      return { ...m, company: { ...m.company, projects: m.company.projects.filter(p => p.projectMembers.length > 0) } };
+      return { ...m, company: { ...m.company, projects: m.company.projects.filter(p => p.projectMembers.some(pm => pm.userId === userId)) } };
     }
     return m;
   });

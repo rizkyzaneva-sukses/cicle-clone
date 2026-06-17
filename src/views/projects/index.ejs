@@ -36,10 +36,36 @@
                 <div class="font-bold text-xl group-hover:text-blue-600"><%= project.name %></div>
                 <p class="text-sm text-gray-600 mt-2 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
               </a>
-              <div class="flex items-center justify-between mt-auto pt-4">
-                <a href="/projects/<%= project.id %>" class="text-xs text-gray-500 flex items-center gap-1">
+              <!-- PIC / Project Members -->
+              <% const members = project.projectMembers || []; %>
+              <% if (members.length > 0) { %>
+                <div class="flex items-center gap-1.5 mt-3 pt-3 border-t">
+                  <div class="flex -space-x-2">
+                    <% members.slice(0, 5).forEach(pm => { %>
+                      <div class="w-6 h-6 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center text-white text-[9px] font-bold shrink-0" title="<%= pm.user.name %>">
+                        <%= pm.user.name.charAt(0).toUpperCase() %>
+                      </div>
+                    <% }) %>
+                    <% if (members.length > 5) { %>
+                      <div class="w-6 h-6 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center text-gray-600 text-[9px] font-bold shrink-0">
+                        +<%= members.length - 5 %>
+                      </div>
+                    <% } %>
+                  </div>
+                  <span class="text-[10px] text-gray-400 truncate"><%= members.map(m => m.user.name.split(' ')[0]).join(', ') %></span>
+                </div>
+              <% } %>
+
+              <div class="flex items-center justify-between mt-auto pt-3">
+                <% const nextDeadline = project.tasks && project.tasks[0] ? project.tasks[0].dueDate : null; %>
+                <% const isOverdue = nextDeadline && new Date(nextDeadline) < new Date(); %>
+                <a href="/projects/<%= project.id %>" class="text-xs flex items-center gap-1 <%= isOverdue ? 'text-red-500 font-semibold' : 'text-gray-500' %>">
                   <i class="fas fa-clock"></i>
-                  <%= new Date(project.createdAt).toLocaleDateString('id-ID') %>
+                  <% if (nextDeadline) { %>
+                    <%= isOverdue ? '⚠️ Overdue — ' : '' %><%= new Date(nextDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+                  <% } else { %>
+                    Tidak ada deadline
+                  <% } %>
                 </a>
                 <% if (membership.role !== 'member') { %>
                   <form action="/projects/<%= project.id %>/archive" method="POST"
