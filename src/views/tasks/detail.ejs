@@ -48,32 +48,80 @@
 
       <!-- Meta info -->
       <div class="grid grid-cols-2 gap-4 text-sm pt-4 border-t">
-        <div>
+        <!-- Assignee (inline editable) -->
+        <div class="relative">
           <span class="text-gray-400">Assignee</span>
-          <div class="font-medium mt-0.5">
+          <div class="font-medium mt-0.5 flex items-center gap-2">
             <% if (task.assignee) { %>
-              <div class="flex items-center gap-2">
-                <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              <div id="assignee-display" class="flex items-center gap-2 flex-1 min-w-0">
+                <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
                   <%= task.assignee.name.charAt(0) %>
                 </div>
-                <%= task.assignee.name %>
+                <span class="truncate"><%= task.assignee.name %></span>
               </div>
             <% } else { %>
-              <span class="text-gray-400">Belum ditugaskan</span>
+              <div id="assignee-display" class="flex items-center gap-2 flex-1 min-w-0">
+                <span class="text-gray-400">Belum ditugaskan</span>
+              </div>
             <% } %>
+            <button type="button" onclick="toggleAssigneeMenu(event)" id="assignee-edit-btn"
+              class="shrink-0 w-6 h-6 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition"
+              title="Edit assignee">
+              <i class="fas fa-pen text-[10px]"></i>
+            </button>
+          </div>
+          <!-- Assignee dropdown -->
+          <div id="assignee-menu" class="hidden absolute left-0 top-full mt-2 z-30 bg-white border rounded-2xl shadow-lg p-3 w-64">
+            <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Pilih Assignee</div>
+            <div class="space-y-1 max-h-60 overflow-y-auto" id="assignee-options">
+              <button type="button" data-id=""
+                class="assignee-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm">
+                <div class="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-xs"><i class="fas fa-user-slash text-[10px]"></i></div>
+                <span class="text-gray-500">Belum ditugaskan</span>
+              </button>
+              <% members.forEach(m => { %>
+                <button type="button" data-id="<%= m.id %>" data-name="<%= m.name %>"
+                  class="assignee-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm <%= task.assigneeId === m.id ? 'bg-blue-50' : '' %>">
+                  <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <%= m.name.charAt(0) %>
+                  </div>
+                  <span class="truncate"><%= m.name %></span>
+                  <% if (task.assigneeId === m.id) { %><i class="fas fa-check text-blue-600 ml-auto text-xs"></i><% } %>
+                </button>
+              <% }) %>
+            </div>
           </div>
         </div>
-        <div>
+        <!-- Deadline (inline editable) -->
+        <div class="relative">
           <span class="text-gray-400">Deadline</span>
-          <div class="font-medium mt-0.5">
-            <% if (task.dueDate) { %>
-              <% const isOverdue = new Date(task.dueDate) < new Date() && task.status !== 'DONE' %>
-              <span class="<%= isOverdue ? 'text-red-600' : '' %>">
-                <%= isOverdue ? '⚠️ ' : '' %><%= new Date(task.dueDate).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}) %>
-              </span>
-            <% } else { %>
-              <span class="text-gray-400">Tidak ada</span>
-            <% } %>
+          <div class="font-medium mt-0.5 flex items-center gap-2">
+            <% const isOverdueInit = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE' %>
+            <button type="button" onclick="openDeadlineEditor(event)" id="deadline-display"
+              class="flex-1 min-w-0 text-left <%= isOverdueInit ? 'text-red-600' : '' %> hover:underline decoration-dotted underline-offset-2">
+              <% if (task.dueDate) { %>
+                <span id="deadline-text"><%= isOverdueInit ? '⚠️ ' : '' %><%= new Date(task.dueDate).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'}) %></span>
+              <% } else { %>
+                <span id="deadline-text" class="text-gray-400">Tidak ada</span>
+              <% } %>
+            </button>
+            <button type="button" onclick="openDeadlineEditor(event)"
+              class="shrink-0 w-6 h-6 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition"
+              title="Edit deadline">
+              <i class="fas fa-pen text-[10px]"></i>
+            </button>
+          </div>
+          <!-- Deadline popover -->
+          <div id="deadline-menu" class="hidden absolute left-0 top-full mt-2 z-30 bg-white border rounded-2xl shadow-lg p-3 w-64">
+            <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Edit Deadline</div>
+            <input type="date" id="deadline-input"
+              value="<%= task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '' %>"
+              class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+            <div class="flex gap-2 mt-3">
+              <button type="button" onclick="clearDeadline()" class="flex-1 py-1.5 text-xs text-gray-600 border rounded-xl hover:bg-gray-50">Hapus</button>
+              <button type="button" onclick="closeDeadlineEditor()" class="flex-1 py-1.5 text-xs text-gray-600 border rounded-xl hover:bg-gray-50">Batal</button>
+              <button type="button" onclick="saveDeadline()" class="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded-xl hover:bg-blue-700">Simpan</button>
+            </div>
           </div>
         </div>
         <div>
@@ -826,6 +874,137 @@ document.addEventListener('DOMContentLoaded', () => {
   setupMentionAutocomplete('comment-input', q => `/tasks/${taskId}/members?q=${encodeURIComponent(q)}`);
   loadDependencies();
 });
+
+// --- Inline edit: Assignee ---
+function toggleAssigneeMenu(e) {
+  e.stopPropagation();
+  closeDeadlineEditor();
+  document.getElementById('assignee-menu').classList.toggle('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('assignee-menu');
+  if (!menu) return;
+  if (menu.classList.contains('hidden')) return;
+  if (e.target.closest('#assignee-menu') || e.target.closest('#assignee-edit-btn')) return;
+  menu.classList.add('hidden');
+});
+
+document.querySelectorAll('.assignee-option').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const assigneeId = btn.dataset.id || null;
+    const name = btn.dataset.name || '';
+    document.getElementById('assignee-menu').classList.add('hidden');
+    await saveAssignee(assigneeId, name);
+  });
+});
+
+async function saveAssignee(assigneeId, name) {
+  const display = document.getElementById('assignee-display');
+  const original = display.innerHTML;
+  display.style.opacity = '0.5';
+  try {
+    const res = await fetch(`/tasks/${taskId}/assignee`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigneeId })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Gagal');
+    if (assigneeId && name) {
+      display.innerHTML = `
+        <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">${escapeHtml(name.charAt(0))}</div>
+        <span class="truncate">${escapeHtml(name)}</span>
+      `;
+    } else {
+      display.innerHTML = `<span class="text-gray-400">Belum ditugaskan</span>`;
+    }
+    document.querySelectorAll('.assignee-option').forEach(o => {
+      o.classList.remove('bg-blue-50');
+      const check = o.querySelector('.fa-check');
+      if (check) check.remove();
+    });
+    const active = document.querySelector(`.assignee-option[data-id="${assigneeId || ''}"]`);
+    if (active) {
+      active.classList.add('bg-blue-50');
+      const ic = document.createElement('i');
+      ic.className = 'fas fa-check text-blue-600 ml-auto text-xs';
+      active.appendChild(ic);
+    }
+  } catch (err) {
+    display.innerHTML = original;
+    alert(err.message || 'Gagal update assignee');
+  } finally {
+    display.style.opacity = '1';
+  }
+}
+
+// --- Inline edit: Deadline ---
+function openDeadlineEditor(e) {
+  e.stopPropagation();
+  document.getElementById('assignee-menu').classList.add('hidden');
+  const menu = document.getElementById('deadline-menu');
+  menu.classList.toggle('hidden');
+  if (!menu.classList.contains('hidden')) {
+    document.getElementById('deadline-input').focus();
+  }
+}
+
+function closeDeadlineEditor() {
+  document.getElementById('deadline-menu')?.classList.add('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('deadline-menu');
+  if (!menu || menu.classList.contains('hidden')) return;
+  if (e.target.closest('#deadline-menu') || e.target.closest('#deadline-display')) return;
+  if (e.target.closest('[onclick*="openDeadlineEditor"]')) return;
+  menu.classList.add('hidden');
+});
+
+async function clearDeadline() {
+  await saveDeadlineToServer(null);
+  document.getElementById('deadline-input').value = '';
+  closeDeadlineEditor();
+}
+
+async function saveDeadline() {
+  const val = document.getElementById('deadline-input').value;
+  await saveDeadlineToServer(val || null);
+  closeDeadlineEditor();
+}
+
+async function saveDeadlineToServer(dueDate) {
+  const textEl = document.getElementById('deadline-text');
+  const displayBtn = document.getElementById('deadline-display');
+  const original = textEl.innerHTML;
+  textEl.style.opacity = '0.5';
+  try {
+    const res = await fetch(`/tasks/${taskId}/due-date`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dueDate })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Gagal');
+    if (data.task.dueDate) {
+      const d = new Date(data.task.dueDate);
+      const isOverdue = d < new Date() && data.task.status !== 'DONE';
+      textEl.textContent = (isOverdue ? '⚠️ ' : '') + d.toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric'});
+      displayBtn.classList.toggle('text-red-600', isOverdue);
+      displayBtn.classList.remove('text-gray-400');
+    } else {
+      textEl.textContent = 'Tidak ada';
+      textEl.className = 'text-gray-400';
+      displayBtn.classList.remove('text-red-600');
+    }
+  } catch (err) {
+    textEl.innerHTML = original;
+    alert(err.message || 'Gagal update deadline');
+  } finally {
+    textEl.style.opacity = '1';
+  }
+}
 </script>
 
 <%- include('../partials/footer') %>

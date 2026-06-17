@@ -164,50 +164,110 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
-// Update task — form submit from detail page
-router.post('/:id/update', async (req, res) => {
+// Quick inline update: assignee only
+router.patch('/:id/assignee', async (req, res) => {
   try {
-    const { title, description, assigneeId, dueDate, priority, status } = req.body;
-    const oldTask = await canAccessTask(req.session.user, req.params.id);
-    if (!oldTask) return res.status(403).send('Akses ditolak');
-    if (!await isValidAssignee(assigneeId, oldTask.project.companyId)) {
-      req.flash('error', 'Assignee bukan anggota brand ini');
-      return res.redirect(`/tasks/${req.params.id}`);
+    const { assigneeId } = req.body;
+    const existingTask = await canAccessTask(req.session.user, req.params.id);
+    if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
+
+    const normalizedId = (assigneeId === '' || assigneeId === null || assigneeId === 'null') ? null : assigneeId;
+    if (normalizedId) {
+      const valid = await isValidAssignee(normalizedId, existingTask.project.companyId);
+      if (!valid) return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
     }
 
     const task = await prisma.task.update({
       where: { id: req.params.id },
-      data: {
-        title,
-        description: description || null,
-        assigneeId: assigneeId || null,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        priority: priority || 'NONE',
-        status: status || oldTask.status
-      }
+      data: { assigneeId: normalizedId },
+      include: { assignee: true }
     });
 
     await logActivity(prisma, req, {
-      action: 'updated',
+      action: normalizedId ? 'assigned' : 'unassigned',
       entityType: 'task',
       entityId: task.id,
-      projectId: oldTask.projectId,
+      projectId: task.projectId,
       taskId: task.id,
-      metadata: { title: task.title, status: task.status }
+      metadata: { assigneeId: normalizedId, assigneeName: task.assignee?.name || null }
     });
 
-    // Assigning grants project access; notify new assignee
-    if (assigneeId && assigneeId !== oldTask.assigneeId) {
-      await ensureProjectMember(assigneeId, oldTask.projectId);
-      if (assigneeId !== req.session.user.id) {
-        await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+    if (normalizedId && normalizedId !== existingTask.assigneeId) {
+      await ensureProjectMember(normalizedId, task.projectId);
+      if (normalizedId !== req.session.user.id) {
+        await notifyUser(req.app.get('io'), normalizedId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
       }
     }
 
-    res.redirect(`/tasks/${req.params.id}`);
+    res.json({ success: true, task });
   } catch (error) {
     console.error(error);
-    res.redirect(`/tasks/${req.params.id}`);
+    res.status(500).json({ error: 'Gagal update assignee' });
+  }
+});
+
+// Quick inline update: due date only
+router.patch('/:id/due-date', async (req, res) => {
+  try {
+    const { dueDate } = req.body;
+    const existingTask = await canAccessTask(req.session.user, req.params.id);
+    if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
+
+    let normalized = null;
+    if (dueDate) {
+      const d = new Date(dueDate);
+      if (!isNaN(d.getTime())) normalized = d;
+    }
+
+    const task = await prisma.task.update({
+      where: { id: req.params.id },
+      data: { dueDate: normalized }
+    });
+
+    await logActivity(prisma, req, {
+      action: normalized ? 'set_due_date' : 'cleared_due_date',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { dueDate: normalized ? normalized.toISOString() : null }
+    });
+
+    res.json({ success: true, task });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal update deadline' });
+  }
+});
+
+// Quick inline update: priority only
+router.patch('/:id/priority', async (req, res) => {
+  try {
+    const { priority } = req.body;
+    const validPriorities = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+    const normalized = (validPriorities.includes(priority) ? priority : 'NONE');
+
+    const existingTask = await canAccessTask(req.session.user, req.params.id);
+    if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
+
+    const task = await prisma.task.update({
+      where: { id: req.params.id },
+      data: { priority: normalized }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'priority_changed',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { priority: normalized }
+    });
+
+    res.json({ success: true, task });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal update prioritas' });
   }
 });
 

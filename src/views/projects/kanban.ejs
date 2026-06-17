@@ -1025,21 +1025,81 @@ window.onload = init;
   <div class="flex-1 overflow-y-auto p-6 space-y-5">
     <!-- Status & Priority -->
     <div class="grid grid-cols-2 gap-4">
-      <div>
-        <div class="text-xs text-gray-400 font-medium mb-1">Status</div>
-        <div class="text-sm font-semibold" id="preview-status"></div>
+      <div class="relative">
+        <div class="text-xs text-gray-400 font-medium mb-1 flex items-center gap-1.5">
+          Status
+          <button type="button" onclick="openPreviewPopover('status', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit status"><i class="fas fa-pen text-[9px]"></i></button>
+        </div>
+        <button type="button" onclick="openPreviewPopover('status', event)" id="preview-status"
+          class="w-full text-left text-sm font-semibold px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition"></button>
+        <div id="preview-popover-status" class="hidden absolute left-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-1.5 w-44">
+          <% ['TODO','IN_PROGRESS','DONE'].forEach(s => { %>
+            <button type="button" data-value="<%= s %>" class="preview-pop-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm">
+              <% if (s==='TODO') { %><i class="fas fa-circle text-gray-400 text-xs"></i>To Do
+              <% } else if (s==='IN_PROGRESS') { %><i class="fas fa-circle text-amber-400 text-xs"></i>In Progress
+              <% } else { %><i class="fas fa-circle text-emerald-500 text-xs"></i>Done<% } %>
+            </button>
+          <% }) %>
+        </div>
       </div>
-      <div>
-        <div class="text-xs text-gray-400 font-medium mb-1">Priority</div>
-        <div id="preview-priority"></div>
+      <div class="relative">
+        <div class="text-xs text-gray-400 font-medium mb-1 flex items-center gap-1.5">
+          Priority
+          <button type="button" onclick="openPreviewPopover('priority', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit prioritas"><i class="fas fa-pen text-[9px]"></i></button>
+        </div>
+        <button type="button" onclick="openPreviewPopover('priority', event)" id="preview-priority"
+          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition"></button>
+        <div id="preview-popover-priority" class="hidden absolute right-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-1.5 w-44">
+          <% [
+            { v: 'URGENT', l: '🔴 Urgent', c: 'text-red-600' },
+            { v: 'HIGH',   l: '🟠 High',   c: 'text-orange-600' },
+            { v: 'MEDIUM', l: '🟡 Medium', c: 'text-yellow-600' },
+            { v: 'LOW',    l: '🟢 Low',    c: 'text-green-600' },
+            { v: 'NONE',   l: 'Tanpa Prioritas', c: 'text-gray-500' }
+          ].forEach(p => { %>
+            <button type="button" data-value="<%= p.v %>" class="preview-pop-option w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm <%= p.c %>"><%= p.l %></button>
+          <% }) %>
+        </div>
       </div>
-      <div>
-        <div class="text-xs text-gray-400 font-medium mb-1">Due Date</div>
-        <div class="text-sm" id="preview-due"></div>
+      <div class="relative">
+        <div class="text-xs text-gray-400 font-medium mb-1 flex items-center gap-1.5">
+          Due Date
+          <button type="button" onclick="openPreviewPopover('due', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit deadline"><i class="fas fa-pen text-[9px]"></i></button>
+        </div>
+        <button type="button" onclick="openPreviewPopover('due', event)" id="preview-due"
+          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition"></button>
+        <div id="preview-popover-due" class="hidden absolute left-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-3 w-56">
+          <input type="date" id="preview-due-input"
+            class="w-full border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-blue-400">
+          <div class="flex gap-2 mt-2">
+            <button type="button" onclick="clearPreviewDue()" class="flex-1 py-1 text-xs text-gray-600 border rounded-lg hover:bg-gray-50">Hapus</button>
+            <button type="button" onclick="closeAllPreviewPopovers()" class="flex-1 py-1 text-xs text-gray-600 border rounded-lg hover:bg-gray-50">Batal</button>
+            <button type="button" onclick="savePreviewDue()" class="flex-1 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
+          </div>
+        </div>
       </div>
-      <div>
-        <div class="text-xs text-gray-400 font-medium mb-1">Assignee</div>
-        <div class="text-sm" id="preview-assignee"></div>
+      <div class="relative">
+        <div class="text-xs text-gray-400 font-medium mb-1 flex items-center gap-1.5">
+          Assignee
+          <button type="button" onclick="openPreviewPopover('assignee', event)" class="text-gray-300 hover:text-blue-500 transition" title="Edit assignee"><i class="fas fa-pen text-[9px]"></i></button>
+        </div>
+        <button type="button" onclick="openPreviewPopover('assignee', event)" id="preview-assignee"
+          class="w-full text-left text-sm px-2 py-1.5 -mx-2 rounded-lg hover:bg-gray-50 transition truncate"></button>
+        <div id="preview-popover-assignee" class="hidden absolute right-0 top-full mt-1 z-40 bg-white border rounded-xl shadow-lg p-1.5 w-56">
+          <div class="max-h-60 overflow-y-auto" id="preview-assignee-options">
+            <button type="button" data-id="" class="preview-pop-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm">
+              <div class="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-xs"><i class="fas fa-user-slash text-[10px]"></i></div>
+              <span class="text-gray-500">Belum ditugaskan</span>
+            </button>
+            <% members.forEach(m => { %>
+              <button type="button" data-id="<%= m.id %>" data-name="<%= m.name %>"
+                class="preview-pop-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm">
+                <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"><%= m.name.charAt(0) %></div>
+                <span class="truncate"><%= m.name %></span>
+              </button>
+            <% }) %>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1076,13 +1136,159 @@ window.onload = init;
 const _origOpen = openPreview;
 openPreview = function(taskId) {
   document.getElementById('preview-overlay').classList.remove('hidden');
+  previewTaskId = taskId;
   _origOpen(taskId);
+  refreshPreviewUI();
+  initPreviewPopoverState();
 };
 const _origClose = closePreview;
 closePreview = function() {
   document.getElementById('preview-overlay').classList.add('hidden');
+  closeAllPreviewPopovers();
   _origClose();
 };
+
+let previewTaskId = null;
+const PRIO_LABEL_PREVIEW = {
+  URGENT: { l: '🔴 Urgent', c: 'bg-red-100 text-red-700' },
+  HIGH:   { l: '🟠 High',   c: 'bg-orange-100 text-orange-700' },
+  MEDIUM: { l: '🟡 Medium', c: 'bg-yellow-100 text-yellow-700' },
+  LOW:    { l: '🟢 Low',    c: 'bg-green-100 text-green-700' },
+  NONE:   { l: 'Tanpa Prioritas', c: 'text-gray-400 text-sm' }
+};
+const STATUS_LABEL_PREVIEW = { TODO: '📋 To Do', IN_PROGRESS: '🔄 Doing', DONE: '✅ Done' };
+
+function openPreviewPopover(kind, e) {
+  e.stopPropagation();
+  closeAllPreviewPopovers();
+  document.getElementById(`preview-popover-${kind}`)?.classList.remove('hidden');
+  if (kind === 'due') {
+    const t = tasks.find(x => x.id === previewTaskId);
+    const input = document.getElementById('preview-due-input');
+    input.value = t && t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '';
+  }
+}
+
+function closeAllPreviewPopovers() {
+  ['status', 'priority', 'due', 'assignee'].forEach(k => {
+    document.getElementById(`preview-popover-${k}`)?.classList.add('hidden');
+  });
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[id^="preview-popover-"]')) return;
+  if (e.target.closest('[onclick^="openPreviewPopover"]')) return;
+  closeAllPreviewPopovers();
+});
+
+// Wire up popover options
+document.querySelectorAll('#preview-popover-status .preview-pop-option').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const status = btn.dataset.value;
+    closeAllPreviewPopovers();
+    await previewUpdateField('status', status);
+  });
+});
+document.querySelectorAll('#preview-popover-priority .preview-pop-option').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const priority = btn.dataset.value;
+    closeAllPreviewPopovers();
+    await previewUpdateField('priority', priority);
+  });
+});
+document.querySelectorAll('#preview-popover-assignee .preview-pop-option').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const id = btn.dataset.id || null;
+    const name = btn.dataset.name || '';
+    closeAllPreviewPopovers();
+    await previewUpdateField('assignee', { id, name });
+  });
+});
+
+async function savePreviewDue() {
+  const val = document.getElementById('preview-due-input').value || null;
+  closeAllPreviewPopovers();
+  await previewUpdateField('due', val);
+}
+async function clearPreviewDue() {
+  closeAllPreviewPopovers();
+  await previewUpdateField('due', null);
+}
+
+async function previewUpdateField(kind, value) {
+  if (!previewTaskId) return;
+  const t = tasks.find(x => x.id === previewTaskId);
+  if (!t) return;
+  const before = JSON.parse(JSON.stringify(t));
+  let endpoint = '', body = {};
+  if (kind === 'status')    { endpoint = `/tasks/${previewTaskId}/status`;    body = { status: value }; t.status = value; }
+  if (kind === 'priority')  { endpoint = `/tasks/${previewTaskId}/priority`;  body = { priority: value }; t.priority = value; }
+  if (kind === 'due')       { endpoint = `/tasks/${previewTaskId}/due-date`;  body = { dueDate: value }; t.dueDate = value ? new Date(value).toISOString() : null; }
+  if (kind === 'assignee')  { endpoint = `/tasks/${previewTaskId}/assignee`;  body = { assigneeId: value.id }; t.assignee = value.id ? { id: value.id, name: value.name } : null; }
+  try {
+    const res = await fetch(endpoint, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Gagal');
+    if (data.task) {
+      if (data.task.status) t.status = data.task.status;
+      if (data.task.priority) t.priority = data.task.priority;
+      if (data.task.dueDate !== undefined) t.dueDate = data.task.dueDate;
+    }
+    refreshPreviewUI();
+    renderKanban();
+    if (kind === 'status') socket.emit('task-updated', { taskId: previewTaskId, status: t.status, projectId });
+  } catch (err) {
+    Object.assign(t, before);
+    refreshPreviewUI();
+    renderKanban();
+    alert(err.message || 'Gagal update');
+  }
+}
+
+function refreshPreviewUI() {
+  const t = tasks.find(x => x.id === previewTaskId);
+  if (!t) return;
+  document.getElementById('preview-status').textContent = STATUS_LABEL_PREVIEW[t.status] || t.status;
+  const p = PRIO_LABEL_PREVIEW[t.priority] || PRIO_LABEL_PREVIEW.NONE;
+  document.getElementById('preview-priority').innerHTML = t.priority && t.priority !== 'NONE'
+    ? `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${p.c}">${p.l}</span>`
+    : `<span class="text-gray-400 text-sm">-</span>`;
+  if (t.dueDate) {
+    const d = new Date(t.dueDate);
+    const isOverdue = d < new Date() && t.status !== 'DONE';
+    document.getElementById('preview-due').innerHTML = `<span class="${isOverdue ? 'text-red-600 font-semibold' : ''}">${(isOverdue ? '⚠️ ' : '') + d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>`;
+  } else {
+    document.getElementById('preview-due').innerHTML = '<span class="text-gray-400">-</span>';
+  }
+  if (t.assignee) {
+    document.getElementById('preview-assignee').innerHTML = `
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">${escapeHtml(t.assignee.name.charAt(0))}</div>
+        <span class="truncate">${escapeHtml(t.assignee.name)}</span>
+      </div>`;
+  } else {
+    document.getElementById('preview-assignee').innerHTML = '<span class="text-gray-400">-</span>';
+  }
+}
+
+function initPreviewPopoverState() {
+  const t = tasks.find(x => x.id === previewTaskId);
+  if (!t) return;
+  // mark active status
+  document.querySelectorAll('#preview-popover-status .preview-pop-option').forEach(b => {
+    b.classList.toggle('bg-blue-50', b.dataset.value === t.status);
+  });
+  document.querySelectorAll('#preview-popover-priority .preview-pop-option').forEach(b => {
+    b.classList.toggle('bg-blue-50', b.dataset.value === t.priority);
+  });
+  document.querySelectorAll('#preview-popover-assignee .preview-pop-option').forEach(b => {
+    b.classList.toggle('bg-blue-50', (b.dataset.id || '') === (t.assignee?.id || ''));
+  });
+}
 </script>
 
 <!-- Template Modal -->
