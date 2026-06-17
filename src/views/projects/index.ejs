@@ -2,13 +2,22 @@
 
 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
   <h1 class="text-2xl sm:text-3xl font-bold">Semua Proyek</h1>
-  
-  <!-- Create Project Button -->
-  <button onclick="showCreateProjectModal()" 
-          class="w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 text-sm font-medium">
-    <i class="fas fa-plus"></i>
-    <span>Buat Proyek Baru</span>
-  </button>
+
+  <div class="flex items-center gap-2 w-full sm:w-auto">
+    <% if (currentRole === 'owner') { %>
+      <a href="/projects/archived"
+         class="flex items-center justify-center gap-2 px-4 py-3 border rounded-2xl text-gray-600 hover:bg-gray-50 text-sm font-medium">
+        <i class="fas fa-box-archive"></i>
+        <span>Arsip</span>
+      </a>
+    <% } %>
+    <!-- Create Project Button -->
+    <button onclick="showCreateProjectModal()"
+            class="flex-1 sm:flex-none justify-center flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 text-sm font-medium">
+      <i class="fas fa-plus"></i>
+      <span>Buat Proyek Baru</span>
+    </button>
+  </div>
 </div>
 
 <% if (memberships && memberships.length > 0) { %>
@@ -22,16 +31,27 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         <% if (membership.company.projects && membership.company.projects.length > 0) { %>
           <% membership.company.projects.forEach(project => { %>
-            <a href="/projects/<%= project.id %>" class="group bg-white border p-6 rounded-3xl hover:border-blue-300 transition flex flex-col justify-between min-h-[160px]">
-              <div>
+            <div class="group relative bg-white border p-6 rounded-3xl hover:border-blue-300 transition flex flex-col justify-between min-h-[160px]">
+              <a href="/projects/<%= project.id %>" class="block">
                 <div class="font-bold text-xl group-hover:text-blue-600"><%= project.name %></div>
                 <p class="text-sm text-gray-600 mt-2 line-clamp-2"><%= project.description || 'Tidak ada deskripsi' %></p>
+              </a>
+              <div class="flex items-center justify-between mt-auto pt-4">
+                <a href="/projects/<%= project.id %>" class="text-xs text-gray-500 flex items-center gap-1">
+                  <i class="fas fa-clock"></i>
+                  <%= new Date(project.createdAt).toLocaleDateString('id-ID') %>
+                </a>
+                <% if (membership.role !== 'member') { %>
+                  <form action="/projects/<%= project.id %>/archive" method="POST"
+                        onsubmit="return confirm('Arsipkan proyek &quot;<%= project.name %>&quot;? Data tetap tersimpan dan bisa dipulihkan dari Arsip.');">
+                    <button type="submit" title="Arsipkan proyek"
+                            class="text-xs text-gray-400 hover:text-amber-600 px-2 py-1 rounded-lg hover:bg-amber-50 transition">
+                      <i class="fas fa-box-archive"></i>
+                    </button>
+                  </form>
+                <% } %>
               </div>
-              <div class="text-xs text-gray-500 mt-auto pt-4 flex items-center gap-1">
-                <i class="fas fa-clock"></i> 
-                <%= new Date(project.createdAt).toLocaleDateString('id-ID') %>
-              </div>
-            </a>
+            </div>
           <% }) %>
         <% } else { %>
           <div class="col-span-full p-8 text-center bg-white border rounded-3xl">

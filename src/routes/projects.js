@@ -41,10 +41,12 @@ router.get('/', async (req, res) => {
 
   let memberships = [];
 
+  const activeProjects = { where: { archivedAt: null }, orderBy: { createdAt: 'desc' } };
+
   if (platformRole === 'owner') {
     const companies = await prisma.company.findMany({
       where: companyId ? { id: companyId } : {},
-      include: { projects: { orderBy: { createdAt: 'desc' } } },
+      include: { projects: activeProjects },
       orderBy: { createdAt: 'desc' }
     });
     memberships = companies.map(company => ({ role: 'owner', company }));
@@ -54,14 +56,14 @@ router.get('/', async (req, res) => {
       include: {
         workspace: {
           include: {
-            brands: { include: { projects: { orderBy: { createdAt: 'desc' } } } }
+            brands: { include: { projects: activeProjects } }
           }
         }
       }
     });
     const accesses = await prisma.partnerAccess.findMany({
       where: { userId, ...(companyId ? { companyId } : {}) },
-      include: { company: { include: { projects: { orderBy: { createdAt: 'desc' } } } } }
+      include: { company: { include: { projects: activeProjects } } }
     });
     const rows = [];
     workspaceRoles.forEach(access => {
@@ -78,11 +80,27 @@ router.get('/', async (req, res) => {
   } else {
     memberships = await prisma.membership.findMany({
       where: { userId, ...(companyId ? { companyId } : {}) },
-      include: { company: { include: { projects: { orderBy: { createdAt: 'desc' } } } } }
+      include: { company: { include: { projects: activeProjects } } }
     });
   }
 
-  res.render('projects/index', { memberships });
+  res.render('projects/index', { memberships, currentRole: platformRole });
+});
+
+// Archived projects (Owner only)
+router.get('/archived', async (req, res) => {
+  if (req.session.user.platformRole !== 'owner') {
+    req.flash('error', 'Hanya Owner yang bisa melihat arsip proyek');
+    return res.redirect('/projects');
+  }
+
+  const projects = await prisma.project.findMany({
+    where: { archivedAt: { not: null } },
+    include: { company: true },
+    orderBy: { archivedAt: 'desc' }
+  });
+
+  res.render('projects/archived', { projects });
 });
 
 // Create new project (Admin only)
@@ -175,11 +193,103 @@ router.get('/:id', async (req, res) => {
     include: { user: true }
   });
 
-  res.render('projects/kanban', { 
-    project, 
+  res.render('projects/kanban', {
+    project,
     members: members.map(m => m.user),
-    currentUserId: userId 
+    currentUserId: userId
   });
+});
+
+// Archive project (Brand manager / Owner)
+router.post('/:id/archive', requireAdmin, async (req, res) => {
+  try {
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: { archivedAt: new Date() }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'archived',
+      entityType: 'project',
+      entityId: project.id,
+      projectId: project.id,
+      metadata: { name: project.name }
+    });
+
+    req.flash('success', `Proyek "${project.name}" diarsipkan`);
+    res.redirect('/projects');
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal mengarsipkan proyek');
+    res.redirect('back');
+  }
+});
+
+// Restore project from archive (Owner only)
+router.post('/:id/unarchive', async (req, res) => {
+  try {
+    if (req.session.user.platformRole !== 'owner') {
+      req.flash('error', 'Hanya Owner yang bisa memulihkan proyek');
+      return res.redirect('/projects/archived');
+    }
+
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: { archivedAt: null }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'unarchived',
+      entityType: 'project',
+      entityId: project.id,
+      projectId: project.id,
+      metadata: { name: project.name }
+    });
+
+    req.flash('success', `Proyek "${project.name}" dipulihkan`);
+    res.redirect('/projects/archived');
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal memulihkan proyek');
+    res.redirect('/projects/archived');
+  }
+});
+
+// Permanently delete project (Owner only, must be archived first)
+router.delete('/:id', async (req, res) => {
+  try {
+    if (req.session.user.platformRole !== 'owner') {
+      req.flash('error', 'Hanya Owner yang bisa menghapus permanen');
+      return res.redirect('/projects/archived');
+    }
+
+    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!project) {
+      req.flash('error', 'Proyek tidak ditemukan');
+      return res.redirect('/projects/archived');
+    }
+    if (!project.archivedAt) {
+      req.flash('error', 'Proyek harus diarsipkan dulu sebelum dihapus permanen');
+      return res.redirect('/projects/archived');
+    }
+
+    await logActivity(prisma, req, {
+      action: 'deleted',
+      entityType: 'project',
+      entityId: project.id,
+      projectId: project.id,
+      metadata: { name: project.name }
+    });
+
+    await prisma.project.delete({ where: { id: project.id } });
+
+    req.flash('success', `Proyek "${project.name}" dihapus permanen`);
+    res.redirect('/projects/archived');
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal menghapus proyek');
+    res.redirect('/projects/archived');
+  }
 });
 
 module.exports = router;

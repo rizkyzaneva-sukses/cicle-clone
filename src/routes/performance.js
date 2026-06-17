@@ -5,6 +5,42 @@ const { requireAuth } = require('../middleware/auth');
 
 router.use(requireAuth);
 
+const ACTIVITY_ACTION_LABELS = {
+  created: 'membuat',
+  updated: 'mengupdate',
+  status_changed: 'mengubah status',
+  deleted: 'menghapus',
+  archived: 'mengarsipkan',
+  unarchived: 'memulihkan',
+  commented: 'mengomentari',
+  added_checklist: 'menambah checklist di',
+  completed_checklist: 'menyelesaikan checklist di',
+  reopened_checklist: 'membuka kembali checklist di',
+  deleted_checklist: 'menghapus checklist di',
+  uploaded_attachment: 'mengunggah file ke',
+  added_label: 'menambah label ke',
+  removed_label: 'menghapus label dari'
+};
+
+const ACTIVITY_ENTITY_LABELS = {
+  project: 'proyek',
+  task: 'tugas',
+  workspace: 'workspace'
+};
+
+function describeActivityLog(log) {
+  const target = log.project?.name || log.task?.title || log.metadata?.name || log.metadata?.title || '(tidak ada nama)';
+
+  return {
+    id: log.id,
+    actor: log.user?.name || 'System',
+    actionLabel: ACTIVITY_ACTION_LABELS[log.action] || log.action.replace(/_/g, ' '),
+    entityLabel: ACTIVITY_ENTITY_LABELS[log.entityType] || log.entityType,
+    target,
+    createdAt: log.createdAt
+  };
+}
+
 // Dashboard Kinerja
 router.get('/', async (req, res) => {
   try {
@@ -78,11 +114,31 @@ router.get('/', async (req, res) => {
     // Sort by completion rate desc
     memberStats.sort((a, b) => b.completionRate - a.completionRate);
 
+    // Team activity feed
+    const activityWhere = platformRole === 'owner' ? {} : {
+      OR: [
+        { project: { companyId: { in: brandIds } } },
+        { task: { project: { companyId: { in: brandIds } } } }
+      ]
+    };
+    const activityLogsRaw = await prisma.activityLog.findMany({
+      where: activityWhere,
+      include: {
+        user: true,
+        project: { select: { name: true } },
+        task: { select: { title: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    const activityLogs = activityLogsRaw.map(describeActivityLog);
+
     res.render('performance', {
       title: 'Dashboard Kinerja',
       brands,
       stats: { total, done, active, overdue },
-      members: memberStats
+      members: memberStats,
+      activityLogs
     });
   } catch (error) {
     console.error(error);

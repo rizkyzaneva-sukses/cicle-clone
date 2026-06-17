@@ -1,0 +1,58 @@
+<%- include('../partials/header', { title: 'Arsip Proyek' }) %>
+
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+  <div>
+    <a href="/projects" class="text-blue-600 hover:underline text-sm flex items-center gap-1 mb-1">
+      <i class="fas fa-arrow-left"></i> Kembali ke Semua Proyek
+    </a>
+    <h1 class="text-2xl sm:text-3xl font-bold">Arsip Proyek</h1>
+    <p class="text-gray-500 mt-1 text-sm">Proyek yang diarsipkan tetap tersimpan. Hanya Owner yang bisa memulihkan atau menghapus permanen.</p>
+  </div>
+</div>
+
+<% if (projects.length === 0) { %>
+  <div class="bg-white border rounded-3xl p-12 text-center">
+    <i class="fas fa-box-archive text-5xl text-gray-200 mb-4"></i>
+    <p class="text-gray-500">Belum ada proyek yang diarsipkan.</p>
+  </div>
+<% } else { %>
+  <div class="space-y-3">
+    <% projects.forEach(project => { %>
+      <div class="bg-white border rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" id="archived-<%= project.id %>">
+        <div>
+          <div class="font-bold text-lg"><%= project.name %></div>
+          <p class="text-sm text-gray-500 mt-0.5"><%= project.description || 'Tidak ada deskripsi' %></p>
+          <div class="text-xs text-gray-400 mt-1.5 flex items-center gap-3 flex-wrap">
+            <span><i class="fas fa-store mr-1"></i><%= project.company.name %></span>
+            <span><i class="fas fa-box-archive mr-1"></i>Diarsipkan <%= new Date(project.archivedAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <form action="/projects/<%= project.id %>/unarchive" method="POST">
+            <button type="submit" class="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
+              <i class="fas fa-rotate-left mr-1.5"></i>Pulihkan
+            </button>
+          </form>
+          <button onclick="deleteProjectPermanently('<%= project.id %>', '<%= project.name %>')"
+                  class="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100 transition">
+            <i class="fas fa-trash mr-1.5"></i>Hapus Permanen
+          </button>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<script>
+async function deleteProjectPermanently(id, name) {
+  if (!confirm(`Hapus permanen proyek "${name}"? Semua task, chat, dan file di dalamnya akan terhapus dan TIDAK bisa dikembalikan.`)) return;
+  const res = await fetch(`/projects/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    document.getElementById(`archived-${id}`)?.remove();
+  } else {
+    alert('Gagal menghapus proyek');
+  }
+}
+</script>
+
+<%- include('../partials/footer') %>

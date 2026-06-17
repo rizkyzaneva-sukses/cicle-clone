@@ -88,6 +88,37 @@
   <% } %>
 </div>
 
+<!-- Team Activity Log -->
+<h2 class="text-lg font-bold mb-4 mt-10">Aktivitas Tim Terbaru</h2>
+<div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
+  <% if (activityLogs.length === 0) { %>
+    <div class="p-10 text-center">
+      <i class="fas fa-clock-rotate-left text-4xl text-gray-200 mb-3"></i>
+      <p class="text-gray-500">Belum ada aktivitas tercatat</p>
+    </div>
+  <% } else { %>
+    <div class="divide-y max-h-[480px] overflow-y-auto">
+      <% activityLogs.forEach(log => { %>
+        <div class="flex items-start gap-3 px-5 py-3.5">
+          <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">
+            <%= log.actor.charAt(0).toUpperCase() %>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm text-gray-700">
+              <span class="font-semibold"><%= log.actor %></span>
+              <%= log.actionLabel %>
+              <%= log.entityLabel %> <span class="font-medium">"<%= log.target %>"</span>
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              <%= new Date(log.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+            </p>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
 <script>
 function setBrand(brandId) {
   document.querySelectorAll('[id^="brand-"]').forEach(btn => {
