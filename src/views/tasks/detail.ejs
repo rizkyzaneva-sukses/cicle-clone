@@ -264,9 +264,30 @@
         <h3 class="font-semibold text-lg flex items-center gap-2">
           <i class="fas fa-check-square text-blue-600"></i> Checklist
         </h3>
-        <span class="text-sm text-gray-500" id="checklist-count">
-          <%= task.checklists.filter(c=>c.isDone).length %> / <%= task.checklists.length %> selesai
-        </span>
+        <div class="flex items-center gap-3">
+          <button type="button" onclick="toggleSaveTemplateForm()" class="text-xs px-3 py-1.5 border rounded-xl text-purple-600 hover:bg-purple-50 font-semibold transition">
+            <i class="fas fa-bookmark mr-1"></i>Simpan Template
+          </button>
+          <span class="text-sm text-gray-500" id="checklist-count">
+            <%= task.checklists.filter(c=>c.isDone).length %> / <%= task.checklists.length %> selesai
+          </span>
+        </div>
+      </div>
+
+      <div id="save-template-form" class="hidden mb-4 bg-purple-50 border border-purple-100 rounded-2xl p-4">
+        <label class="block text-xs font-semibold text-purple-700 mb-1.5">Nama Template</label>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="text" id="template-name-input" value="<%= task.title %>"
+            class="flex-1 border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-purple-400"
+            placeholder="Contoh: Katalog Sandrine">
+          <button type="button" onclick="saveTaskAsTemplate()" class="px-4 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700">
+            Simpan
+          </button>
+          <button type="button" onclick="toggleSaveTemplateForm(false)" class="px-4 py-2.5 border rounded-xl text-sm font-semibold text-gray-600 hover:bg-white">
+            Batal
+          </button>
+        </div>
+        <p class="text-xs text-purple-500 mt-2">Judul, deskripsi, prioritas, dan checklist task ini akan disimpan agar bisa dipakai ulang dari tombol Template di board.</p>
       </div>
 
       <!-- Progress bar -->
@@ -675,6 +696,42 @@ async function removeParent() {
 }
 
 // Checklist
+function toggleSaveTemplateForm(force) {
+  const form = document.getElementById('save-template-form');
+  if (!form) return;
+  const show = typeof force === 'boolean' ? force : form.classList.contains('hidden');
+  form.classList.toggle('hidden', !show);
+  if (show) document.getElementById('template-name-input')?.focus();
+}
+
+async function saveTaskAsTemplate() {
+  const input = document.getElementById('template-name-input');
+  const name = input.value.trim();
+  if (!name) {
+    alert('Nama template wajib diisi');
+    input.focus();
+    return;
+  }
+
+  try {
+    const res = await fetch(`/templates/from-task/${taskId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      alert(data.error || 'Gagal menyimpan template');
+      return;
+    }
+
+    toggleSaveTemplateForm(false);
+    alert('Template berhasil disimpan. Buka board proyek lalu klik Template untuk memakai ulang.');
+  } catch (err) {
+    alert('Gagal menyimpan template');
+  }
+}
+
 async function toggleCheck(id, el) {
   await fetch(`/checklist/${id}/toggle`, { method: 'PATCH' });
   const label = el.parentElement.querySelector('span');
