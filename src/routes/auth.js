@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { uniqueSlug } = require('../lib/slug');
 const { isConfiguredOwner } = require('../lib/owners');
 const { notifyUser } = require('../lib/notify');
+const { sendTelegramMessage, enabled: telegramEnabled } = require('../lib/telegram');
+
+const RESET_CODE_TTL_MS = 10 * 60 * 1000;
+const RESET_MAX_ATTEMPTS = 5;
 
 async function getPasswordResetManagers(user) {
   const managerIds = new Set();
@@ -66,6 +71,27 @@ async function getPasswordResetManagers(user) {
     managerIds: [...managerIds],
     primaryCompanyId: memberships[0]?.companyId || partnerAccess[0]?.companyId || null
   };
+}
+
+function forgotView(data = {}) {
+  return {
+    error: null,
+    success: null,
+    codeSent: false,
+    email: '',
+    fallbackToAdmin: false,
+    ...data
+  };
+}
+
+async function notifyPasswordResetManagers(req, user) {
+  const { managerIds, primaryCompanyId } = await getPasswordResetManagers(user);
+  const link = primaryCompanyId ? `/members?companyId=${primaryCompanyId}` : '/members';
+  const io = req.app.get('io');
+
+  for (const managerId of managerIds) {
+    await notifyUser(io, managerId, `${user.name} meminta reset password`, link);
+  }
 }
 
 router.get('/register', async (req, res) => {
@@ -170,33 +196,136 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/forgot', (req, res) => {
-  res.render('auth/forgot', { error: null, success: null });
+  res.render('auth/forgot', forgotView());
 });
 
 router.post('/forgot', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
-  const genericSuccess = 'Jika email terdaftar, request reset password sudah dikirim ke Owner/Admin terkait.';
+  const genericSuccess = 'Jika email terdaftar, instruksi reset password sudah dikirim.';
 
   try {
     if (!email) {
-      return res.render('auth/forgot', { error: 'Email wajib diisi', success: null });
+      return res.render('auth/forgot', forgotView({ error: 'Email wajib diisi' }));
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true, email: true, telegramChatId: true }
+    });
     if (user) {
-      const { managerIds, primaryCompanyId } = await getPasswordResetManagers(user);
-      const link = primaryCompanyId ? `/members?companyId=${primaryCompanyId}` : '/members';
-      const io = req.app.get('io');
+      if (telegramEnabled && user.telegramChatId) {
+        const code = crypto.randomInt(100000, 1000000).toString();
+        req.session.passwordReset = {
+          userId: user.id,
+          email: user.email,
+          codeHash: await bcrypt.hash(code, 10),
+          expiresAt: Date.now() + RESET_CODE_TTL_MS,
+          attempts: 0
+        };
 
-      for (const managerId of managerIds) {
-        await notifyUser(io, managerId, `${user.name} meminta reset password`, link);
+        const sent = await sendTelegramMessage(
+          user.telegramChatId,
+          `<b>Kode Reset Password</b>\n\nKode kamu: <b>${code}</b>\nBerlaku 10 menit. Jangan bagikan kode ini ke siapa pun.`
+        );
+
+        if (sent?.ok) {
+          return res.render('auth/forgot', forgotView({
+            success: 'Kode reset sudah dikirim ke Telegram kamu. Masukkan kode dan password baru di bawah.',
+            codeSent: true,
+            email: user.email
+          }));
+        }
+
+        delete req.session.passwordReset;
       }
+
+      await notifyPasswordResetManagers(req, user);
+      return res.render('auth/forgot', forgotView({
+        success: 'Telegram akun ini belum aktif/gagal dikirim. Request reset diteruskan ke Owner/Admin.',
+        fallbackToAdmin: true
+      }));
     }
 
-    res.render('auth/forgot', { error: null, success: genericSuccess });
+    res.render('auth/forgot', forgotView({ success: genericSuccess }));
   } catch (error) {
     console.error(error);
-    res.render('auth/forgot', { error: 'Terjadi kesalahan. Coba lagi.', success: null });
+    res.render('auth/forgot', forgotView({ error: 'Terjadi kesalahan. Coba lagi.' }));
+  }
+});
+
+router.post('/forgot/reset', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const code = String(req.body.code || '').trim();
+  const newPassword = String(req.body.newPassword || '');
+  const confirmPassword = String(req.body.confirmPassword || '');
+  const challenge = req.session.passwordReset;
+
+  try {
+    if (!challenge || challenge.email !== email) {
+      return res.render('auth/forgot', forgotView({
+        error: 'Sesi reset tidak ditemukan. Minta kode baru.',
+        email
+      }));
+    }
+
+    if (Date.now() > challenge.expiresAt) {
+      delete req.session.passwordReset;
+      return res.render('auth/forgot', forgotView({
+        error: 'Kode reset sudah kedaluwarsa. Minta kode baru.',
+        email
+      }));
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.render('auth/forgot', forgotView({
+        error: 'Konfirmasi password tidak cocok',
+        codeSent: true,
+        email
+      }));
+    }
+
+    if (newPassword.length < 6) {
+      return res.render('auth/forgot', forgotView({
+        error: 'Password baru minimal 6 karakter',
+        codeSent: true,
+        email
+      }));
+    }
+
+    const codeValid = await bcrypt.compare(code, challenge.codeHash);
+    if (!codeValid) {
+      challenge.attempts = (challenge.attempts || 0) + 1;
+      req.session.passwordReset = challenge;
+      if (challenge.attempts >= RESET_MAX_ATTEMPTS) {
+        delete req.session.passwordReset;
+        return res.render('auth/forgot', forgotView({
+          error: 'Kode salah terlalu banyak. Minta kode baru.',
+          email
+        }));
+      }
+
+      return res.render('auth/forgot', forgotView({
+        error: 'Kode reset tidak valid',
+        codeSent: true,
+        email
+      }));
+    }
+
+    await prisma.user.update({
+      where: { id: challenge.userId },
+      data: { password: await bcrypt.hash(newPassword, 10) }
+    });
+
+    delete req.session.passwordReset;
+    req.flash('success', 'Password berhasil direset. Silakan masuk dengan password baru.');
+    res.redirect('/auth/login');
+  } catch (error) {
+    console.error(error);
+    res.render('auth/forgot', forgotView({
+      error: 'Gagal reset password. Coba lagi.',
+      codeSent: !!challenge,
+      email
+    }));
   }
 });
 

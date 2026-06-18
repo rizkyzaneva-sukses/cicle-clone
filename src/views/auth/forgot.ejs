@@ -6,7 +6,13 @@
       <i class="fas fa-key text-white text-3xl"></i>
     </div>
     <h1 class="text-3xl font-bold">Lupa Password</h1>
-    <p class="text-gray-500 mt-2">Masukkan email akun. Owner/Admin akan menerima request reset password.</p>
+    <p class="text-gray-500 mt-2">
+      <% if (codeSent) { %>
+        Masukkan kode dari Telegram dan buat password baru.
+      <% } else { %>
+        Masukkan email akun. Kode reset akan dikirim ke Telegram yang terhubung.
+      <% } %>
+    </p>
   </div>
 
   <div class="bg-white border rounded-3xl p-8 shadow-sm">
@@ -17,18 +23,61 @@
       <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-2xl text-sm"><%= success %></div>
     <% } %>
 
-    <form method="POST" action="/auth/forgot">
-      <div>
-        <label class="text-sm font-medium">Email</label>
-        <input type="email" name="email" required autofocus
-          class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          placeholder="nama@email.com">
-      </div>
+    <% if (codeSent) { %>
+      <form method="POST" action="/auth/forgot/reset" class="space-y-5">
+        <div>
+          <label class="text-sm font-medium">Email</label>
+          <input type="email" name="email" value="<%= email || '' %>" readonly
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl bg-gray-50 text-gray-600">
+        </div>
+        <div>
+          <label class="text-sm font-medium">Kode Telegram</label>
+          <input type="text" name="code" required inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            placeholder="6 digit kode">
+        </div>
+        <div>
+          <label class="text-sm font-medium">Password Baru</label>
+          <input type="password" name="newPassword" required minlength="6"
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+        </div>
+        <div>
+          <label class="text-sm font-medium">Konfirmasi Password Baru</label>
+          <input type="password" name="confirmPassword" required minlength="6"
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+        </div>
 
-      <button type="submit" class="mt-7 w-full bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-4 rounded-2xl text-lg">
-        Kirim Request Reset
-      </button>
-    </form>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-4 rounded-2xl text-lg">
+          Reset Password
+        </button>
+      </form>
+
+      <form method="POST" action="/auth/forgot" class="mt-4">
+        <input type="hidden" name="email" value="<%= email || '' %>">
+        <button type="submit" class="w-full border rounded-2xl py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+          Kirim Ulang Kode
+        </button>
+      </form>
+    <% } else { %>
+      <form method="POST" action="/auth/forgot">
+        <div>
+          <label class="text-sm font-medium">Email</label>
+          <input type="email" name="email" value="<%= email || '' %>" required autofocus
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            placeholder="nama@email.com">
+        </div>
+
+        <button type="submit" class="mt-7 w-full bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-4 rounded-2xl text-lg">
+          Kirim Kode Reset
+        </button>
+      </form>
+    <% } %>
+
+    <% if (fallbackToAdmin) { %>
+      <div class="mt-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 px-4 py-3 text-xs">
+        Hubungkan Telegram di profil setelah bisa masuk lagi supaya reset berikutnya bisa mandiri.
+      </div>
+    <% } %>
 
     <div class="text-center mt-6">
       <a href="/auth/login" class="text-sm font-medium text-blue-600 hover:underline">Kembali ke halaman masuk</a>

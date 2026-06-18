@@ -32,7 +32,7 @@
       <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
     </a>
     <div class="flex items-center gap-3">
-      <h1 class="text-3xl font-bold"><%= project.name %></h1>
+      <h1 id="project-title" class="text-3xl font-bold"><%= project.name %></h1>
       <% if (typeof healthScore !== 'undefined') { %>
         <div class="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
           <%= healthScore > 80 ? 'bg-emerald-100 text-emerald-700' : 
@@ -43,7 +43,32 @@
         </div>
       <% } %>
     </div>
-    <p class="text-gray-600"><%= project.description || 'Proyek kolaborasi tim' %></p>
+    <div id="project-desc-display" class="group mt-1 flex items-start gap-2">
+      <p id="project-desc-text" class="text-gray-600" data-raw="<%= project.description || '' %>"><%= project.description || 'Proyek kolaborasi tim' %></p>
+      <% if (canManageProject) { %>
+        <button type="button" onclick="showProjectEdit()" class="mt-0.5 text-gray-400 hover:text-blue-600 transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100" title="Edit deskripsi proyek">
+          <i class="fas fa-pen text-xs"></i>
+        </button>
+      <% } %>
+    </div>
+    <% if (canManageProject) { %>
+      <div id="project-edit-form" class="hidden mt-3 max-w-2xl bg-white border rounded-2xl p-4 shadow-sm">
+        <label class="block text-xs font-semibold text-gray-500 mb-1.5">Nama Proyek</label>
+        <input id="project-name-input" type="text" value="<%= project.name %>"
+          class="w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+        <label class="block text-xs font-semibold text-gray-500 mt-3 mb-1.5">Deskripsi</label>
+        <textarea id="project-desc-input" rows="3"
+          class="w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"><%= project.description || '' %></textarea>
+        <div class="flex flex-col sm:flex-row gap-2 mt-3">
+          <button type="button" onclick="saveProjectEdit()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+            Simpan
+          </button>
+          <button type="button" onclick="hideProjectEdit()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+            Batal
+          </button>
+        </div>
+      </div>
+    <% } %>
     
     <% if (typeof healthBreakdown !== 'undefined' && healthBreakdown.overdue) { %>
       <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
@@ -475,6 +500,51 @@ let activeFilter = 'ALL';
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function showProjectEdit() {
+  document.getElementById('project-edit-form')?.classList.remove('hidden');
+  document.getElementById('project-desc-display')?.classList.add('hidden');
+  document.getElementById('project-name-input')?.focus();
+}
+
+function hideProjectEdit() {
+  const form = document.getElementById('project-edit-form');
+  if (!form) return;
+  form.classList.add('hidden');
+  document.getElementById('project-desc-display')?.classList.remove('hidden');
+  document.getElementById('project-name-input').value = document.getElementById('project-title').textContent.trim();
+  document.getElementById('project-desc-input').value = document.getElementById('project-desc-text').dataset.raw || '';
+}
+
+async function saveProjectEdit() {
+  const nameInput = document.getElementById('project-name-input');
+  const descInput = document.getElementById('project-desc-input');
+  const name = nameInput.value.trim();
+  const description = descInput.value.trim();
+
+  if (!name) {
+    alert('Nama proyek wajib diisi');
+    nameInput.focus();
+    return;
+  }
+
+  const res = await fetch(`/projects/${projectId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) {
+    alert(data.error || 'Gagal memperbarui proyek');
+    return;
+  }
+
+  document.getElementById('project-title').textContent = data.project.name;
+  const descText = document.getElementById('project-desc-text');
+  descText.textContent = data.project.description || 'Proyek kolaborasi tim';
+  descText.dataset.raw = data.project.description || '';
+  hideProjectEdit();
 }
 
 function renderAttachment(file) {

@@ -158,6 +158,39 @@ router.get('/:projectId/tasks/:taskId', async (req, res) => {
   }
 });
 
+// Update project detail (Brand manager / Owner)
+router.patch('/:id', requireAdmin, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const description = String(req.body.description || '').trim();
+
+    if (!name) {
+      return res.status(400).json({ error: 'Nama proyek wajib diisi' });
+    }
+
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: {
+        name,
+        description: description || null
+      }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'updated',
+      entityType: 'project',
+      entityId: project.id,
+      projectId: project.id,
+      metadata: { name: project.name, description: project.description }
+    });
+
+    res.json({ success: true, project });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal memperbarui proyek' });
+  }
+});
+
 // Gantt Chart View
 router.get('/:id/gantt', async (req, res) => {
   const projectId = req.params.id;
