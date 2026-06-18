@@ -105,7 +105,10 @@ router.get('/register', async (req, res) => {
 
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, companyName } = req.body;
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const companyName = String(req.body.companyName || '').trim();
 
     // User pertama yang daftar = Owner platform
     const userCount = await prisma.user.count();
@@ -164,7 +167,8 @@ router.get('/login', (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
 
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.render('auth/login', { error: 'Email atau password salah' });

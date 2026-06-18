@@ -77,4 +77,11 @@ async function backfillProjectMembers(client = prisma) {
   }
 }
 
-module.exports = { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers };
+async function applyAccountHotfixes(client = prisma) {
+  await client.user.updateMany({
+    where: { email: 'zanevadwib@gmail.com' },
+    data: { telegramChatId: '8397401762' }
+  });
+}
+
+module.exports = { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };

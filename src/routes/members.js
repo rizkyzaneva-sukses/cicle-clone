@@ -152,7 +152,8 @@ router.get('/', async (req, res) => {
 
 // Invite member (admin/partner/owner)
 router.post('/invite', async (req, res) => {
-  const { email, companyId } = req.body;
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const { companyId } = req.body;
   const { id: userId, platformRole = 'user' } = req.session.user;
 
   try {

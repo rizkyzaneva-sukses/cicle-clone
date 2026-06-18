@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers } = require('./lib/maintenance');
+const { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes } = require('./lib/maintenance');
 const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
@@ -50,7 +50,7 @@ app.use(async (req, res, next) => {
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
-      maintenancePromise ||= Promise.all([cleanupOrphanRecords(), backfillProjectMembers()]).catch((err) => {
+      maintenancePromise ||= Promise.all([cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes()]).catch((err) => {
         maintenancePromise = null;
         console.error('Maintenance cleanup failed:', err);
       });
@@ -227,11 +227,17 @@ app.get('/', async (req, res) => {
       ]);
       
       // Calculate health scores for projects
-      const { calculateProjectHealthScore, getHealthIndicator } = require('../lib/health');
+      const { calculateProjectHealthScore, getHealthIndicator } = require('./lib/health');
       for (const project of projects) {
-        const { score } = await calculateProjectHealthScore(project.id);
-        project.healthScore = score;
-        project.healthIndicator = getHealthIndicator(score);
+        try {
+          const { score } = await calculateProjectHealthScore(project.id);
+          project.healthScore = score;
+          project.healthIndicator = getHealthIndicator(score);
+        } catch (healthErr) {
+          console.error('Dashboard health score failed:', healthErr);
+          project.healthScore = null;
+          project.healthIndicator = null;
+        }
       }
     }
 
@@ -263,5 +269,6 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Maulana Corp Project Management running on port ${PORT} (listening on 0.0.0.0)`);
   console.log('Ready for EasyPanel deployment!');
+  applyAccountHotfixes().catch((err) => console.error('Startup account hotfix failed:', err));
   startDailyScheduler(io, [runDailyReminders, runRecurringTaskGenerator, maybeRunWeeklyReport]);
 });
