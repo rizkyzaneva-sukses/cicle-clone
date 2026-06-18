@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { logActivity } = require('../lib/activity');
-const { hasCompanyAccess, hasProjectAccess } = require('../lib/access');
+const { hasCompanyAccess, hasProjectAccess, isCompanyManager } = require('../lib/access');
 const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
@@ -82,7 +82,19 @@ router.get('/', async (req, res) => {
     return m;
   });
 
-  res.render('projects/index', { memberships, currentRole: platformRole });
+  const workspaceIds = [...new Set(memberships.map(m => m.company?.workspaceId).filter(Boolean))];
+  const workspaceBrands = workspaceIds.length > 0
+    ? await prisma.company.findMany({
+        where: { workspaceId: { in: workspaceIds } },
+        select: { id: true, name: true, workspaceId: true },
+        orderBy: { createdAt: 'asc' }
+      })
+    : [];
+  const manageableCompanyIds = platformRole === 'owner'
+    ? memberships.map(m => m.company.id)
+    : memberships.filter(m => m.role !== 'member').map(m => m.company.id);
+
+  res.render('projects/index', { memberships, currentRole: platformRole, workspaceBrands, manageableCompanyIds });
 });
 
 // Archived projects (Owner only)
@@ -188,6 +200,112 @@ router.patch('/:id', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal memperbarui proyek' });
+  }
+});
+
+router.post('/:id/move-brand', requireAdmin, async (req, res) => {
+  const targetCompanyId = String(req.body.targetCompanyId || '').trim();
+  const nextUrl = String(req.body.next || req.get('referer') || '/projects');
+
+  try {
+    if (!targetCompanyId) {
+      req.flash('error', 'Pilih brand tujuan dulu');
+      return res.redirect(nextUrl);
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      include: {
+        company: { select: { id: true, name: true, workspaceId: true } },
+        projectMembers: { select: { userId: true } },
+        tasks: { select: { assigneeId: true } }
+      }
+    });
+    if (!project) {
+      req.flash('error', 'Proyek tidak ditemukan');
+      return res.redirect(nextUrl);
+    }
+
+    if (project.companyId === targetCompanyId) {
+      req.flash('error', 'Proyek sudah ada di brand itu');
+      return res.redirect(nextUrl);
+    }
+
+    const targetCompany = await prisma.company.findUnique({
+      where: { id: targetCompanyId },
+      select: { id: true, name: true, workspaceId: true }
+    });
+    if (!targetCompany) {
+      req.flash('error', 'Brand tujuan tidak ditemukan');
+      return res.redirect(nextUrl);
+    }
+
+    if (!project.company.workspaceId || project.company.workspaceId !== targetCompany.workspaceId) {
+      req.flash('error', 'Proyek hanya bisa dipindahkan ke brand lain dalam workspace yang sama');
+      return res.redirect(nextUrl);
+    }
+
+    const [canManageSource, canManageTarget] = await Promise.all([
+      isCompanyManager(req.session.user, project.companyId),
+      isCompanyManager(req.session.user, targetCompanyId)
+    ]);
+    if (!canManageSource || !canManageTarget) {
+      req.flash('error', 'Kamu harus punya akses kelola ke brand sumber dan tujuan');
+      return res.redirect(nextUrl);
+    }
+
+    const relatedUserIds = [...new Set([
+      ...project.projectMembers.map(member => member.userId),
+      ...project.tasks.map(task => task.assigneeId).filter(Boolean)
+    ])];
+
+    await prisma.$transaction(async (tx) => {
+      if (relatedUserIds.length > 0) {
+        const workspaceMembers = await tx.membership.findMany({
+          where: {
+            userId: { in: relatedUserIds },
+            company: { workspaceId: targetCompany.workspaceId }
+          },
+          select: { userId: true },
+          distinct: ['userId']
+        });
+
+        if (workspaceMembers.length > 0) {
+          await tx.membership.createMany({
+            data: workspaceMembers.map(member => ({
+              userId: member.userId,
+              companyId: targetCompany.id,
+              role: 'member'
+            })),
+            skipDuplicates: true
+          });
+        }
+      }
+
+      await tx.project.update({
+        where: { id: project.id },
+        data: { companyId: targetCompany.id }
+      });
+    });
+
+    await logActivity(prisma, req, {
+      action: 'moved_brand',
+      entityType: 'project',
+      entityId: project.id,
+      projectId: project.id,
+      metadata: {
+        name: project.name,
+        fromCompany: project.company.name,
+        toCompany: targetCompany.name
+      }
+    });
+
+    req.flash('success', `Proyek "${project.name}" dipindahkan ke brand "${targetCompany.name}"`);
+    res.redirect(nextUrl);
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal memindahkan proyek ke brand lain');
+    res.redirect(nextUrl);
   }
 });
 

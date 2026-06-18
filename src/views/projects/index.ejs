@@ -31,6 +31,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         <% if (membership.company.projects && membership.company.projects.length > 0) { %>
           <% membership.company.projects.forEach(project => { %>
+            <% const moveTargets = (workspaceBrands || []).filter(brand => brand.workspaceId === membership.company.workspaceId && brand.id !== membership.company.id && (manageableCompanyIds || []).includes(brand.id)); %>
             <div class="group relative bg-white border p-6 rounded-3xl hover:border-blue-300 transition flex flex-col justify-between min-h-[160px]">
               <a href="/projects/<%= project.id %>" class="block">
                 <div class="font-bold text-xl group-hover:text-blue-600"><%= project.name %></div>
@@ -67,15 +68,42 @@
                     Tidak ada deadline
                   <% } %>
                 </a>
-                <% if (membership.role !== 'member') { %>
-                  <form action="/projects/<%= project.id %>/archive" method="POST"
-                        onsubmit="return confirm('Arsipkan proyek &quot;<%= project.name %>&quot;? Data tetap tersimpan dan bisa dipulihkan dari Arsip.');">
-                    <button type="submit" title="Arsipkan proyek"
-                            class="text-xs text-gray-400 hover:text-amber-600 px-2 py-1 rounded-lg hover:bg-amber-50 transition">
-                      <i class="fas fa-box-archive"></i>
-                    </button>
-                  </form>
-                <% } %>
+                <div class="flex items-center gap-1.5">
+                  <% if (membership.role !== 'member' && moveTargets.length > 0) { %>
+                    <details class="relative">
+                      <summary title="Pindah ke brand lain"
+                               class="list-none cursor-pointer text-xs text-gray-400 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-50 transition">
+                        <i class="fas fa-right-left"></i>
+                      </summary>
+                      <form action="/projects/<%= project.id %>/move-brand" method="POST"
+                            class="absolute right-0 bottom-full mb-2 w-64 bg-white border rounded-2xl shadow-lg p-3 z-20"
+                            onclick="event.stopPropagation()">
+                        <input type="hidden" name="next" value="/projects?companyId=<%= membership.company.id %>">
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-2">Pindahkan ke brand lain</label>
+                        <select name="targetCompanyId" required class="w-full border rounded-xl px-3 py-2 text-sm mb-3">
+                          <option value="">Pilih brand tujuan...</option>
+                          <% moveTargets.forEach(target => { %>
+                            <option value="<%= target.id %>"><%= target.name %></option>
+                          <% }) %>
+                        </select>
+                        <button type="submit"
+                                class="w-full py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition"
+                                onclick="return confirm('Pindahkan proyek &quot;<%= project.name %>&quot; ke brand yang dipilih?')">
+                          Pindahkan
+                        </button>
+                      </form>
+                    </details>
+                  <% } %>
+                  <% if (membership.role !== 'member') { %>
+                    <form action="/projects/<%= project.id %>/archive" method="POST"
+                          onsubmit="return confirm('Arsipkan proyek &quot;<%= project.name %>&quot;? Data tetap tersimpan dan bisa dipulihkan dari Arsip.');">
+                      <button type="submit" title="Arsipkan proyek"
+                              class="text-xs text-gray-400 hover:text-amber-600 px-2 py-1 rounded-lg hover:bg-amber-50 transition">
+                        <i class="fas fa-box-archive"></i>
+                      </button>
+                    </form>
+                  <% } %>
+                </div>
               </div>
             </div>
           <% }) %>
