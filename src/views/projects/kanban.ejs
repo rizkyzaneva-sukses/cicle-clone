@@ -328,7 +328,16 @@
               <option value="URGENT">🔴 Urgent</option>
             </select>
           </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Template</label>
+            <select id="create-template-select" name="templateId" onchange="applyCreateTemplate(this.value)"
+              class="w-full border rounded-2xl px-5 py-3">
+              <option value="">Tanpa Template</option>
+            </select>
+            <div id="create-template-hint" class="hidden mt-1 text-xs text-purple-500"></div>
+          </div>
         </div>
+        <input type="hidden" name="templateChecklists" id="create-template-checklists" value="[]">
       </div>
       
       <div class="flex gap-3 mt-8">
@@ -780,13 +789,56 @@ socket.on('new-message', (msg) => {
 });
 
 // Create Task
-function showCreateTaskModal() {
+let createTaskTemplates = [];
+
+async function showCreateTaskModal() {
   document.getElementById('createTaskModal').classList.remove('hidden');
+  await loadCreateTaskTemplates();
 }
 
 function hideCreateTaskModal() {
   document.getElementById('createTaskModal').classList.add('hidden');
   document.getElementById('createTaskForm').reset();
+  document.getElementById('create-template-checklists').value = '[]';
+  document.getElementById('create-template-hint').classList.add('hidden');
+}
+
+async function loadCreateTaskTemplates() {
+  const select = document.getElementById('create-template-select');
+  if (!select || select.dataset.loaded === 'true') return;
+
+  try {
+    const res = await fetch(`/templates/brand/${companyId}`);
+    const templates = await res.json();
+    createTaskTemplates = Array.isArray(templates) ? templates : [];
+    select.innerHTML = '<option value="">Tanpa Template</option>' + createTaskTemplates.map(t =>
+      `<option value="${t.id}">${escapeHtml(t.name)}${t.checklists?.length ? ` (${t.checklists.length})` : ''}</option>`
+    ).join('');
+    select.dataset.loaded = 'true';
+  } catch (err) {
+    select.innerHTML = '<option value="">Gagal memuat template</option>';
+  }
+}
+
+function applyCreateTemplate(templateId) {
+  const form = document.getElementById('createTaskForm');
+  const hint = document.getElementById('create-template-hint');
+  const hidden = document.getElementById('create-template-checklists');
+  const template = createTaskTemplates.find(t => t.id === templateId);
+
+  if (!template) {
+    hidden.value = '[]';
+    hint.classList.add('hidden');
+    return;
+  }
+
+  form.elements.title.value = template.name || '';
+  form.elements.description.value = template.description || '';
+  form.elements.priority.value = template.priority || 'NONE';
+  const checklists = (template.checklists || []).map(item => item.content).filter(Boolean);
+  hidden.value = JSON.stringify(checklists);
+  hint.textContent = `${checklists.length} checklist akan ikut dibuat dari template ini.`;
+  hint.classList.remove('hidden');
 }
 
 async function createTask(e) {
@@ -796,6 +848,9 @@ async function createTask(e) {
   
   const data = Object.fromEntries(formData.entries());
   if (!data.priority) data.priority = 'NONE';
+  data.checklists = JSON.parse(data.templateChecklists || '[]');
+  delete data.templateChecklists;
+  delete data.templateId;
 
   try {
     const res = await fetch('/tasks/create', {

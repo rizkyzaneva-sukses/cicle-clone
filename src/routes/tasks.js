@@ -103,6 +103,9 @@ router.get('/:id', async (req, res) => {
 router.post('/create', async (req, res) => {
   try {
     const { title, description, projectId, assigneeId, dueDate, status, priority } = req.body;
+    const checklists = Array.isArray(req.body.checklists)
+      ? req.body.checklists.map(item => String(item || '').trim()).filter(Boolean).slice(0, 100)
+      : [];
     const project = await canAccessProject(req.session.user, projectId);
     if (!project) return res.status(403).json({ error: 'Akses ditolak' });
     if (!await isValidAssignee(assigneeId, project.companyId)) {
@@ -117,9 +120,12 @@ router.post('/create', async (req, res) => {
         assigneeId: assigneeId || null,
         dueDate: dueDate ? new Date(dueDate) : null,
         status: status || 'TODO',
-        priority: priority || 'NONE'
+        priority: priority || 'NONE',
+        checklists: checklists.length > 0 ? {
+          create: checklists.map((content, position) => ({ content, position }))
+        } : undefined
       },
-      include: { assignee: true }
+      include: { assignee: true, checklists: { orderBy: { position: 'asc' } }, labels: { include: { label: true } } }
     });
 
     await logActivity(prisma, req, {
