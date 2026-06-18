@@ -575,6 +575,61 @@ function setFilter(f) {
   renderKanban();
 }
 
+function normalizeChecklistItems(items) {
+  return Array.isArray(items) ? items.map(item => ({
+    ...item,
+    isDone: Boolean(item.isDone),
+    children: normalizeChecklistItems(item.children || [])
+  })) : [];
+}
+
+function normalizeTaskForKanban(task) {
+  return {
+    ...task,
+    status: task.status || 'TODO',
+    priority: task.priority || 'NONE',
+    labels: Array.isArray(task.labels) ? task.labels : [],
+    children: Array.isArray(task.children) ? task.children : [],
+    checklists: normalizeChecklistItems(task.checklists || [])
+  };
+}
+
+function insertTaskIntoBoard(task) {
+  const normalizedTask = normalizeTaskForKanban(task);
+  tasks.unshift(normalizedTask);
+  if (activeFilter !== 'ALL' && normalizedTask.priority !== activeFilter) {
+    setFilter('ALL');
+  } else {
+    renderKanban();
+  }
+  return normalizedTask;
+}
+
+function findChecklistItem(items, checklistId) {
+  for (const item of items || []) {
+    if (item.id === checklistId) return item;
+    const child = findChecklistItem(item.children || [], checklistId);
+    if (child) return child;
+  }
+  return null;
+}
+
+function renderPreviewChecklistItems(items, depth = 0) {
+  return (items || []).map(item => `
+    <label class="flex items-start gap-2.5 text-sm ${depth > 0 ? 'ml-5' : ''}">
+      <input
+        type="checkbox"
+        class="mt-0.5 h-4 w-4 accent-blue-600 cursor-pointer shrink-0"
+        ${item.isDone ? 'checked' : ''}
+        onchange="togglePreviewChecklist('${item.id}', this.checked)">
+      <span class="flex-1 ${item.isDone ? 'line-through text-gray-400' : 'text-gray-600'}">${escapeHtml(item.content)}</span>
+    </label>
+    ${renderPreviewChecklistItems(item.children || [], depth + 1)}
+  `).join('');
+}
+
+tasks = tasks.map(normalizeTaskForKanban);
+
 // Render Kanban
 function renderKanban() {
   const columns = {
@@ -690,8 +745,6 @@ function openPreview(taskId) {
   const checklists = task.checklists || [];
   const doneCount = checklists.filter(c => c.isDone).length;
   const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
-  const pendingItems = checklists.filter(c => !c.isDone);
-
   const PRIO_MAP = { URGENT: { label: '🔴 Urgent', cls: 'bg-red-100 text-red-700' }, HIGH: { label: '🟠 High', cls: 'bg-orange-100 text-orange-700' }, MEDIUM: { label: '🟡 Medium', cls: 'bg-yellow-100 text-yellow-700' }, LOW: { label: '🟢 Low', cls: 'bg-green-100 text-green-700' }, NONE: { label: '', cls: '' } };
   const prio = PRIO_MAP[task.priority] || PRIO_MAP.NONE;
   const STATUS_MAP = { TODO: '📋 To Do', IN_PROGRESS: '🔄 Doing', DONE: '✅ Done' };
@@ -708,18 +761,11 @@ function openPreview(taskId) {
   document.getElementById('preview-check-bar').style.width = `${checkPct}%`;
   document.getElementById('preview-check-bar').className = `h-full rounded-full transition-all ${checkPct === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`;
 
-  // Pending items
   const pendingList = document.getElementById('preview-pending');
-  pendingList.innerHTML = '';
-  if (pendingItems.length > 0) {
-    pendingItems.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'flex items-center gap-2 text-sm text-gray-600';
-      div.innerHTML = `<i class="far fa-square text-gray-400"></i><span>${escapeHtml(item.content)}</span>`;
-      pendingList.appendChild(div);
-    });
-  } else if (checklists.length > 0) {
-    pendingList.innerHTML = '<p class="text-sm text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Semua selesai!</p>';
+  const checklistLabel = document.getElementById('preview-checklist-label');
+  checklistLabel.textContent = checklists.length > 0 ? 'Checklist:' : 'Checklist kosong';
+  if (checklists.length > 0) {
+    pendingList.innerHTML = renderPreviewChecklistItems(checklists);
   } else {
     pendingList.innerHTML = '<p class="text-sm text-gray-400">Belum ada checklist</p>';
   }
@@ -861,13 +907,11 @@ async function createTask(e) {
 
     const result = await res.json();
     if (result.success) {
-      const newTask = result.task;
-      newTask.labels = newTask.labels || [];
-      newTask.checklists = newTask.checklists || [];
-      tasks.push(newTask);
-      renderKanban();
+      insertTaskIntoBoard(result.task);
       hideCreateTaskModal();
       form.reset();
+    } else {
+      alert(result.error || 'Gagal membuat tugas');
     }
   } catch (err) {
     alert('Gagal membuat tugas');
@@ -1690,7 +1734,7 @@ if (fab) {
       <div class="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
         <div class="h-full bg-blue-500 rounded-full transition-all" id="preview-check-bar" style="width:0%"></div>
       </div>
-      <div class="text-xs text-gray-400 font-medium mb-2">Belum Selesai:</div>
+      <div class="text-xs text-gray-400 font-medium mb-2" id="preview-checklist-label">Checklist:</div>
       <div class="space-y-1.5" id="preview-pending"></div>
     </div>
   </div>
@@ -1872,6 +1916,32 @@ function refreshPreviewUI() {
   }
 }
 
+async function togglePreviewChecklist(checklistId, checked) {
+  const task = tasks.find(x => x.id === previewTaskId);
+  if (!task) return;
+  const item = findChecklistItem(task.checklists, checklistId);
+  if (!item) return;
+
+  const previousValue = item.isDone;
+  item.isDone = checked;
+  renderKanban();
+  openPreview(previewTaskId);
+
+  try {
+    const res = await fetch(`/checklist/${checklistId}/toggle`, { method: 'PATCH' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal update checklist');
+    item.isDone = Boolean(data.item?.isDone);
+    renderKanban();
+    openPreview(previewTaskId);
+  } catch (err) {
+    item.isDone = previousValue;
+    renderKanban();
+    openPreview(previewTaskId);
+    alert(err.message || 'Gagal update checklist');
+  }
+}
+
 function initPreviewPopoverState() {
   const t = tasks.find(x => x.id === previewTaskId);
   if (!t) return;
@@ -1976,10 +2046,9 @@ async function useTemplate(templateId) {
     });
     const data = await res.json();
     if (data.success) {
-      tasks.push(data.task);
-      renderKanban();
+      const insertedTask = insertTaskIntoBoard(data.task);
       hideTemplateModal();
-      openPreview(data.task.id);
+      openPreview(insertedTask.id);
     } else {
       alert('Gagal: ' + (data.error || 'unknown'));
     }

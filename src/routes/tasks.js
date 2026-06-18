@@ -125,7 +125,12 @@ router.post('/create', async (req, res) => {
           create: checklists.map((content, position) => ({ content, position }))
         } : undefined
       },
-      include: { assignee: true, checklists: { orderBy: { position: 'asc' } }, labels: { include: { label: true } } }
+      include: {
+        assignee: true,
+        checklists: { orderBy: { position: 'asc' } },
+        labels: { include: { label: true } },
+        children: { select: { id: true } }
+      }
     });
 
     await logActivity(prisma, req, {
@@ -139,9 +144,13 @@ router.post('/create', async (req, res) => {
 
     // Assigning grants project access; notify assignee
     if (task.assigneeId) {
-      await ensureProjectMember(task.assigneeId, projectId);
-      if (task.assigneeId !== req.session.user.id) {
-        await notifyUser(req.app.get('io'), task.assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+      try {
+        await ensureProjectMember(task.assigneeId, projectId);
+        if (task.assigneeId !== req.session.user.id) {
+          await notifyUser(req.app.get('io'), task.assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+        }
+      } catch (notifyError) {
+        console.error('Task post-create notify failed:', notifyError.message);
       }
     }
 
