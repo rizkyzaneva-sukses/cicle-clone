@@ -338,7 +338,7 @@
             <div id="sub-form-<%= item.id %>" class="hidden ml-8 mt-1 flex gap-2">
               <input type="text" placeholder="Sub-checklist..."
                 class="flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400"
-                onkeypress="if(event.key==='Enter') addSubCheck('<%= item.id %>', this)">
+                onkeypress="if(event.key==='Enter' && !event.shiftKey) addSubCheck('<%= item.id %>', this)">
               <button onclick="addSubCheck('<%= item.id %>', this.previousElementSibling)" class="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700"><i class="fas fa-plus"></i></button>
             </div>
           </div>
@@ -349,7 +349,7 @@
       <div class="flex gap-2">
         <input type="text" id="new-checklist" placeholder="Tambah item checklist..."
           class="flex-1 border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-400"
-          onkeypress="if(event.key==='Enter') addCheck()">
+          onkeypress="if(event.key==='Enter' && !event.shiftKey) addCheck()">
         <button onclick="addCheck()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700">
           <i class="fas fa-plus"></i>
         </button>
@@ -476,7 +476,7 @@
                 <div class="flex gap-2">
                   <input type="text" id="reply-input-<%= comment.id %>" placeholder="Balas..."
                     class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400"
-                    onkeypress="if(event.key==='Enter') addReply('<%= comment.id %>')">
+                    onkeypress="if(event.key==='Enter' && !event.shiftKey) addReply('<%= comment.id %>')">
                   <button onclick="addReply('<%= comment.id %>')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs hover:bg-blue-700">Kirim</button>
                 </div>
               </div>
@@ -497,7 +497,7 @@
           <div class="flex gap-2">
             <input type="text" id="comment-input" placeholder="Tulis komentar..."
               class="flex-1 border rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-              onkeypress="if(event.key==='Enter') addComment()">
+              onkeypress="if(event.key==='Enter' && !event.shiftKey) addComment()">
             <button onclick="addComment()" class="px-5 py-2.5 bg-blue-600 text-white rounded-2xl text-sm hover:bg-blue-700">
               Kirim
             </button>
@@ -942,7 +942,7 @@ async function addComment() {
         </div>
         <div id="reply-form-${comment.id}" class="hidden mt-2 ml-4 pl-3 border-l-2 border-blue-300">
           <div class="flex gap-2">
-            <input type="text" id="reply-input-${comment.id}" placeholder="Balas..." class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" onkeypress="if(event.key==='Enter') addReply('${comment.id}')">
+            <input type="text" id="reply-input-${comment.id}" placeholder="Balas..." class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" onkeypress="if(event.key==='Enter' && !event.shiftKey) addReply('${comment.id}')">
             <button onclick="addReply('${comment.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs hover:bg-blue-700">Kirim</button>
           </div>
         </div>
@@ -1053,8 +1053,42 @@ function setupTaskMentionInputs() {
   });
 }
 
+function setupShiftEnterSubmit() {
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || !event.shiftKey) return;
+
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+
+    if (target.id === 'comment-input') {
+      event.preventDefault();
+      addComment();
+      return;
+    }
+
+    if (target.id?.startsWith('reply-input-')) {
+      event.preventDefault();
+      addReply(target.id.replace('reply-input-', ''));
+      return;
+    }
+
+    if (target.id === 'new-checklist') {
+      event.preventDefault();
+      addCheck();
+      return;
+    }
+
+    const subForm = target.closest('[id^="sub-form-"]');
+    if (subForm) {
+      event.preventDefault();
+      addSubCheck(subForm.id.replace('sub-form-', ''), target);
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   setupTaskMentionInputs();
+  setupShiftEnterSubmit();
   loadDependencies();
   setupSidebarSheetTouch();
   setupStatusSwipe();

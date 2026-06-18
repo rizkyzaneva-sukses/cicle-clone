@@ -60,7 +60,7 @@
           <input id="dm-files" type="file" multiple class="hidden" onchange="handleDmFiles(this.files)">
           <input id="dm-input" type="text" placeholder="Ketik pesan..."
             class="flex-1 min-w-0 border rounded-2xl px-4 sm:px-5 py-3 focus:outline-none focus:border-blue-400"
-            onkeypress="if(event.key === 'Enter') sendDm()">
+            onkeypress="if(event.key === 'Enter' && !event.shiftKey) sendDm()">
           <button onclick="sendDm()"
             class="px-5 sm:px-6 bg-blue-600 text-white rounded-2xl hover:bg-blue-700">
             <i class="fas fa-paper-plane"></i>
@@ -83,6 +83,13 @@ socket.emit('join-user', currentUserId);
 socket.on('new-direct-message', (message) => {
   if (message.senderId === selectedUserId || message.receiverId === selectedUserId) {
     appendDm(message);
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && event.shiftKey && event.target.id === 'dm-input') {
+    event.preventDefault();
+    sendDm();
   }
 });
 

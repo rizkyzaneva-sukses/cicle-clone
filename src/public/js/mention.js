@@ -77,6 +77,11 @@
   function handleMentionKeydown(event, input) {
     if (!activeMention || activeMention.input !== input) return;
 
+    if (event.key === 'Enter' && event.shiftKey) {
+      removeMentionDropdown();
+      return;
+    }
+
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setActiveMentionIndex(activeMention.index + 1);
