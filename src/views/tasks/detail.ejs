@@ -193,14 +193,14 @@
     </div>
 
     <!-- Edit Form (hidden by default, full-screen on mobile) -->
-    <div id="editForm" class="hidden fixed inset-0 lg:relative lg:inset-auto bg-white lg:bg-transparent z-50 lg:z-auto overflow-y-auto lg:overflow-visible">
-      <div class="lg:hidden sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
+    <div id="editForm" class="task-edit-panel hidden fixed inset-0 lg:relative lg:inset-auto bg-white lg:bg-transparent z-50 lg:z-auto overflow-y-auto lg:overflow-visible">
+      <div class="task-edit-mobile-header lg:hidden sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
         <h3 class="font-semibold text-lg">Edit Task</h3>
         <button onclick="toggleEditForm()" class="p-2 rounded-xl hover:bg-gray-100">
           <i class="fas fa-times text-gray-500"></i>
         </button>
       </div>
-      <div class="p-4 sm:p-6 lg:bg-white lg:border lg:rounded-2xl lg:sm:rounded-3xl lg:shadow-sm">
+      <div class="task-edit-card p-4 sm:p-6 lg:bg-white lg:border lg:rounded-2xl lg:sm:rounded-3xl lg:shadow-sm">
       <h3 class="hidden lg:block font-semibold text-lg mb-4">Edit Task</h3>
       <form action="/tasks/<%= task.id %>/update" method="POST">
         <div class="space-y-4">
@@ -892,6 +892,7 @@ async function addComment() {
       </div>
     `;
     list.appendChild(div);
+    setupTaskMentionInputs();
     input.value = '';
     fileInput.value = '';
     document.getElementById('selected-files').textContent = '';
@@ -988,8 +989,15 @@ async function confirmDelete(e, id, projectId) {
 }
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
+function setupTaskMentionInputs() {
   setupMentionAutocomplete('comment-input', q => `/tasks/${taskId}/members?q=${encodeURIComponent(q)}`);
+  document.querySelectorAll('input[id^="reply-input-"]').forEach(input => {
+    setupMentionAutocomplete(input.id, q => `/tasks/${taskId}/members?q=${encodeURIComponent(q)}`);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupTaskMentionInputs();
   loadDependencies();
   setupSidebarSheetTouch();
   setupStatusSwipe();

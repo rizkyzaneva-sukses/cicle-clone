@@ -633,12 +633,19 @@ router.get('/:id/members', async (req, res) => {
       include: { user: { select: { id: true, name: true, email: true } } }
     });
 
-    const q = (req.query.q || '').toLowerCase();
+    const q = (req.query.q || '').trim().toLowerCase();
+    const mappedMembers = members.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email }));
     const filtered = q
-      ? members.filter(m => m.user.name.toLowerCase().includes(q) || m.user.email.toLowerCase().includes(q))
-      : members;
+      ? mappedMembers
+          .filter(m => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+          .sort((a, b) => {
+            const aStarts = a.name.toLowerCase().startsWith(q) || a.email.toLowerCase().startsWith(q);
+            const bStarts = b.name.toLowerCase().startsWith(q) || b.email.toLowerCase().startsWith(q);
+            return Number(bStarts) - Number(aStarts) || a.name.localeCompare(b.name);
+          })
+      : mappedMembers.sort((a, b) => a.name.localeCompare(b.name));
 
-    res.json(filtered.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email })));
+    res.json(filtered);
   } catch (error) {
     res.status(500).json([]);
   }
