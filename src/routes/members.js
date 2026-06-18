@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { notifyUser } = require('../lib/notify');
@@ -26,6 +27,51 @@ async function getUserCompany(userId, platformRole) {
     where: { userId },
     include: { company: true }
   });
+}
+
+async function canManageCompany(req, companyId) {
+  const { id: userId, platformRole = 'user' } = req.session.user;
+
+  if (platformRole === 'owner') return true;
+
+  if (platformRole === 'partner') {
+    const directPartner = await prisma.partnerAccess.findUnique({
+      where: { userId_companyId: { userId, companyId } }
+    });
+    if (directPartner) return true;
+
+    const workspacePartner = await prisma.workspacePartner.findFirst({
+      where: { userId, workspace: { brands: { some: { id: companyId } } } }
+    });
+    if (workspacePartner) return true;
+  }
+
+  const adminMembership = await prisma.membership.findFirst({
+    where: { userId, companyId, role: 'admin' }
+  });
+  return !!adminMembership;
+}
+
+async function getResettableTarget(req, targetUserId, companyId) {
+  const { id: currentUserId, platformRole = 'user' } = req.session.user;
+  if (!companyId || targetUserId === currentUserId) return null;
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, name: true, email: true, platformRole: true }
+  });
+  if (!target) return null;
+
+  if (platformRole === 'owner') return target;
+  if (target.platformRole === 'owner' || target.platformRole === 'partner') return null;
+
+  const canManage = await canManageCompany(req, companyId);
+  if (!canManage) return null;
+
+  const targetMembership = await prisma.membership.findUnique({
+    where: { userId_companyId: { userId: targetUserId, companyId } }
+  });
+  return targetMembership ? target : null;
 }
 
 router.get('/', async (req, res) => {
@@ -271,6 +317,46 @@ router.post('/:membershipId/remove', async (req, res) => {
     console.error(err);
     req.flash('error', 'Terjadi kesalahan');
     res.redirect('/members');
+  }
+});
+
+// Reset password anggota oleh pengelola brand/workspace
+router.post('/users/:userId/reset-password', async (req, res) => {
+  const { userId: targetUserId } = req.params;
+  const companyId = String(req.body.companyId || '');
+  const newPassword = String(req.body.newPassword || '');
+  const confirmPassword = String(req.body.confirmPassword || '');
+
+  try {
+    if (newPassword !== confirmPassword) {
+      req.flash('error', 'Konfirmasi password tidak cocok');
+      return res.redirect(companyId ? `/members?companyId=${companyId}` : '/members');
+    }
+
+    if (newPassword.length < 6) {
+      req.flash('error', 'Password baru minimal 6 karakter');
+      return res.redirect(companyId ? `/members?companyId=${companyId}` : '/members');
+    }
+
+    const target = await getResettableTarget(req, targetUserId, companyId);
+    if (!target) {
+      req.flash('error', 'Kamu tidak punya akses untuk reset password user ini');
+      return res.redirect(companyId ? `/members?companyId=${companyId}` : '/members');
+    }
+
+    await prisma.user.update({
+      where: { id: targetUserId },
+      data: { password: await bcrypt.hash(newPassword, 10) }
+    });
+
+    await notifyUser(req.app.get('io'), targetUserId, 'Password akun kamu sudah direset oleh pengelola tim', '/profile').catch(() => {});
+
+    req.flash('success', `Password ${target.name} berhasil direset. Berikan password baru langsung ke user terkait.`);
+    res.redirect(`/members?companyId=${companyId}`);
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal reset password');
+    res.redirect(companyId ? `/members?companyId=${companyId}` : '/members');
   }
 });
 

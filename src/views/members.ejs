@@ -68,13 +68,34 @@
         <div><%= new Date(pa.assignedAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %></div>
       </div>
       <% if (userRole === 'owner') { %>
-      <form action="/members/partners/<%= pa.userId %>/remove" method="POST"
-        onsubmit="return confirm('Cabut akses Partner <%= pa.user.name %> dari brand <%= company.name %>?')">
-        <input type="hidden" name="companyId" value="<%= company.id %>">
-        <button type="submit" class="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-xs font-medium transition">
-          <i class="fas fa-user-slash mr-1"></i> Cabut
-        </button>
-      </form>
+      <div class="flex items-center gap-2 flex-wrap">
+        <% if (pa.userId !== currentUserId) { %>
+          <details class="w-full sm:w-auto">
+            <summary class="list-none cursor-pointer px-3 py-1.5 border rounded-xl hover:bg-gray-50 text-xs font-medium text-gray-600 transition">
+              <i class="fas fa-key mr-1"></i> Reset
+            </summary>
+            <form action="/members/users/<%= pa.userId %>/reset-password" method="POST"
+              class="mt-2 w-full sm:w-72 bg-white border rounded-2xl shadow-sm p-4 space-y-3">
+              <input type="hidden" name="companyId" value="<%= company.id %>">
+              <div class="text-sm font-semibold text-gray-800">Reset Password <%= pa.user.name %></div>
+              <input type="password" name="newPassword" minlength="6" required placeholder="Password baru"
+                class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+              <input type="password" name="confirmPassword" minlength="6" required placeholder="Ulangi password baru"
+                class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+              <button type="submit" class="w-full py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+                Simpan Password Baru
+              </button>
+            </form>
+          </details>
+        <% } %>
+        <form action="/members/partners/<%= pa.userId %>/remove" method="POST"
+          onsubmit="return confirm('Cabut akses Partner <%= pa.user.name %> dari brand <%= company.name %>?')">
+          <input type="hidden" name="companyId" value="<%= company.id %>">
+          <button type="submit" class="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-xs font-medium transition">
+            <i class="fas fa-user-slash mr-1"></i> Cabut
+          </button>
+        </form>
+      </div>
       <% } %>
     </div>
     <% }) %>
@@ -146,6 +167,25 @@
             <i class="fas fa-trash"></i>
           </button>
         </form>
+        <% if (currentUser.platformRole === 'owner' || !['owner', 'partner'].includes(membership.user.platformRole)) { %>
+          <details class="w-full sm:w-auto">
+            <summary class="list-none cursor-pointer text-xs px-3 py-1.5 border rounded-xl hover:bg-gray-50 transition text-gray-600">
+              <i class="fas fa-key mr-1"></i> Reset
+            </summary>
+            <form action="/members/users/<%= membership.user.id %>/reset-password" method="POST"
+              class="mt-2 w-full sm:w-72 bg-white border rounded-2xl shadow-sm p-4 space-y-3">
+              <input type="hidden" name="companyId" value="<%= company.id %>">
+              <div class="text-sm font-semibold text-gray-800">Reset Password <%= membership.user.name %></div>
+              <input type="password" name="newPassword" minlength="6" required placeholder="Password baru"
+                class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+              <input type="password" name="confirmPassword" minlength="6" required placeholder="Ulangi password baru"
+                class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+              <button type="submit" class="w-full py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+                Simpan Password Baru
+              </button>
+            </form>
+          </details>
+        <% } %>
       </div>
       <% } %>
     </div>

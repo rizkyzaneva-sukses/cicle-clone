@@ -4,6 +4,69 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { uniqueSlug } = require('../lib/slug');
 const { isConfiguredOwner } = require('../lib/owners');
+const { notifyUser } = require('../lib/notify');
+
+async function getPasswordResetManagers(user) {
+  const managerIds = new Set();
+
+  const owners = await prisma.user.findMany({
+    where: { platformRole: 'owner' },
+    select: { id: true }
+  });
+  owners.forEach(owner => managerIds.add(owner.id));
+
+  const memberships = await prisma.membership.findMany({
+    where: { userId: user.id },
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+          workspace: {
+            select: {
+              ownerId: true,
+              partners: { select: { userId: true } }
+            }
+          },
+          memberships: {
+            where: { role: 'admin' },
+            select: { userId: true }
+          },
+          partnerAccess: { select: { userId: true } }
+        }
+      }
+    }
+  });
+
+  for (const membership of memberships) {
+    membership.company.memberships.forEach(admin => managerIds.add(admin.userId));
+    membership.company.partnerAccess.forEach(partner => managerIds.add(partner.userId));
+    membership.company.workspace?.partners?.forEach(partner => managerIds.add(partner.userId));
+    if (membership.company.workspace?.ownerId) managerIds.add(membership.company.workspace.ownerId);
+  }
+
+  const partnerAccess = await prisma.partnerAccess.findMany({
+    where: { userId: user.id },
+    include: {
+      company: {
+        select: {
+          id: true,
+          workspace: { select: { ownerId: true } }
+        }
+      }
+    }
+  });
+  partnerAccess.forEach(access => {
+    if (access.company.workspace?.ownerId) managerIds.add(access.company.workspace.ownerId);
+  });
+
+  managerIds.delete(user.id);
+  return {
+    managerIds: [...managerIds],
+    primaryCompanyId: memberships[0]?.companyId || partnerAccess[0]?.companyId || null
+  };
+}
 
 router.get('/register', async (req, res) => {
   const userCount = await prisma.user.count();
@@ -103,6 +166,37 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.render('auth/login', { error: 'Terjadi kesalahan' });
+  }
+});
+
+router.get('/forgot', (req, res) => {
+  res.render('auth/forgot', { error: null, success: null });
+});
+
+router.post('/forgot', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const genericSuccess = 'Jika email terdaftar, request reset password sudah dikirim ke Owner/Admin terkait.';
+
+  try {
+    if (!email) {
+      return res.render('auth/forgot', { error: 'Email wajib diisi', success: null });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user) {
+      const { managerIds, primaryCompanyId } = await getPasswordResetManagers(user);
+      const link = primaryCompanyId ? `/members?companyId=${primaryCompanyId}` : '/members';
+      const io = req.app.get('io');
+
+      for (const managerId of managerIds) {
+        await notifyUser(io, managerId, `${user.name} meminta reset password`, link);
+      }
+    }
+
+    res.render('auth/forgot', { error: null, success: genericSuccess });
+  } catch (error) {
+    console.error(error);
+    res.render('auth/forgot', { error: 'Terjadi kesalahan. Coba lagi.', success: null });
   }
 });
 
