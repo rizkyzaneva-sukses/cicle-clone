@@ -1,12 +1,27 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs/promises');
+const path = require('path');
 const prisma = require('../lib/prisma');
 const { requireAuth, requireOwner } = require('../middleware/auth');
 const { uniqueSlug } = require('../lib/slug');
 const { cleanupOrphanRecords, ensureDefaultWorkspace } = require('../lib/maintenance');
 const { notifyUser } = require('../lib/notify');
+const { upload } = require('../lib/upload');
 
 router.use(requireAuth, requireOwner);
+
+const BRAND_AVATAR_MAX_SIZE = 3 * 1024 * 1024;
+const BRAND_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+async function removeLocalUpload(url) {
+  if (!url || !url.startsWith('/uploads/')) return;
+  const filename = path.basename(url);
+  if (!filename || filename !== url.replace('/uploads/', '')) return;
+
+  const filePath = path.join(__dirname, '..', 'public', 'uploads', filename);
+  await fs.unlink(filePath).catch(() => {});
+}
 
 // Semua brand + partner per brand
 router.get('/', async (req, res) => {
@@ -47,7 +62,9 @@ router.get('/', async (req, res) => {
 // Buat brand baru
 router.post('/create', async (req, res) => {
   try {
-    const { name, workspaceId } = req.body;
+    const name = String(req.body.name || '').trim();
+    const workspaceId = String(req.body.workspaceId || '').trim();
+    const description = String(req.body.description || '').trim();
     if (!name || !workspaceId) {
       req.flash('error', 'Nama brand dan workspace wajib diisi');
       return res.redirect('/brands');
@@ -57,6 +74,7 @@ router.post('/create', async (req, res) => {
         name,
         slug: uniqueSlug(name),
         workspaceId,
+        description: description || null,
         memberships: {
           create: {
             userId: req.session.user.id,
@@ -70,6 +88,124 @@ router.post('/create', async (req, res) => {
   } catch (err) {
     console.error(err);
     req.flash('error', 'Gagal membuat brand');
+    res.redirect('/brands');
+  }
+});
+
+router.post('/:id/update', async (req, res) => {
+  try {
+    const brandId = req.params.id;
+    const name = String(req.body.name || '').trim();
+    const description = String(req.body.description || '').trim();
+
+    if (!name) {
+      req.flash('error', 'Nama brand wajib diisi');
+      return res.redirect('/brands');
+    }
+
+    const brand = await prisma.company.findUnique({ where: { id: brandId } });
+    if (!brand) {
+      req.flash('error', 'Brand tidak ditemukan');
+      return res.redirect('/brands');
+    }
+
+    await prisma.company.update({
+      where: { id: brandId },
+      data: {
+        name,
+        description: description || null
+      }
+    });
+
+    req.flash('success', `Brand "${name}" berhasil diperbarui`);
+    res.redirect('/brands');
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal memperbarui brand');
+    res.redirect('/brands');
+  }
+});
+
+router.post('/:id/avatar', (req, res) => {
+  upload.single('avatar')(req, res, async (uploadErr) => {
+    try {
+      if (uploadErr) {
+        req.flash('error', 'Gagal upload foto brand. Maksimal ukuran file 3 MB.');
+        return res.redirect('/brands');
+      }
+
+      const file = req.file;
+      if (!file) {
+        req.flash('error', 'Pilih foto brand terlebih dulu');
+        return res.redirect('/brands');
+      }
+
+      if (!BRAND_AVATAR_MIME_TYPES.has(file.mimetype)) {
+        await removeLocalUpload(`/uploads/${file.filename}`);
+        req.flash('error', 'File harus berupa gambar PNG, JPG, WebP, atau GIF');
+        return res.redirect('/brands');
+      }
+
+      if (file.size > BRAND_AVATAR_MAX_SIZE) {
+        await removeLocalUpload(`/uploads/${file.filename}`);
+        req.flash('error', 'Ukuran foto brand maksimal 3 MB');
+        return res.redirect('/brands');
+      }
+
+      const brand = await prisma.company.findUnique({
+        where: { id: req.params.id },
+        select: { avatar: true, name: true }
+      });
+      if (!brand) {
+        await removeLocalUpload(`/uploads/${file.filename}`);
+        req.flash('error', 'Brand tidak ditemukan');
+        return res.redirect('/brands');
+      }
+
+      const avatar = `/uploads/${file.filename}`;
+      await prisma.company.update({
+        where: { id: req.params.id },
+        data: { avatar }
+      });
+
+      if (brand.avatar && brand.avatar !== avatar) {
+        await removeLocalUpload(brand.avatar);
+      }
+
+      req.flash('success', `Foto profil brand "${brand.name}" berhasil diperbarui`);
+      res.redirect('/brands');
+    } catch (err) {
+      console.error(err);
+      if (req.file) await removeLocalUpload(`/uploads/${req.file.filename}`);
+      req.flash('error', 'Gagal memperbarui foto brand');
+      res.redirect('/brands');
+    }
+  });
+});
+
+router.post('/:id/avatar/delete', async (req, res) => {
+  try {
+    const brand = await prisma.company.findUnique({
+      where: { id: req.params.id },
+      select: { avatar: true, name: true }
+    });
+    if (!brand) {
+      req.flash('error', 'Brand tidak ditemukan');
+      return res.redirect('/brands');
+    }
+
+    await prisma.company.update({
+      where: { id: req.params.id },
+      data: { avatar: null }
+    });
+
+    if (brand.avatar) await removeLocalUpload(brand.avatar);
+
+    req.flash('success', `Foto profil brand "${brand.name}" dihapus`);
+    res.redirect('/brands');
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal menghapus foto brand');
     res.redirect('/brands');
   }
 });

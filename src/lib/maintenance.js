@@ -1,5 +1,13 @@
 const prisma = require('./prisma');
 
+async function ensureBrandProfileFields(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "Company"
+    ADD COLUMN IF NOT EXISTS "description" TEXT,
+    ADD COLUMN IF NOT EXISTS "avatar" TEXT
+  `);
+}
+
 async function cleanupOrphanRecords(client = prisma) {
   await client.$executeRaw`
     DELETE FROM "PartnerAccess" pa
@@ -84,4 +92,4 @@ async function applyAccountHotfixes(client = prisma) {
   });
 }
 
-module.exports = { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };
+module.exports = { ensureBrandProfileFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };

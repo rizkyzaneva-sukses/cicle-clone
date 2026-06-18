@@ -73,6 +73,8 @@ model Company {
   slug        String   @unique
   workspaceId String?
   inviteToken String?  @unique
+  description String?
+  avatar      String?
   createdAt   DateTime @default(now())
 
   workspace     Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

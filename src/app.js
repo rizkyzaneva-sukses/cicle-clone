@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes } = require('./lib/maintenance');
+const { ensureBrandProfileFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes } = require('./lib/maintenance');
 const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
@@ -50,7 +50,7 @@ app.use(async (req, res, next) => {
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
-      maintenancePromise ||= Promise.all([cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes()]).catch((err) => {
+      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes()]).catch((err) => {
         maintenancePromise = null;
         console.error('Maintenance cleanup failed:', err);
       });
