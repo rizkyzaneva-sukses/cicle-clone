@@ -125,7 +125,7 @@
             class="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2.5 rounded-xl sm:rounded-2xl border hover:bg-gray-50 text-gray-600 text-xs sm:text-sm font-medium" title="Anggota Proyek">
       <i class="fas fa-user-group"></i>
       <span class="hidden sm:inline">Anggota</span>
-      <span class="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full"><%= projectMembers.length %></span>
+      <span id="project-members-count" class="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full"><%= projectMembers.length %></span>
     </button>
     <% if (canManageProject) { %>
       <form action="/projects/<%= project.id %>/archive" method="POST"
@@ -489,12 +489,16 @@
 <script>
 const projectId = '<%= project.id %>';
 const companyId = '<%= project.companyId %>';
+const canManageProject = <%- JSON.stringify(canManageProject) %>;
+const currentUserId = '<%= currentUserId %>';
+const allBrandMembers = <%- JSON.stringify(members) %>;
+let projectMemberAccess = <%- JSON.stringify(projectMembers.map(pm => pm.user)) %>;
 let tasks = <%- JSON.stringify(project.tasks) %>;
 const socket = io();
 let pendingChatFiles = [];
 
 socket.emit('join-project', projectId);
-socket.emit('join-user', '<%= currentUserId %>');
+socket.emit('join-user', currentUserId);
 
 // Priority config
 const PRIO = {
@@ -927,11 +931,56 @@ function hideMembersModal() {
   document.getElementById('membersModal').classList.add('hidden');
 }
 
+function sortMembersByName(list) {
+  return [...list].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'id'));
+}
+
+function renderProjectMembersAccess() {
+  const count = document.getElementById('project-members-count');
+  if (count) count.textContent = projectMemberAccess.length;
+
+  const list = document.getElementById('members-list');
+  if (list) {
+    if (projectMemberAccess.length === 0) {
+      list.innerHTML = '<p class="text-sm text-gray-400 text-center py-3" id="members-empty">Belum ada anggota spesifik ditambahkan.</p>';
+    } else {
+      list.innerHTML = sortMembersByName(projectMemberAccess).map(member => `
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50" id="member-row-${member.id}">
+          <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+            ${escapeHtml((member.name || '?').charAt(0).toUpperCase())}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">${escapeHtml(member.name || '-')}</div>
+            <div class="text-xs text-gray-400 truncate">${escapeHtml(member.email || '')}</div>
+          </div>
+          ${canManageProject ? `<button onclick="removeProjectMember('${member.id}')" class="text-red-400 hover:text-red-600 text-xs p-1.5" title="Hapus akses"><i class="fas fa-times"></i></button>` : ''}
+        </div>
+      `).join('');
+    }
+  }
+
+  const select = document.getElementById('add-member-select');
+  if (select) {
+    const selectedValue = select.value;
+    const accessibleIds = new Set(projectMemberAccess.map(member => member.id));
+    const availableMembers = sortMembersByName(allBrandMembers.filter(member => !accessibleIds.has(member.id)));
+    select.innerHTML = '<option value="">Pilih anggota...</option>' + availableMembers.map(member =>
+      `<option value="${member.id}">${escapeHtml(member.name)}</option>`
+    ).join('');
+    if (availableMembers.some(member => member.id === selectedValue)) {
+      select.value = selectedValue;
+    } else {
+      select.value = '';
+    }
+  }
+}
+
+renderProjectMembersAccess();
+
 async function addProjectMember() {
   const select = document.getElementById('add-member-select');
   const userId = select.value;
   if (!userId) return;
-  const name = select.options[select.selectedIndex].textContent;
 
   try {
     const res = await fetch(`/projects/${projectId}/members`, {
@@ -942,19 +991,11 @@ async function addProjectMember() {
     const data = await res.json();
     if (!data.success) return alert(data.error || 'Gagal menambah anggota');
 
-    document.getElementById('members-empty')?.remove();
-    const list = document.getElementById('members-list');
-    const row = document.createElement('div');
-    row.className = 'flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50';
-    row.id = `member-row-${userId}`;
-    row.innerHTML = `
-      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">${name.charAt(0).toUpperCase()}</div>
-      <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">${escapeHtml(name)}</div></div>
-      <button onclick="removeProjectMember('${userId}')" class="text-red-400 hover:text-red-600 text-xs p-1.5" title="Hapus akses"><i class="fas fa-times"></i></button>
-    `;
-    list.appendChild(row);
-    select.querySelector(`option[value="${userId}"]`)?.remove();
-    select.value = '';
+    const member = data.member?.user || allBrandMembers.find(item => item.id === userId);
+    if (member && !projectMemberAccess.some(item => item.id === member.id)) {
+      projectMemberAccess.push(member);
+    }
+    renderProjectMembersAccess();
   } catch (e) {
     alert('Gagal menambah anggota');
   }
@@ -966,7 +1007,8 @@ async function removeProjectMember(userId) {
     const res = await fetch(`/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.success) {
-      document.getElementById(`member-row-${userId}`)?.remove();
+      projectMemberAccess = projectMemberAccess.filter(member => member.id !== userId);
+      renderProjectMembersAccess();
     } else {
       alert(data.error || 'Gagal menghapus anggota');
     }
@@ -1083,7 +1125,7 @@ function appendMessage(msg, scroll = true) {
   const container = document.getElementById('chat-messages');
   if (msg.id && document.getElementById(`chat-msg-${msg.id}`)) return;
   if (msg.id && !chatMessages.some(m => m.id === msg.id)) chatMessages.push(msg);
-  const isMe = msg.user && msg.user.id === '<%= currentUserId %>';
+  const isMe = msg.user && msg.user.id === currentUserId;
 
   const div = document.createElement('div');
   if (msg.id) div.id = `chat-msg-${msg.id}`;

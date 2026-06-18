@@ -407,7 +407,11 @@ router.post('/:id/members', requireAdmin, async (req, res) => {
     });
 
     if (userId !== req.session.user.id) {
-      await notifyUser(req.app.get('io'), userId, `Kamu ditambahkan ke proyek "${project.name}"`, `/projects/${project.id}`);
+      try {
+        await notifyUser(req.app.get('io'), userId, `Kamu ditambahkan ke proyek "${project.name}"`, `/projects/${project.id}`);
+      } catch (notifyError) {
+        console.error('Project member notify failed:', notifyError.message);
+      }
     }
 
     res.json({ success: true, member: projectMember });
