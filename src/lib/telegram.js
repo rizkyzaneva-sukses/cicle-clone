@@ -1,5 +1,5 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || null;
+const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'zanevabasecamp_bot';
 const enabled = Boolean(BOT_TOKEN);
 
 async function sendTelegramMessage(chatId, text) {
@@ -59,7 +59,6 @@ async function sendDeadlineAlert(chatId, task) {
 }
 
 function getDeepLink(userId = '') {
-  if (!BOT_USERNAME) return null;
   const payload = String(userId || '').trim();
   return payload
     ? `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`
