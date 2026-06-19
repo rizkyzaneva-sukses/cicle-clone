@@ -897,12 +897,11 @@ function applyCreateTemplate(templateId) {
     return;
   }
 
-  form.elements.title.value = template.name || '';
   form.elements.description.value = template.description || '';
   form.elements.priority.value = template.priority || 'NONE';
   const checklists = (template.checklists || []).map(item => item.content).filter(Boolean);
   hidden.value = JSON.stringify(checklists);
-  hint.textContent = `${checklists.length} checklist akan ikut dibuat dari template ini.`;
+  hint.textContent = `${checklists.length} checklist akan ikut dibuat dari template ini. Judul tugas tetap pakai input kamu sendiri.`;
   hint.classList.remove('hidden');
 }
 
