@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
     title: 'Profil Saya', 
     user, 
     telegramBotUsername: botUsername,
-    telegramDeepLink: getDeepLink()
+    telegramDeepLink: getDeepLink(user.id)
   });
 });
 

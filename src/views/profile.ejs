@@ -165,16 +165,16 @@
           Reminder via Telegram
         </h2>
         <p class="text-sm text-gray-500">
-          Isi Telegram Chat ID kamu biar reminder deadline otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
+          Hubungkan Telegram kamu biar reminder deadline otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
         </p>
         <ol class="text-xs text-gray-500 mt-4 space-y-1 list-decimal list-inside">
           <% if (telegramBotUsername) { %>
-            <li>Buka <a href="https://t.me/<%= telegramBotUsername %>" target="_blank" class="text-blue-600 hover:underline">@<%= telegramBotUsername %></a> di Telegram, klik <b>Start</b>.</li>
+            <li>Buka <a href="https://t.me/<%= telegramBotUsername %>" target="_blank" class="text-blue-600 hover:underline">@<%= telegramBotUsername %></a> di Telegram, lalu klik <b>Start</b>.</li>
           <% } else { %>
             <li>Buka bot Telegram yang dipakai tim ini, klik <b>Start</b>.</li>
           <% } %>
-          <li>Cari Chat ID kamu lewat <a href="https://t.me/userinfobot" target="_blank" class="text-blue-600 hover:underline">@userinfobot</a>.</li>
-          <li>Tempel ID itu di kolom bawah ini.</li>
+          <li>Paling gampang: klik tombol <b>Hubungkan Telegram</b> di kanan, nanti akun kamu akan langsung tersambung otomatis ke bot.</li>
+          <li>Kalau belum otomatis, baru isi manual Telegram Chat ID di kolom bawah.</li>
         </ol>
       </div>
 
@@ -194,6 +194,9 @@
         Simpan Telegram
       </button>
     </form>
+    <p class="text-xs text-gray-400 mt-3">
+      Link bot tim: <a href="https://t.me/<%= telegramBotUsername || 'zanevabasecamp_bot' %>" target="_blank" class="text-blue-600 hover:underline">https://t.me/<%= telegramBotUsername || 'zanevabasecamp_bot' %></a>
+    </p>
     <% if (user.telegramChatId) { %>
       <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mt-3">
         <p class="text-xs text-emerald-600"><i class="fas fa-check-circle mr-1"></i>Telegram Chat ID sudah aktif.</p>

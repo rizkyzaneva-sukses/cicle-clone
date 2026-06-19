@@ -58,9 +58,12 @@ async function sendDeadlineAlert(chatId, task) {
   return sendTelegramMessage(chatId, text);
 }
 
-function getDeepLink() {
+function getDeepLink(userId = '') {
   if (!BOT_USERNAME) return null;
-  return `https://t.me/${BOT_USERNAME}?start=connect`;
+  const payload = String(userId || '').trim();
+  return payload
+    ? `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`
+    : `https://t.me/${BOT_USERNAME}`;
 }
 
 module.exports = { 
