@@ -36,6 +36,7 @@ model User {
   pushSubscriptions PushSubscription[]
   recurringTaskTemplates RecurringTaskTemplate[] @relation("RecurringAssignee")
   announcements          Announcement[]
+  projectReportEntries   ProjectReportEntry[] @relation("ReportCreatedBy")
 }
 
 model Workspace {
@@ -83,6 +84,7 @@ model Company {
   partnerAccess PartnerAccess[]
   labels        Label[]
   taskTemplates TaskTemplate[]
+  reportEntries ProjectReportEntry[]
 
   @@index([workspaceId])
 }
@@ -129,6 +131,37 @@ model Project {
   activityLogs   ActivityLog[]
   projectMembers ProjectMember[]
   recurringTaskTemplates RecurringTaskTemplate[]
+  reportConfig   ProjectReportConfig?
+  reportEntries  ProjectReportEntry[]
+}
+
+model ProjectReportConfig {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  columns   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectReportEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  reportDate  DateTime
+  companyId   String?
+  values      Json
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation("ReportCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([projectId, reportDate])
+  @@index([companyId])
 }
 
 // Template task berulang (mis. posting harian) — generator membuat Task baru otomatis tiap hari/minggu

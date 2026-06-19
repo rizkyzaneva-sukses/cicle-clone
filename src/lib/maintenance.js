@@ -8,6 +8,50 @@ async function ensureBrandProfileFields(client = prisma) {
   `);
 }
 
+async function ensureProjectReportTables(client = prisma) {
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "ProjectReportConfig" (
+      "id" TEXT PRIMARY KEY,
+      "projectId" TEXT NOT NULL UNIQUE,
+      "columns" JSONB NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "ProjectReportConfig_projectId_fkey"
+        FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "ProjectReportEntry" (
+      "id" TEXT PRIMARY KEY,
+      "projectId" TEXT NOT NULL,
+      "reportDate" TIMESTAMP(3) NOT NULL,
+      "companyId" TEXT,
+      "values" JSONB NOT NULL,
+      "note" TEXT,
+      "createdById" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "ProjectReportEntry_projectId_fkey"
+        FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "ProjectReportEntry_companyId_fkey"
+        FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+      CONSTRAINT "ProjectReportEntry_createdById_fkey"
+        FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ProjectReportEntry_projectId_reportDate_idx"
+    ON "ProjectReportEntry" ("projectId", "reportDate")
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ProjectReportEntry_companyId_idx"
+    ON "ProjectReportEntry" ("companyId")
+  `);
+}
+
 async function cleanupOrphanRecords(client = prisma) {
   await client.$executeRaw`
     DELETE FROM "PartnerAccess" pa
@@ -92,4 +136,4 @@ async function applyAccountHotfixes(client = prisma) {
   });
 }
 
-module.exports = { ensureBrandProfileFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };

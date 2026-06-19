@@ -8,6 +8,116 @@ const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
 
+const DEFAULT_REPORT_COLUMNS = [
+  { key: 'target', label: 'Target', type: 'number' },
+  { key: 'generate', label: 'Generate', type: 'number' },
+  { key: 'upload', label: 'Upload', type: 'number' }
+];
+
+function normalizeReportColumns(rawColumns) {
+  const cleaned = Array.isArray(rawColumns)
+    ? rawColumns.filter(column => {
+        const label = String(column?.label || '').trim();
+        const key = String(column?.key || '').trim();
+        return Boolean(label || key);
+      })
+    : [];
+  const source = cleaned.length > 0 ? cleaned : DEFAULT_REPORT_COLUMNS;
+  const seen = new Set();
+
+  return source.map((column, index) => {
+    const label = String(column?.label || column?.key || `Kolom ${index + 1}`).trim().slice(0, 40);
+    const fallbackKey = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `metric_${index + 1}`;
+    let key = String(column?.key || fallbackKey).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || `metric_${index + 1}`;
+    if (seen.has(key)) key = `${key}_${index + 1}`;
+    seen.add(key);
+    return {
+      key,
+      label: label || `Kolom ${index + 1}`,
+      type: column?.type === 'text' ? 'text' : 'number'
+    };
+  }).slice(0, 8);
+}
+
+function startOfDay(date = new Date()) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function endOfDay(date = new Date()) {
+  const value = new Date(date);
+  value.setHours(23, 59, 59, 999);
+  return value;
+}
+
+function toDateInputValue(date = new Date()) {
+  const value = new Date(date);
+  value.setMinutes(value.getMinutes() - value.getTimezoneOffset());
+  return value.toISOString().slice(0, 10);
+}
+
+function sumMetrics(entries, columns) {
+  const totals = Object.fromEntries(columns.map(column => [column.key, 0]));
+  entries.forEach(entry => {
+    const values = entry.values || {};
+    columns.forEach(column => {
+      totals[column.key] += Number(values[column.key] || 0);
+    });
+  });
+  return totals;
+}
+
+function buildTrendData(entries, columns, daysBack) {
+  const columnKeys = columns.map(column => column.key);
+  const grouped = new Map();
+
+  entries.forEach(entry => {
+    const key = new Date(entry.reportDate).toISOString().slice(0, 10);
+    if (!grouped.has(key)) {
+      grouped.set(key, { date: key, values: Object.fromEntries(columnKeys.map(metric => [metric, 0])) });
+    }
+    const bucket = grouped.get(key);
+    columnKeys.forEach(metric => {
+      bucket.values[metric] += Number(entry.values?.[metric] || 0);
+    });
+  });
+
+  const rows = [];
+  for (let offset = daysBack - 1; offset >= 0; offset--) {
+    const date = startOfDay(new Date());
+    date.setDate(date.getDate() - offset);
+    const key = date.toISOString().slice(0, 10);
+    rows.push(grouped.get(key) || { date: key, values: Object.fromEntries(columnKeys.map(metric => [metric, 0])) });
+  }
+  return rows;
+}
+
+function buildBreakdown(entries, columns, workspaceBrands) {
+  const brandsById = new Map(workspaceBrands.map(brand => [brand.id, brand]));
+  const rows = new Map();
+
+  entries.forEach(entry => {
+    const brandKey = entry.companyId || 'project_total';
+    if (!rows.has(brandKey)) {
+      const brand = entry.companyId ? brandsById.get(entry.companyId) : null;
+      rows.set(brandKey, {
+        companyId: entry.companyId || '',
+        label: brand?.name || 'Tanpa Breakdown Brand',
+        values: Object.fromEntries(columns.map(column => [column.key, 0])),
+        count: 0
+      });
+    }
+    const row = rows.get(brandKey);
+    row.count += 1;
+    columns.forEach(column => {
+      row.values[column.key] += Number(entry.values?.[column.key] || 0);
+    });
+  });
+
+  return [...rows.values()].sort((a, b) => a.label.localeCompare(b.label, 'id'));
+}
+
 // List projects or create new
 router.get('/', async (req, res) => {
   const userId = req.session.user.id;
@@ -306,6 +416,279 @@ router.post('/:id/move-brand', requireAdmin, async (req, res) => {
     console.error(error);
     req.flash('error', 'Gagal memindahkan proyek ke brand lain');
     res.redirect(nextUrl);
+  }
+});
+
+router.get('/:id/report/export.csv', async (req, res) => {
+  try {
+    const companyFilter = String(req.query.companyId || '').trim();
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      include: { company: true }
+    });
+    if (!project || !await hasProjectAccess(req.session.user, project)) {
+      return res.status(403).send('Akses ditolak');
+    }
+
+    const config = await prisma.projectReportConfig.findUnique({ where: { projectId: project.id } });
+    const columns = normalizeReportColumns(config?.columns);
+    const workspaceBrands = project.company.workspaceId
+      ? await prisma.company.findMany({
+          where: { workspaceId: project.company.workspaceId },
+          select: { id: true, name: true },
+          orderBy: { createdAt: 'asc' }
+        })
+      : [];
+    const brandsById = new Map(workspaceBrands.map(brand => [brand.id, brand.name]));
+
+    const entries = await prisma.projectReportEntry.findMany({
+      where: {
+        projectId: project.id,
+        ...(companyFilter ? { companyId: companyFilter } : {})
+      },
+      orderBy: [{ reportDate: 'asc' }, { createdAt: 'asc' }]
+    });
+
+    const header = ['Tanggal', 'Brand', ...columns.map(column => column.label), 'Catatan'];
+    const rows = entries.map(entry => {
+      const values = entry.values || {};
+      return [
+        new Date(entry.reportDate).toISOString().slice(0, 10),
+        entry.companyId ? (brandsById.get(entry.companyId) || '-') : '',
+        ...columns.map(column => String(values[column.key] ?? 0)),
+        String(entry.note || '')
+      ];
+    });
+
+    const csv = [header, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="report-${project.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Gagal export report');
+  }
+});
+
+router.post('/:id/report/config', requireAdmin, async (req, res) => {
+  try {
+    const project = await prisma.project.findUnique({ where: { id: req.params.id } });
+    if (!project) {
+      req.flash('error', 'Proyek tidak ditemukan');
+      return res.redirect('/projects');
+    }
+
+    const labels = (Array.isArray(req.body.columnLabels)
+      ? req.body.columnLabels
+      : req.body.columnLabels ? [req.body.columnLabels] : [])
+      .map(label => String(label || '').trim())
+      .filter(Boolean);
+    const columns = normalizeReportColumns(labels.map(label => ({ label, type: 'number' })));
+
+    await prisma.projectReportConfig.upsert({
+      where: { projectId: project.id },
+      update: { columns },
+      create: { projectId: project.id, columns }
+    });
+
+    req.flash('success', 'Kolom report project berhasil diperbarui');
+    res.redirect(`/projects/${project.id}/report`);
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal menyimpan konfigurasi report');
+    res.redirect(`/projects/${req.params.id}/report`);
+  }
+});
+
+router.post('/:id/report/entries', async (req, res) => {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      include: { company: true }
+    });
+    if (!project || !await hasProjectAccess(req.session.user, project)) {
+      req.flash('error', 'Akses ditolak');
+      return res.redirect('/projects');
+    }
+
+    const config = await prisma.projectReportConfig.findUnique({ where: { projectId: project.id } });
+    const columns = normalizeReportColumns(config?.columns);
+    const reportDateRaw = String(req.body.reportDate || '').trim();
+    if (!reportDateRaw) {
+      req.flash('error', 'Tanggal report wajib diisi');
+      return res.redirect(`/projects/${project.id}/report`);
+    }
+
+    const reportDate = new Date(`${reportDateRaw}T00:00:00`);
+    if (Number.isNaN(reportDate.getTime())) {
+      req.flash('error', 'Tanggal report tidak valid');
+      return res.redirect(`/projects/${project.id}/report`);
+    }
+
+    const companyId = String(req.body.companyId || '').trim() || null;
+    if (companyId) {
+      const targetCompany = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { workspaceId: true }
+      });
+      if (!targetCompany || targetCompany.workspaceId !== project.company.workspaceId) {
+        req.flash('error', 'Brand breakdown harus berasal dari workspace yang sama');
+        return res.redirect(`/projects/${project.id}/report`);
+      }
+    }
+
+    const values = {};
+    columns.forEach(column => {
+      const rawValue = req.body[`metric_${column.key}`];
+      values[column.key] = column.type === 'number' ? Number(rawValue || 0) : String(rawValue || '').trim();
+      if (column.type === 'number' && Number.isNaN(values[column.key])) values[column.key] = 0;
+    });
+
+    const entry = await prisma.projectReportEntry.create({
+      data: {
+        projectId: project.id,
+        reportDate,
+        companyId,
+        values,
+        note: String(req.body.note || '').trim() || null,
+        createdById: req.session.user.id
+      }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'project_report_added',
+      entityType: 'project_report_entry',
+      entityId: entry.id,
+      projectId: project.id,
+      metadata: { reportDate: reportDateRaw, companyId, values }
+    });
+
+    req.flash('success', 'Data progres harian berhasil ditambahkan');
+    res.redirect(`/projects/${project.id}/report`);
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal menyimpan data report');
+    res.redirect(`/projects/${req.params.id}/report`);
+  }
+});
+
+router.post('/:id/report/entries/:entryId/delete', requireAdmin, async (req, res) => {
+  try {
+    const entry = await prisma.projectReportEntry.findUnique({
+      where: { id: req.params.entryId },
+      select: { id: true, projectId: true }
+    });
+    if (!entry || entry.projectId !== req.params.id) {
+      req.flash('error', 'Data report tidak ditemukan');
+      return res.redirect(`/projects/${req.params.id}/report`);
+    }
+
+    await prisma.projectReportEntry.delete({ where: { id: entry.id } });
+
+    await logActivity(prisma, req, {
+      action: 'project_report_deleted',
+      entityType: 'project_report_entry',
+      entityId: entry.id,
+      projectId: req.params.id
+    });
+
+    req.flash('success', 'Data report berhasil dihapus');
+    res.redirect(`/projects/${req.params.id}/report`);
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal menghapus data report');
+    res.redirect(`/projects/${req.params.id}/report`);
+  }
+});
+
+router.get('/:id/report', async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const userId = req.session.user.id;
+    const daysBack = Math.max(7, Math.min(90, parseInt(req.query.days, 10) || 14));
+    const companyFilter = String(req.query.companyId || '').trim();
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { company: true }
+    });
+    if (!project) return res.status(404).send('Proyek tidak ditemukan');
+    if (!await hasProjectAccess(req.session.user, project)) return res.status(403).send('Akses ditolak');
+
+    const canManageProject = await isCompanyManager(req.session.user, project.companyId);
+    const config = await prisma.projectReportConfig.findUnique({ where: { projectId } });
+    const columns = normalizeReportColumns(config?.columns);
+    const workspaceBrands = project.company.workspaceId
+      ? await prisma.company.findMany({
+          where: { workspaceId: project.company.workspaceId },
+          select: { id: true, name: true },
+          orderBy: { createdAt: 'asc' }
+        })
+      : [{ id: project.company.id, name: project.company.name }];
+
+    const where = {
+      projectId,
+      ...(companyFilter ? { companyId: companyFilter } : {})
+    };
+
+    const entries = await prisma.projectReportEntry.findMany({
+      where,
+      include: {
+        company: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true } }
+      },
+      orderBy: [{ reportDate: 'desc' }, { createdAt: 'desc' }]
+    });
+
+    const trendCutoff = startOfDay(new Date());
+    trendCutoff.setDate(trendCutoff.getDate() - (daysBack - 1));
+    const trendEntries = entries.filter(entry => new Date(entry.reportDate) >= trendCutoff);
+
+    const todayStart = startOfDay();
+    const todayEnd = endOfDay();
+    const weekStart = startOfDay();
+    weekStart.setDate(weekStart.getDate() - 6);
+    const monthStart = startOfDay();
+    monthStart.setDate(monthStart.getDate() - 29);
+
+    const todayEntries = entries.filter(entry => {
+      const date = new Date(entry.reportDate);
+      return date >= todayStart && date <= todayEnd;
+    });
+    const weekEntries = entries.filter(entry => new Date(entry.reportDate) >= weekStart);
+    const monthEntries = entries.filter(entry => new Date(entry.reportDate) >= monthStart);
+
+    const summary = {
+      today: sumMetrics(todayEntries, columns),
+      week: sumMetrics(weekEntries, columns),
+      month: sumMetrics(monthEntries, columns)
+    };
+
+    const trendData = buildTrendData(trendEntries, columns, daysBack);
+    const breakdownRows = buildBreakdown(monthEntries, columns, workspaceBrands);
+
+    res.render('projects/report', {
+      title: `${project.name} | Report`,
+      project,
+      currentUserId: userId,
+      canManageProject,
+      columns,
+      entries,
+      summary,
+      trendData,
+      breakdownRows,
+      workspaceBrands,
+      daysBack,
+      activeCompanyId: companyFilter,
+      todayIso: toDateInputValue()
+    });
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal membuka report proyek');
+    res.redirect(`/projects/${req.params.id}`);
   }
 });
 

@@ -1,0 +1,289 @@
+<%- include('../partials/header', { title }) %>
+<%
+  const summaryCards = [
+    { key: 'today', label: 'Hari Ini', boxClass: 'bg-blue-50 border-blue-100', textClass: 'text-blue-700', labelClass: 'text-blue-600' },
+    { key: 'week', label: '7 Hari', boxClass: 'bg-emerald-50 border-emerald-100', textClass: 'text-emerald-700', labelClass: 'text-emerald-600' },
+    { key: 'month', label: '30 Hari', boxClass: 'bg-amber-50 border-amber-100', textClass: 'text-amber-700', labelClass: 'text-amber-600' }
+  ];
+  const trendBarClasses = ['bg-blue-500/80 hover:bg-blue-500', 'bg-emerald-500/80 hover:bg-emerald-500', 'bg-amber-500/80 hover:bg-amber-500', 'bg-purple-500/80 hover:bg-purple-500', 'bg-rose-500/80 hover:bg-rose-500', 'bg-cyan-500/80 hover:bg-cyan-500'];
+%>
+
+<div class="mb-6">
+  <a href="/projects/<%= project.id %>" class="text-blue-600 hover:underline text-sm flex items-center gap-1 mb-3">
+    <i class="fas fa-arrow-left"></i> Kembali ke Proyek
+  </a>
+
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Report Progres Project</h1>
+      <p class="text-gray-500 mt-1"><strong><%= project.name %></strong> / <%= project.company.name %></p>
+      <p class="text-sm text-gray-500 mt-1">Pantau output harian seperti target, generate, upload, dan metrik custom lain untuk project ini.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <form method="GET" action="/projects/<%= project.id %>/report" class="flex flex-wrap gap-2">
+        <select name="days" onchange="this.form.submit()" class="px-3 py-2 text-sm border rounded-xl bg-white">
+          <option value="14" <%= daysBack === 14 ? 'selected' : '' %>>14 Hari</option>
+          <option value="30" <%= daysBack === 30 ? 'selected' : '' %>>30 Hari</option>
+          <option value="60" <%= daysBack === 60 ? 'selected' : '' %>>60 Hari</option>
+          <option value="90" <%= daysBack === 90 ? 'selected' : '' %>>90 Hari</option>
+        </select>
+        <select name="companyId" onchange="this.form.submit()" class="px-3 py-2 text-sm border rounded-xl bg-white">
+          <option value="">Semua Breakdown Brand</option>
+          <% workspaceBrands.forEach(brand => { %>
+            <option value="<%= brand.id %>" <%= activeCompanyId === brand.id ? 'selected' : '' %>><%= brand.name %></option>
+          <% }) %>
+        </select>
+      </form>
+
+      <a href="/projects/<%= project.id %>/report/export.csv<%= activeCompanyId ? `?companyId=${activeCompanyId}` : '' %>"
+         class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium text-gray-700">
+        <i class="fas fa-file-csv mr-1"></i> Export CSV
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-6">
+  <div class="space-y-6">
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-4 gap-3">
+        <div>
+          <h2 class="font-semibold text-lg">Input Progres Harian</h2>
+          <p class="text-xs text-gray-400 mt-1">Versi 1 cocok untuk target, generate, upload. Versi 2 bisa tambah kolom custom.</p>
+        </div>
+      </div>
+
+      <form action="/projects/<%= project.id %>/report/entries" method="POST" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Tanggal</label>
+            <input type="date" name="reportDate" value="<%= todayIso %>" required class="w-full border rounded-2xl px-4 py-3">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Breakdown Brand</label>
+            <select name="companyId" class="w-full border rounded-2xl px-4 py-3">
+              <option value="">Tanpa breakdown brand</option>
+              <% workspaceBrands.forEach(brand => { %>
+                <option value="<%= brand.id %>"><%= brand.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Catatan</label>
+            <input type="text" name="note" placeholder="Opsional" class="w-full border rounded-2xl px-4 py-3">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <% columns.forEach(column => { %>
+            <div>
+              <label class="block text-sm font-medium mb-1.5"><%= column.label %></label>
+              <input
+                type="<%= column.type === 'number' ? 'number' : 'text' %>"
+                name="metric_<%= column.key %>"
+                value="<%= column.type === 'number' ? '0' : '' %>"
+                <%= column.type === 'number' ? 'min="0" step="1"' : '' %>
+                class="w-full border rounded-2xl px-4 py-3">
+            </div>
+          <% }) %>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit" class="px-5 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700">
+            Simpan Report Harian
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <div class="mb-4">
+        <h2 class="font-semibold text-lg">Summary Output</h2>
+        <p class="text-sm text-gray-500 mt-1">Rekap otomatis dari data report yang sudah diinput.</p>
+      </div>
+
+      <div class="space-y-5">
+        <% summaryCards.forEach(group => { %>
+          <div>
+            <div class="text-sm font-semibold text-gray-700 mb-2"><%= group.label %></div>
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <% columns.forEach(column => { %>
+                <div class="rounded-2xl border px-4 py-3 <%= group.boxClass %>">
+                  <div class="text-xs font-medium <%= group.labelClass %>"><%= column.label %></div>
+                  <div class="text-2xl font-bold mt-1 <%= group.textClass %>"><%= summary[group.key][column.key] || 0 %></div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <div class="mb-4">
+        <h2 class="font-semibold text-lg">Trend <%= daysBack %> Hari</h2>
+        <p class="text-sm text-gray-500 mt-1">Biar kelihatan progres harian lagi naik atau turun.</p>
+      </div>
+
+      <div class="space-y-5">
+        <% columns.forEach((column, columnIndex) => { %>
+          <% const maxValue = Math.max(...trendData.map(item => item.values[column.key] || 0), 1); %>
+          <div>
+            <div class="flex items-center justify-between mb-2 gap-3">
+              <div class="text-sm font-semibold text-gray-700"><%= column.label %></div>
+              <div class="text-xs text-gray-400">Total <%= daysBack %> hari: <%= trendData.reduce((sum, item) => sum + (item.values[column.key] || 0), 0) %></div>
+            </div>
+
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(22px,1fr))] gap-1 items-end h-40">
+              <% trendData.forEach(item => { %>
+                <% const value = item.values[column.key] || 0; %>
+                <div class="flex flex-col justify-end items-center h-full">
+                  <div
+                    title="<%= item.date %> / <%= column.label %>: <%= value %>"
+                    class="w-full rounded-t-lg transition <%= trendBarClasses[columnIndex % trendBarClasses.length] %>"
+                    style="height:<%= Math.max(6, Math.round((value / maxValue) * 100)) %>%"></div>
+                  <div class="text-[10px] text-gray-400 mt-1"><%= item.date.slice(5) %></div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded-3xl shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b bg-gray-50">
+        <div class="font-semibold text-gray-700">Data Report Harian</div>
+        <div class="text-xs text-gray-400 mt-1">Semua input report project tersimpan di sini.</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-white border-b">
+            <tr class="text-left text-gray-500">
+              <th class="px-6 py-3 font-medium">Tanggal</th>
+              <th class="px-6 py-3 font-medium">Brand</th>
+              <% columns.forEach(column => { %>
+                <th class="px-6 py-3 font-medium"><%= column.label %></th>
+              <% }) %>
+              <th class="px-6 py-3 font-medium">Catatan</th>
+              <th class="px-6 py-3 font-medium">Input</th>
+              <% if (canManageProject) { %>
+                <th class="px-6 py-3 font-medium"></th>
+              <% } %>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y">
+            <% if (entries.length === 0) { %>
+              <tr>
+                <td colspan="<%= 5 + columns.length + (canManageProject ? 1 : 0) %>" class="px-6 py-12 text-center text-gray-400">
+                  Belum ada data report untuk project ini
+                </td>
+              </tr>
+            <% } %>
+
+            <% entries.forEach(entry => { %>
+              <% const values = entry.values || {}; %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-800"><%= new Date(entry.reportDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
+                <td class="px-6 py-4 text-gray-600"><%= entry.company?.name || '-' %></td>
+                <% columns.forEach(column => { %>
+                  <td class="px-6 py-4 text-gray-800"><%= values[column.key] ?? 0 %></td>
+                <% }) %>
+                <td class="px-6 py-4 text-gray-500"><%= entry.note || '-' %></td>
+                <td class="px-6 py-4 text-gray-400 text-xs"><%= entry.createdBy?.name || 'System' %></td>
+                <% if (canManageProject) { %>
+                  <td class="px-6 py-4 text-right">
+                    <form action="/projects/<%= project.id %>/report/entries/<%= entry.id %>/delete" method="POST" onsubmit="return confirm('Hapus data report ini?')">
+                      <button type="submit" class="text-red-500 hover:text-red-600 text-xs px-2 py-1 rounded-lg hover:bg-red-50">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                <% } %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <% if (canManageProject) { %>
+      <div class="bg-white border rounded-3xl p-6 shadow-sm">
+        <h2 class="font-semibold text-lg mb-2">Setup Kolom Report</h2>
+        <p class="text-sm text-gray-500 mb-4">Versi 2: project ini bisa punya kolom report sendiri. Kosongkan field yang tidak dipakai, maksimal 8 kolom.</p>
+
+        <form action="/projects/<%= project.id %>/report/config" method="POST" class="space-y-3">
+          <% for (let index = 0; index < Math.max(columns.length, 6); index++) { %>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">Kolom <%= index + 1 %></label>
+              <input type="text" name="columnLabels" value="<%= columns[index]?.label || '' %>" placeholder="Contoh: Upload" class="w-full border rounded-2xl px-4 py-3">
+            </div>
+          <% } %>
+          <button type="submit" class="w-full py-3 bg-gray-900 text-white rounded-2xl font-medium hover:bg-gray-800">
+            Simpan Struktur Kolom
+          </button>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="bg-white border rounded-3xl shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b bg-gray-50">
+        <div class="font-semibold text-gray-700">Breakdown Per Brand</div>
+        <div class="text-xs text-gray-400 mt-1">Rekap 30 hari terakhir berdasarkan brand breakdown yang diinput.</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-white border-b">
+            <tr class="text-left text-gray-500">
+              <th class="px-6 py-3 font-medium">Brand</th>
+              <% columns.forEach(column => { %>
+                <th class="px-6 py-3 font-medium"><%= column.label %></th>
+              <% }) %>
+              <th class="px-6 py-3 font-medium">Baris Data</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y">
+            <% if (breakdownRows.length === 0) { %>
+              <tr>
+                <td colspan="<%= 2 + columns.length %>" class="px-6 py-10 text-center text-gray-400">
+                  Belum ada breakdown brand
+                </td>
+              </tr>
+            <% } %>
+
+            <% breakdownRows.forEach(row => { %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-800"><%= row.label %></td>
+                <% columns.forEach(column => { %>
+                  <td class="px-6 py-4 text-gray-700"><%= row.values[column.key] || 0 %></td>
+                <% }) %>
+                <td class="px-6 py-4 text-gray-400"><%= row.count %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded-3xl p-6 shadow-sm">
+      <h2 class="font-semibold text-lg mb-2">Cara Pakai</h2>
+      <div class="space-y-3 text-sm text-gray-600">
+        <p>1. Input angka progres harian per tanggal.</p>
+        <p>2. Kalau project melibatkan beberapa brand, pilih breakdown brand saat input.</p>
+        <p>3. Kalau kebutuhan project beda, ubah kolom report di panel setup.</p>
+        <p>4. Export CSV kalau mau dibawa ke Excel atau Google Sheets.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
