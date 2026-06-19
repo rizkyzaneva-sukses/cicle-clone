@@ -52,6 +52,36 @@ async function ensureProjectReportTables(client = prisma) {
   `);
 }
 
+async function ensureProjectChatReadTable(client = prisma) {
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "ProjectChatRead" (
+      "id" TEXT PRIMARY KEY,
+      "projectId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "lastReadAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "ProjectChatRead_projectId_fkey"
+        FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "ProjectChatRead_userId_fkey"
+        FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "ProjectChatRead_projectId_userId_key"
+    ON "ProjectChatRead" ("projectId", "userId")
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ProjectChatRead_projectId_idx"
+    ON "ProjectChatRead" ("projectId")
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ProjectChatRead_userId_idx"
+    ON "ProjectChatRead" ("userId")
+  `);
+}
+
 async function cleanupOrphanRecords(client = prisma) {
   await client.$executeRaw`
     DELETE FROM "PartnerAccess" pa
@@ -136,4 +166,4 @@ async function applyAccountHotfixes(client = prisma) {
   });
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };

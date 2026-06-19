@@ -83,7 +83,12 @@ socket.emit('join-user', currentUserId);
 socket.on('new-direct-message', (message) => {
   if (message.senderId === selectedUserId || message.receiverId === selectedUserId) {
     appendDm(message);
+    if (message.senderId === selectedUserId) markConversationSeen();
   }
+});
+socket.on('direct-message-read', (payload) => {
+  if (payload.readerId !== selectedUserId) return;
+  updateDmSeenStatus(payload.messageIds, payload.readAt);
 });
 
 document.addEventListener('keydown', (event) => {
@@ -109,15 +114,27 @@ function appendDm(message) {
   const container = document.getElementById('dm-messages');
   const isMe = message.senderId === currentUserId;
   const div = document.createElement('div');
+  if (message.id) div.id = `dm-msg-${message.id}`;
   div.className = `flex ${isMe ? 'justify-end' : ''}`;
   div.innerHTML = `
     <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[82%] px-4 py-3 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
       <div class="text-xs opacity-70 mb-1">${escapeHtml(message.sender?.name || 'User')}</div>
       ${message.content ? `<div class="whitespace-pre-wrap">${escapeHtml(message.content)}</div>` : ''}
       ${(message.attachments || []).map(renderAttachment).join('')}
+      <div class="mt-2 text-[11px] ${isMe ? 'text-blue-100' : 'text-gray-400'}" ${message.id ? `id="dm-seen-${message.id}"` : ''}>
+        ${isMe ? (message.readAt ? `Dilihat ${new Date(message.readAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Belum dilihat') : new Date(message.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+      </div>
     </div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
+}
+
+function updateDmSeenStatus(messageIds, readAt) {
+  (messageIds || []).forEach(messageId => {
+    const target = document.getElementById(`dm-seen-${messageId}`);
+    if (!target) return;
+    target.textContent = `Dilihat ${new Date(readAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+  });
 }
 
 function refreshDmFilePill() {
@@ -169,7 +186,20 @@ async function sendDm() {
   }
 }
 
+async function markConversationSeen() {
+  try {
+    const res = await fetch(`/inbox/${selectedUserId}/read`, { method: 'POST' });
+    const result = await res.json();
+    if (result.success && result.messageIds?.length) {
+      updateDmSeenStatus(result.messageIds, result.readAt);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 initialMessages.forEach(appendDm);
+markConversationSeen();
 </script>
 <% } %>
 

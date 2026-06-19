@@ -13,23 +13,170 @@ function requireAuth(req, res, next) {
 
 router.use(requireAuth);
 
+async function getProjectForChat(projectId) {
+  return prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      name: true,
+      companyId: true,
+      company: {
+        select: {
+          workspaceId: true,
+          workspace: { select: { ownerId: true } }
+        }
+      }
+    }
+  });
+}
+
+function dedupeUsers(users) {
+  const seen = new Map();
+  users.forEach(user => {
+    if (user?.id && !seen.has(user.id)) seen.set(user.id, user);
+  });
+  return [...seen.values()];
+}
+
+async function getProjectChatAudience(project) {
+  const workspaceId = project.company?.workspaceId || null;
+
+  const [projectMembers, companyAdmins, companyPartners, workspacePartners, workspaceOwner] = await Promise.all([
+    prisma.projectMember.findMany({
+      where: { projectId: project.id },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    }),
+    prisma.membership.findMany({
+      where: { companyId: project.companyId, role: 'admin' },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    }),
+    prisma.partnerAccess.findMany({
+      where: { companyId: project.companyId },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    }),
+    workspaceId ? prisma.workspacePartner.findMany({
+      where: { workspaceId },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    }) : [],
+    project.company?.workspace?.ownerId
+      ? prisma.user.findUnique({
+          where: { id: project.company.workspace.ownerId },
+          select: { id: true, name: true, email: true }
+        })
+      : null
+  ]);
+
+  return dedupeUsers([
+    ...projectMembers.map(row => row.user),
+    ...companyAdmins.map(row => row.user),
+    ...companyPartners.map(row => row.user),
+    ...workspacePartners.map(row => row.user),
+    workspaceOwner
+  ]);
+}
+
+function buildReactionSummary(reactions = []) {
+  const grouped = new Map();
+  reactions.forEach(reaction => {
+    if (!grouped.has(reaction.emoji)) grouped.set(reaction.emoji, []);
+    grouped.get(reaction.emoji).push({
+      id: reaction.user.id,
+      name: reaction.user.name
+    });
+  });
+  return [...grouped.entries()];
+}
+
+function serializeChatMessage(message, audience, readRows) {
+  const senderId = message.userId || message.user?.id || null;
+  const comparableDate = new Date(message.createdAt);
+
+  const viewers = audience.filter(user => user.id !== senderId);
+  const seenBy = [];
+  const unseenBy = [];
+
+  viewers.forEach(user => {
+    const readRow = readRows.find(row => row.userId === user.id);
+    if (readRow && new Date(readRow.lastReadAt) >= comparableDate) {
+      seenBy.push({ id: user.id, name: user.name });
+    } else {
+      unseenBy.push({ id: user.id, name: user.name });
+    }
+  });
+
+  return {
+    ...message,
+    reactionsSummary: buildReactionSummary(message.reactions || []),
+    seenBy,
+    unseenBy
+  };
+}
+
+async function buildChatPayload(projectId, currentUserId, markSeen = true) {
+  const project = await getProjectForChat(projectId);
+  if (!project) return null;
+
+  if (markSeen) {
+    await prisma.projectChatRead.upsert({
+      where: { projectId_userId: { projectId, userId: currentUserId } },
+      update: { lastReadAt: new Date() },
+      create: { projectId, userId: currentUserId, lastReadAt: new Date() }
+    });
+  }
+
+  const [audience, messages, readRows] = await Promise.all([
+    getProjectChatAudience(project),
+    prisma.chatMessage.findMany({
+      where: { projectId },
+      include: {
+        user: true,
+        attachments: true,
+        reactions: { include: { user: { select: { id: true, name: true } } } }
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 100
+    }),
+    prisma.projectChatRead.findMany({ where: { projectId } })
+  ]);
+
+  return {
+    project,
+    audience: audience.map(user => ({ id: user.id, name: user.name })),
+    messages: messages.map(message => serializeChatMessage(message, audience, readRows))
+  };
+}
+
 // Get messages for project
 router.get('/messages/:projectId', async (req, res) => {
-  const project = await prisma.project.findUnique({
-    where: { id: req.params.projectId },
-    select: { id: true, companyId: true }
-  });
+  const payload = await buildChatPayload(req.params.projectId, req.session.user.id, false);
+  if (!payload || !await hasProjectAccess(req.session.user, payload.project)) {
+    return res.status(403).json({ error: 'Akses ditolak' });
+  }
+
+  res.json({ messages: payload.messages, audience: payload.audience });
+});
+
+router.post('/messages/:projectId/read', async (req, res) => {
+  const project = await getProjectForChat(req.params.projectId);
   if (!project || !await hasProjectAccess(req.session.user, project)) {
     return res.status(403).json({ error: 'Akses ditolak' });
   }
 
-  const messages = await prisma.chatMessage.findMany({
-    where: { projectId: req.params.projectId },
-    include: { user: true, attachments: true },
-    orderBy: { createdAt: 'asc' },
-    take: 100
+  const readAt = new Date();
+  await prisma.projectChatRead.upsert({
+    where: { projectId_userId: { projectId: project.id, userId: req.session.user.id } },
+    update: { lastReadAt: readAt },
+    create: { projectId: project.id, userId: req.session.user.id, lastReadAt: readAt }
   });
-  res.json(messages);
+
+  req.app.get('io')?.to(`project-${project.id}`).emit('project-chat-read', {
+    projectId: project.id,
+    userId: req.session.user.id,
+    name: req.session.user.name,
+    lastReadAt: readAt.toISOString()
+  });
+
+  res.json({ success: true, lastReadAt: readAt.toISOString() });
 });
 
 // Search project members for @mention autocomplete in chat
@@ -46,8 +193,6 @@ router.get('/members/:projectId', async (req, res) => {
   });
 
   const q = (req.query.q || '').trim().toLowerCase();
-  
-  // Add @team option at the beginning
   const teamOption = { id: '__team__', name: 'team', email: 'Semua anggota tim' };
   const mappedMembers = members.map(m => ({ id: m.user.id, name: m.user.name, email: m.user.email }));
   const matchedMembers = q
@@ -59,7 +204,7 @@ router.get('/members/:projectId', async (req, res) => {
           return Number(bStarts) - Number(aStarts) || a.name.localeCompare(b.name);
         })
     : mappedMembers.sort((a, b) => a.name.localeCompare(b.name));
-  
+
   const filtered = q
     ? [('team'.startsWith(q) ? teamOption : null), ...matchedMembers].filter(Boolean)
     : [teamOption, ...matchedMembers];
@@ -67,7 +212,7 @@ router.get('/members/:projectId', async (req, res) => {
   res.json(filtered);
 });
 
-// Post new message (fallback if socket fails)
+// Post new message
 router.post('/messages/:projectId', upload.array('files', 8), async (req, res) => {
   try {
     const content = (req.body.content || '').trim();
@@ -75,10 +220,7 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
     const userId = req.session.user.id;
     const files = req.files || [];
 
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: { id: true, name: true, companyId: true }
-    });
+    const project = await getProjectForChat(projectId);
     if (!project || !await hasProjectAccess(req.session.user, project)) {
       return res.status(403).json({ error: 'Akses ditolak' });
     }
@@ -100,51 +242,40 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
       });
     }
 
-    const fullMessage = await prisma.chatMessage.findUnique({
-      where: { id: message.id },
-      include: { user: true, attachments: true }
+    await prisma.projectChatRead.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      update: { lastReadAt: new Date() },
+      create: { projectId, userId, lastReadAt: new Date() }
     });
 
-    // Notify other project members: @mentions get a "kamu disebut" message,
-    // everyone else gets a generic new-chat-message ping so they don't miss it.
-    const [companyMembers, projectMembers] = await Promise.all([
-      prisma.membership.findMany({
-        where: { companyId: project.companyId },
-        include: { user: { select: { id: true, name: true } } }
-      }),
-      prisma.projectMember.findMany({ where: { projectId }, select: { userId: true } })
-    ]);
+    const payload = await buildChatPayload(projectId, userId, false);
+    const fullMessage = payload.messages.find(item => item.id === message.id);
 
-    // Get all member IDs for @team mention
+    const companyMembers = await prisma.membership.findMany({
+      where: { companyId: project.companyId },
+      include: { user: { select: { id: true, name: true } } }
+    });
+    const projectMembers = await prisma.projectMember.findMany({ where: { projectId }, select: { userId: true } });
     const allMemberIds = companyMembers.map(m => m.user.id);
-    
     const mentionedIds = new Set(
       extractMentionedUserIds(content, companyMembers.map(m => m.user), allMemberIds).filter(id => id !== userId)
     );
-    
-    // Determine if @team was used
-    const isTeamMention = content.includes('@team');
-    
     const recipientIds = new Set([
       ...projectMembers.map(m => m.userId),
       ...mentionedIds
     ]);
     recipientIds.delete(userId);
 
-    // Check for @team mention — notify ALL project members (not just mentioned)
     const isTeamBroadcast = /@team\b/i.test(content);
     if (isTeamBroadcast) {
-      // Add all project members to recipients
-      for (const pm of projectMembers) {
-        recipientIds.add(pm.userId);
-      }
+      for (const member of projectMembers) recipientIds.add(member.userId);
       recipientIds.delete(userId);
     }
 
     const io = req.app.get('io');
     const snippet = content ? (content.length > 80 ? `${content.slice(0, 80)}...` : content) : '(mengirim file)';
     for (const recipientId of recipientIds) {
-      if (isTeamMention && mentionedIds.has(recipientId)) {
+      if (isTeamBroadcast && mentionedIds.has(recipientId)) {
         await ensureProjectMember(recipientId, projectId);
         await notifyUser(io, recipientId, `${fullMessage.user.name} menyebut @team di chat proyek "${project.name}"`, `/projects/${projectId}`);
       } else if (mentionedIds.has(recipientId)) {
@@ -155,10 +286,66 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
       }
     }
 
+    io?.to(`project-${projectId}`).emit('new-message', fullMessage);
+
     res.json({ success: true, message: fullMessage });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal kirim pesan' });
+  }
+});
+
+router.post('/messages/:messageId/reactions', async (req, res) => {
+  try {
+    const emoji = String(req.body.emoji || '').trim();
+    if (!emoji) return res.status(400).json({ error: 'Emoji wajib diisi' });
+
+    const message = await prisma.chatMessage.findUnique({
+      where: { id: req.params.messageId },
+      include: { project: { select: { id: true, companyId: true } } }
+    });
+    if (!message || !await hasProjectAccess(req.session.user, message.project)) {
+      return res.status(403).json({ error: 'Akses ditolak' });
+    }
+
+    const existing = await prisma.chatReaction.findUnique({
+      where: {
+        chatMessageId_userId_emoji: {
+          chatMessageId: message.id,
+          userId: req.session.user.id,
+          emoji
+        }
+      }
+    });
+
+    if (existing) {
+      await prisma.chatReaction.delete({ where: { id: existing.id } });
+    } else {
+      await prisma.chatReaction.create({
+        data: {
+          chatMessageId: message.id,
+          userId: req.session.user.id,
+          emoji
+        }
+      });
+    }
+
+    const reactions = await prisma.chatReaction.findMany({
+      where: { chatMessageId: message.id },
+      include: { user: { select: { id: true, name: true } } }
+    });
+
+    const reactionsSummary = buildReactionSummary(reactions);
+    req.app.get('io')?.to(`project-${message.projectId}`).emit('chat-reaction-updated', {
+      projectId: message.projectId,
+      messageId: message.id,
+      reactionsSummary
+    });
+
+    res.json({ success: true, reactionsSummary });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal update reaction' });
   }
 });
 

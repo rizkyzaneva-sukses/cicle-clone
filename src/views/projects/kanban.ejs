@@ -841,6 +841,16 @@ socket.on('task-updated', (data) => {
 
 socket.on('new-message', (msg) => {
   appendMessage(msg);
+  if (msg.user?.id !== currentUserId) markProjectChatSeen();
+});
+socket.on('project-chat-read', () => {
+  loadChatMessages(false, false);
+});
+socket.on('chat-reaction-updated', (payload) => {
+  const message = chatMessages.find(item => item.id === payload.messageId);
+  if (!message) return;
+  message.reactionsSummary = payload.reactionsSummary || [];
+  updateChatMessageMeta(message);
 });
 
 // Create Task
@@ -1112,39 +1122,152 @@ async function deleteTask(taskId) {
 
 // Chat functions
 let chatMessages = [];
+let projectChatAudience = [];
+let isSyncingProjectChatSeen = false;
 
-async function loadChatMessages() {
+async function loadChatMessages(scroll = true, shouldMarkSeen = true) {
   try {
     const res = await fetch(`/chat/messages/${projectId}`);
-    const messages = await res.json();
-    chatMessages = messages;
+    const payload = await res.json();
+    chatMessages = Array.isArray(payload.messages) ? payload.messages : [];
+    projectChatAudience = Array.isArray(payload.audience) ? payload.audience : [];
     const container = document.getElementById('chat-messages');
     container.innerHTML = '';
-    messages.forEach(msg => appendMessage(msg, false));
-    container.scrollTop = container.scrollHeight;
+    chatMessages.forEach(msg => appendMessage(msg, false));
+    if (scroll) container.scrollTop = container.scrollHeight;
     renderPinnedBar();
+    if (shouldMarkSeen) await markProjectChatSeen();
   } catch (e) {}
+}
+
+function renderChatSeenSummary(message, isMe) {
+  if (!isMe) return '';
+  const seenCount = (message.seenBy || []).length;
+  const audienceCount = Math.max((message.seenBy || []).length + (message.unseenBy || []).length, 0);
+  const unseenNames = (message.unseenBy || []).map(user => escapeHtml(user.name));
+  const seenNames = (message.seenBy || []).map(user => escapeHtml(user.name));
+
+  let secondary = '';
+  if (unseenNames.length > 0) secondary = `Belum lihat: ${unseenNames.slice(0, 3).join(', ')}${unseenNames.length > 3 ? ` +${unseenNames.length - 3}` : ''}`;
+  else if (seenNames.length > 0) secondary = `Dilihat: ${seenNames.slice(0, 3).join(', ')}${seenNames.length > 3 ? ` +${seenNames.length - 3}` : ''}`;
+  else secondary = 'Belum ada yang lihat';
+
+  return `
+    <div class="mt-2 text-[11px] ${isMe ? 'text-blue-100' : 'text-gray-400'}" id="chat-seen-${message.id}">
+      ${audienceCount > 0 ? `Dilihat ${seenCount}/${audienceCount}` : 'Dilihat 0/0'}${secondary ? ` - ${secondary}` : ''}
+    </div>
+  `;
+}
+
+function renderChatReactions(message) {
+  const summary = message.reactionsSummary || [];
+  return `
+    <div class="mt-2 flex items-center gap-1 flex-wrap" id="chat-reactions-${message.id}">
+      ${summary.map(([emoji, users]) => `
+        <button onclick="toggleChatReaction('${message.id}', '${emoji}')"
+          class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 border text-xs text-gray-700 hover:bg-gray-100"
+          title="${users.map(user => user.name).join(', ')}">
+          <span>${emoji}</span>
+          <span>${users.length}</span>
+        </button>
+      `).join('')}
+      <div class="relative">
+        <button onclick="toggleChatCheerMenu('${message.id}')" class="w-6 h-6 rounded-full bg-white border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+          <i class="fas fa-smile"></i>
+        </button>
+        <div id="chat-cheer-menu-${message.id}" class="hidden absolute bottom-8 left-0 bg-white border rounded-xl shadow-lg p-2 flex gap-1 z-10">
+          ${['👍','🔥','❤️','😂','🎉','👀'].map(emoji => `<button onclick="toggleChatReaction('${message.id}', '${emoji}')" class="hover:bg-gray-100 rounded-lg p-1 text-lg">${emoji}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function appendMessage(msg, scroll = true) {
   const container = document.getElementById('chat-messages');
-  if (msg.id && document.getElementById(`chat-msg-${msg.id}`)) return;
-  if (msg.id && !chatMessages.some(m => m.id === msg.id)) chatMessages.push(msg);
-  const isMe = msg.user && msg.user.id === currentUserId;
+  const existing = msg.id ? document.getElementById(`chat-msg-${msg.id}`) : null;
+  if (existing) {
+    const stored = chatMessages.find(item => item.id === msg.id);
+    if (stored) Object.assign(stored, msg);
+    else if (msg.id) chatMessages.push(msg);
+    existing.outerHTML = buildChatMessageHtml(msg);
+    if (scroll) container.scrollTop = container.scrollHeight;
+    return;
+  }
 
-  const div = document.createElement('div');
-  if (msg.id) div.id = `chat-msg-${msg.id}`;
-  div.className = `flex ${isMe ? 'justify-end' : ''} group`;
-  div.innerHTML = `
-    <div class="relative ${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
-      ${msg.id ? `<button onclick="togglePin('${msg.id}')" class="absolute -top-2 ${isMe ? '-left-2' : '-right-2'} w-6 h-6 rounded-full bg-white border shadow text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center ${msg.pinned ? 'text-amber-500 opacity-100' : 'text-gray-400 hover:text-amber-500'}" title="${msg.pinned ? 'Lepas pin' : 'Pin pesan'}"><i class="fas fa-thumbtack"></i></button>` : ''}
-      <div class="text-xs opacity-70 mb-0.5">${msg.user ? escapeHtml(msg.user.name) : 'User'}</div>
-      ${msg.content ? `<div class="whitespace-pre-wrap">${escapeHtml(msg.content)}</div>` : ''}
-      ${(msg.attachments || []).map(renderAttachment).join('')}
+  if (msg.id && !chatMessages.some(m => m.id === msg.id)) chatMessages.push(msg);
+  container.insertAdjacentHTML('beforeend', buildChatMessageHtml(msg));
+  if (scroll) container.scrollTop = container.scrollHeight;
+}
+
+function buildChatMessageHtml(msg) {
+  const isMe = msg.user && msg.user.id === currentUserId;
+  return `
+    <div id="${msg.id ? `chat-msg-${msg.id}` : ''}" class="flex ${isMe ? 'justify-end' : ''} group">
+      <div class="relative ${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
+        ${msg.id ? `<button onclick="togglePin('${msg.id}')" class="absolute -top-2 ${isMe ? '-left-2' : '-right-2'} w-6 h-6 rounded-full bg-white border shadow text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center ${msg.pinned ? 'text-amber-500 opacity-100' : 'text-gray-400 hover:text-amber-500'}" title="${msg.pinned ? 'Lepas pin' : 'Pin pesan'}"><i class="fas fa-thumbtack"></i></button>` : ''}
+        <div class="text-xs opacity-70 mb-0.5">${msg.user ? escapeHtml(msg.user.name) : 'User'}</div>
+        ${msg.content ? `<div class="whitespace-pre-wrap">${escapeHtml(msg.content)}</div>` : ''}
+        ${(msg.attachments || []).map(renderAttachment).join('')}
+        ${msg.id ? renderChatReactions(msg) : ''}
+        ${msg.id ? renderChatSeenSummary(msg, isMe) : ''}
+      </div>
     </div>
   `;
-  container.appendChild(div);
-  if (scroll) container.scrollTop = container.scrollHeight;
+}
+
+function updateChatMessageMeta(message) {
+  const reactionsEl = document.getElementById(`chat-reactions-${message.id}`);
+  if (reactionsEl) reactionsEl.outerHTML = renderChatReactions(message);
+  const seenEl = document.getElementById(`chat-seen-${message.id}`);
+  if (seenEl && message.user?.id === currentUserId) {
+    seenEl.outerHTML = renderChatSeenSummary(message, true);
+  }
+}
+
+async function markProjectChatSeen() {
+  if (isSyncingProjectChatSeen) return;
+  isSyncingProjectChatSeen = true;
+  try {
+    await fetch(`/chat/messages/${projectId}/read`, { method: 'POST' });
+  } catch (error) {
+    console.error(error);
+  } finally {
+    isSyncingProjectChatSeen = false;
+  }
+}
+
+function toggleChatCheerMenu(messageId) {
+  document.querySelectorAll('[id^="chat-cheer-menu-"]').forEach(menu => {
+    if (menu.id !== `chat-cheer-menu-${messageId}`) menu.classList.add('hidden');
+  });
+  document.getElementById(`chat-cheer-menu-${messageId}`)?.classList.toggle('hidden');
+}
+
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('[id^="chat-cheer-menu-"]') && !event.target.closest('[onclick*="toggleChatCheerMenu"]')) {
+    document.querySelectorAll('[id^="chat-cheer-menu-"]').forEach(menu => menu.classList.add('hidden'));
+  }
+});
+
+async function toggleChatReaction(messageId, emoji) {
+  try {
+    const res = await fetch(`/chat/messages/${messageId}/reactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emoji })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Gagal update reaction');
+    const message = chatMessages.find(item => item.id === messageId);
+    if (message) {
+      message.reactionsSummary = data.reactionsSummary || [];
+      updateChatMessageMeta(message);
+    }
+    toggleChatCheerMenu(messageId);
+  } catch (error) {
+    alert(error.message || 'Gagal update reaction');
+  }
 }
 
 function renderPinnedBar() {
@@ -1228,7 +1351,6 @@ async function sendMessage() {
     const result = await res.json();
     if (result.success) {
       appendMessage(result.message);
-      socket.emit('new-message', result.message);
       input.value = '';
       pendingChatFiles = [];
       document.getElementById('chat-files').value = '';
@@ -1396,6 +1518,9 @@ function init() {
 }
 
 window.onload = init;
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) markProjectChatSeen();
+});
 
 // ============================================
 // MOBILE TOUCH INTERACTIONS

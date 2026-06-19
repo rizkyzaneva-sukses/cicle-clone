@@ -31,6 +31,7 @@ model User {
   uploads        Attachment[]
   activityLogs   ActivityLog[]
   chatReactions  ChatReaction[]
+  projectChatReads ProjectChatRead[]
   commentFiles   CommentFile[]
   projectMembers    ProjectMember[]
   pushSubscriptions PushSubscription[]
@@ -133,6 +134,7 @@ model Project {
   recurringTaskTemplates RecurringTaskTemplate[]
   reportConfig   ProjectReportConfig?
   reportEntries  ProjectReportEntry[]
+  chatReadStates ProjectChatRead[]
 }
 
 model ProjectReportConfig {
@@ -345,6 +347,20 @@ model ChatReaction {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([chatMessageId, userId, emoji])
+}
+
+model ProjectChatRead {
+  id         String   @id @default(cuid())
+  projectId  String
+  userId     String
+  lastReadAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
 }
 
 model ChatMessage {

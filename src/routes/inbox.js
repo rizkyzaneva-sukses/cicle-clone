@@ -7,6 +7,45 @@ const { notifyUser } = require('../lib/notify');
 
 router.use(requireAuth);
 
+async function markConversationAsRead(req, otherUserId) {
+  const currentUserId = req.session.user.id;
+  const unreadMessages = await prisma.directMessage.findMany({
+    where: {
+      senderId: otherUserId,
+      receiverId: currentUserId,
+      readAt: null
+    },
+    select: { id: true, senderId: true }
+  });
+
+  if (unreadMessages.length === 0) {
+    return { readAt: null, messageIds: [] };
+  }
+
+  const readAt = new Date();
+  await prisma.directMessage.updateMany({
+    where: { id: { in: unreadMessages.map(message => message.id) } },
+    data: { readAt }
+  });
+
+  const io = req.app.get('io');
+  const groupedBySender = new Map();
+  unreadMessages.forEach(message => {
+    if (!groupedBySender.has(message.senderId)) groupedBySender.set(message.senderId, []);
+    groupedBySender.get(message.senderId).push(message.id);
+  });
+
+  groupedBySender.forEach((messageIds, senderId) => {
+    io?.to(`user-${senderId}`).emit('direct-message-read', {
+      readerId: currentUserId,
+      messageIds,
+      readAt: readAt.toISOString()
+    });
+  });
+
+  return { readAt, messageIds: unreadMessages.map(message => message.id) };
+}
+
 async function getContacts(user) {
   if (user.platformRole === 'owner') {
     return prisma.user.findMany({
@@ -83,14 +122,7 @@ async function renderInbox(req, res, selectedUserId = null) {
 
   let messages = [];
   if (selectedUser) {
-    await prisma.directMessage.updateMany({
-      where: {
-        senderId: selectedUser.id,
-        receiverId: currentUser.id,
-        readAt: null
-      },
-      data: { readAt: new Date() }
-    });
+    await markConversationAsRead(req, selectedUser.id);
 
     messages = await prisma.directMessage.findMany({
       where: {
@@ -136,6 +168,25 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
+router.post('/:userId/read', async (req, res) => {
+  try {
+    const contacts = await getContacts(req.session.user);
+    if (!contacts.some(contact => contact.id === req.params.userId)) {
+      return res.status(403).json({ error: 'Kontak tidak tersedia' });
+    }
+
+    const result = await markConversationAsRead(req, req.params.userId);
+    res.json({
+      success: true,
+      messageIds: result.messageIds,
+      readAt: result.readAt ? result.readAt.toISOString() : null
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal update seen chat' });
+  }
+});
+
 router.post('/:userId/messages', upload.array('files', 8), async (req, res) => {
   try {
     const senderId = req.session.user.id;
@@ -172,7 +223,8 @@ router.post('/:userId/messages', upload.array('files', 8), async (req, res) => {
     });
 
     const io = req.app.get('io');
-    await notifyUser(io, receiverId, `${req.session.user.name} mengirim pesan personal`, `/inbox/${senderId}`);
+    const snippet = content ? (content.length > 80 ? `${content.slice(0, 80)}...` : content) : '(mengirim file)';
+    await notifyUser(io, receiverId, `${req.session.user.name}: ${snippet}`, `/inbox/${senderId}`);
     if (io) io.to(`user-${receiverId}`).emit('new-direct-message', fullMessage);
 
     res.json({ success: true, message: fullMessage });
