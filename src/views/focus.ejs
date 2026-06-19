@@ -1,18 +1,16 @@
 <%- include('partials/header', { title: 'Focus Timer' }) %>
 
 <div class="max-w-2xl mx-auto">
-  <!-- Back link -->
   <a href="/" class="text-blue-600 hover:underline text-sm flex items-center gap-1 mb-6">
     <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
   </a>
 
   <div class="bg-white rounded-3xl border shadow-sm p-6 sm:p-8">
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">🎯 Focus Timer</h1>
-      <p class="text-gray-500 text-sm">Tingkatkan produktivitasmu dengan teknik Pomodoro</p>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Focus Timer</h1>
+      <p class="text-gray-500 text-sm">Atur fokus lebih fleksibel dengan sesi 30, 40, 60, atau 90 menit.</p>
     </div>
 
-    <!-- Today's Stats -->
     <div class="grid grid-cols-2 gap-4 mb-8">
       <div class="bg-blue-50 rounded-2xl p-4 text-center">
         <div class="text-3xl font-bold text-blue-600" id="today-sessions"><%= todaySessions %></div>
@@ -24,7 +22,6 @@
       </div>
     </div>
 
-    <!-- Task Selector -->
     <div class="mb-8">
       <label class="block text-sm font-medium text-gray-700 mb-2">Fokus pada tugas:</label>
       <select id="task-selector" class="w-full border rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-blue-400">
@@ -37,41 +34,65 @@
       </select>
     </div>
 
-    <!-- Timer Type Selector -->
-    <div class="flex justify-center gap-2 mb-8">
-      <button onclick="setTimerType('work')" id="type-work"
+    <div class="mb-6">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <label class="block text-sm font-medium text-gray-700">Durasi fokus:</label>
+        <span id="cycle-status" class="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">3 sesi fokus untuk buka istirahat panjang</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button type="button" onclick="setWorkDuration(30)" id="preset-30"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-blue-600 text-white">
+          30 Menit
+        </button>
+        <button type="button" onclick="setWorkDuration(40)" id="preset-40"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          40 Menit
+        </button>
+        <button type="button" onclick="setWorkDuration(60)" id="preset-60"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          60 Menit
+        </button>
+        <button type="button" onclick="setWorkDuration(90)" id="preset-90"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          90 Menit
+        </button>
+      </div>
+      <p id="duration-note" class="text-xs text-gray-500 mt-3">
+        Untuk 30/40 menit: istirahat pendek 5 menit. Untuk 60/90 menit: istirahat pendek 10 menit dan istirahat panjang aktif setelah 3 sesi.
+      </p>
+    </div>
+
+    <div class="flex justify-center gap-2 mb-8 flex-wrap">
+      <button type="button" onclick="setTimerType('work')" id="type-work"
         class="px-4 py-2 rounded-xl text-sm font-medium transition bg-blue-600 text-white">
-        🍅 Kerja (25m)
+        Kerja (30m)
       </button>
-      <button onclick="setTimerType('shortBreak')" id="type-shortBreak"
+      <button type="button" onclick="setTimerType('shortBreak')" id="type-shortBreak"
         class="px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">
-        ☕ Istirahat (5m)
+        Istirahat (5m)
       </button>
-      <button onclick="setTimerType('longBreak')" id="type-longBreak"
-        class="px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">
-        🌿 Panjang (15m)
+      <button type="button" onclick="setTimerType('longBreak')" id="type-longBreak"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-400 cursor-not-allowed">
+        Panjang (15m)
       </button>
     </div>
 
-    <!-- Circular Timer Display -->
     <div class="flex justify-center mb-8">
       <div class="relative w-64 h-64">
-        <!-- Background circle -->
         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="6" />
           <circle cx="50" cy="50" r="45" fill="none" stroke="#3b82f6" stroke-width="6"
             stroke-dasharray="282.74" stroke-dashoffset="0" stroke-linecap="round"
             id="timer-progress" class="transition-all duration-1000" />
         </svg>
-        <!-- Time display -->
         <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <div class="text-5xl font-bold text-gray-900 font-mono" id="timer-display">25:00</div>
+          <div class="text-5xl font-bold text-gray-900 font-mono" id="timer-display">30:00</div>
           <div class="text-sm text-gray-500 mt-1" id="timer-label">Fokus</div>
+          <div class="text-xs text-gray-400 mt-2" id="timer-sub-label">Mode 30 menit</div>
         </div>
       </div>
     </div>
 
-    <!-- Controls -->
     <div class="flex justify-center gap-3">
       <button onclick="startTimer()" id="btn-start"
         class="px-8 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700 transition flex items-center gap-2">
@@ -90,33 +111,169 @@
 </div>
 
 <script>
-  // Timer state
-  const TIMER_DURATIONS = {
-    work: 25 * 60,
-    shortBreak: 5 * 60,
-    longBreak: 15 * 60
-  };
-
+  const STORAGE_KEY = 'focusTimerConfigV2';
+  const WORK_PRESETS = [30, 40, 60, 90];
+  const LONG_BREAK_MINUTES = 15;
   const TIMER_LABELS = {
     work: 'Fokus',
     shortBreak: 'Istirahat',
     longBreak: 'Istirahat Panjang'
   };
-
   const TIMER_COLORS = {
     work: '#3b82f6',
     shortBreak: '#10b981',
     longBreak: '#8b5cf6'
   };
+  const circumference = 2 * Math.PI * 45;
 
+  let state = loadState();
   let currentType = 'work';
-  let totalSeconds = TIMER_DURATIONS.work;
+  let totalSeconds = getDurationForType(currentType);
   let remainingSeconds = totalSeconds;
   let timerInterval = null;
   let isRunning = false;
-  const circumference = 2 * Math.PI * 45; // ~282.74
+
+  function loadState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      const workMinutes = WORK_PRESETS.includes(saved.workMinutes) ? saved.workMinutes : 30;
+      const completedSinceLongBreak = Number.isInteger(saved.completedSinceLongBreak) && saved.completedSinceLongBreak >= 0
+        ? saved.completedSinceLongBreak
+        : 0;
+      return { workMinutes, completedSinceLongBreak };
+    } catch (_) {
+      return { workMinutes: 30, completedSinceLongBreak: 0 };
+    }
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function requiresLockedLongBreak() {
+    return state.workMinutes === 60 || state.workMinutes === 90;
+  }
+
+  function getShortBreakMinutes() {
+    return requiresLockedLongBreak() ? 10 : 5;
+  }
+
+  function getDurationForType(type) {
+    if (type === 'work') return state.workMinutes * 60;
+    if (type === 'shortBreak') return getShortBreakMinutes() * 60;
+    return LONG_BREAK_MINUTES * 60;
+  }
+
+  function canUseLongBreak() {
+    return !requiresLockedLongBreak() || state.completedSinceLongBreak >= 3;
+  }
+
+  function updatePresetButtons() {
+    WORK_PRESETS.forEach(minutes => {
+      const btn = document.getElementById(`preset-${minutes}`);
+      if (!btn) return;
+      btn.className = minutes === state.workMinutes
+        ? 'px-4 py-3 rounded-2xl text-sm font-semibold transition bg-blue-600 text-white'
+        : 'px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200';
+    });
+  }
+
+  function updateTypeButtons() {
+    const labels = {
+      work: `Kerja (${state.workMinutes}m)`,
+      shortBreak: `Istirahat (${getShortBreakMinutes()}m)`,
+      longBreak: `Panjang (${LONG_BREAK_MINUTES}m)`
+    };
+
+    document.getElementById('type-work').textContent = labels.work;
+    document.getElementById('type-shortBreak').textContent = labels.shortBreak;
+    document.getElementById('type-longBreak').textContent = labels.longBreak;
+
+    ['work', 'shortBreak', 'longBreak'].forEach(type => {
+      const btn = document.getElementById('type-' + type);
+      if (!btn) return;
+
+      if (type === 'longBreak' && !canUseLongBreak()) {
+        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-400 cursor-not-allowed';
+        btn.disabled = true;
+        return;
+      }
+
+      btn.disabled = false;
+      if (type === currentType) {
+        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition text-white';
+        btn.style.backgroundColor = TIMER_COLORS[type];
+      } else {
+        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200';
+        btn.style.backgroundColor = '';
+      }
+    });
+  }
+
+  function updateCycleStatus() {
+    const cycleEl = document.getElementById('cycle-status');
+    if (!cycleEl) return;
+
+    if (!requiresLockedLongBreak()) {
+      cycleEl.textContent = `Istirahat pendek ${getShortBreakMinutes()} menit`;
+      return;
+    }
+
+    if (canUseLongBreak()) {
+      cycleEl.textContent = 'Istirahat panjang sudah terbuka';
+      return;
+    }
+
+    cycleEl.textContent = `${state.completedSinceLongBreak}/3 sesi fokus menuju istirahat panjang`;
+  }
+
+  function updateHelperText() {
+    const subLabel = document.getElementById('timer-sub-label');
+    if (!subLabel) return;
+
+    if (currentType === 'work') subLabel.textContent = `Mode ${state.workMinutes} menit`;
+    if (currentType === 'shortBreak') subLabel.textContent = `Rehat ${getShortBreakMinutes()} menit`;
+    if (currentType === 'longBreak') subLabel.textContent = `Panjang ${LONG_BREAK_MINUTES} menit`;
+  }
+
+  function syncAllUi() {
+    updatePresetButtons();
+    updateTypeButtons();
+    updateCycleStatus();
+    updateHelperText();
+    document.getElementById('timer-progress').style.stroke = TIMER_COLORS[currentType];
+  }
+
+  function setWorkDuration(minutes) {
+    if (!WORK_PRESETS.includes(minutes)) return;
+    if (isRunning) {
+      if (!confirm('Timer sedang berjalan. Yakin ingin mengganti durasi fokus?')) return;
+      clearInterval(timerInterval);
+      isRunning = false;
+    }
+
+    state.workMinutes = minutes;
+    if (!requiresLockedLongBreak()) {
+      state.completedSinceLongBreak = 0;
+    } else if (state.completedSinceLongBreak > 3) {
+      state.completedSinceLongBreak = 3;
+    }
+    saveState();
+
+    currentType = 'work';
+    totalSeconds = getDurationForType(currentType);
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+    syncAllUi();
+    resetButtons();
+  }
 
   function setTimerType(type) {
+    if (type === 'longBreak' && !canUseLongBreak()) {
+      alert('Istirahat panjang baru bisa dipakai setelah 3 sesi fokus selesai.');
+      return;
+    }
+
     if (isRunning) {
       if (!confirm('Timer sedang berjalan. Yakin ingin mengganti mode?')) return;
       clearInterval(timerInterval);
@@ -124,29 +281,18 @@
     }
 
     currentType = type;
-    totalSeconds = TIMER_DURATIONS[type];
+    totalSeconds = getDurationForType(type);
     remainingSeconds = totalSeconds;
     updateDisplay();
+    syncAllUi();
+    resetButtons();
+  }
 
-    // Update button styles
-    ['work', 'shortBreak', 'longBreak'].forEach(t => {
-      const btn = document.getElementById('type-' + t);
-      if (t === type) {
-        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition text-white';
-        btn.style.backgroundColor = TIMER_COLORS[t];
-      } else {
-        btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200';
-        btn.style.backgroundColor = '';
-      }
-    });
-
-    // Update progress color
-    document.getElementById('timer-progress').style.stroke = TIMER_COLORS[type];
-
-    // Reset buttons
+  function resetButtons() {
     document.getElementById('btn-start').classList.remove('hidden');
     document.getElementById('btn-start').classList.add('flex');
     document.getElementById('btn-pause').classList.add('hidden');
+    document.getElementById('btn-pause').classList.remove('flex');
   }
 
   function updateDisplay() {
@@ -155,15 +301,11 @@
     document.getElementById('timer-display').textContent =
       String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
 
-    // Update progress circle
     const progress = remainingSeconds / totalSeconds;
     const offset = circumference * (1 - progress);
     document.getElementById('timer-progress').style.strokeDashoffset = offset;
-
-    // Update label
     document.getElementById('timer-label').textContent = TIMER_LABELS[currentType];
-
-    // Update page title
+    updateHelperText();
     document.title = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} - Focus Timer`;
   }
 
@@ -195,7 +337,6 @@
     if (!isRunning) return;
     clearInterval(timerInterval);
     isRunning = false;
-
     document.getElementById('btn-pause').classList.add('hidden');
     document.getElementById('btn-start').classList.remove('hidden');
     document.getElementById('btn-start').classList.add('flex');
@@ -206,48 +347,50 @@
     isRunning = false;
     remainingSeconds = totalSeconds;
     updateDisplay();
-
-    document.getElementById('btn-pause').classList.add('hidden');
-    document.getElementById('btn-start').classList.remove('hidden');
-    document.getElementById('btn-start').classList.add('flex');
+    resetButtons();
   }
 
   function timerComplete() {
-    // Play sound using Web Audio API
     playNotificationSound();
 
-    // Log session if work session
     if (currentType === 'work') {
       const taskId = document.getElementById('task-selector').value;
       const minutes = Math.round(totalSeconds / 60);
+      state.completedSinceLongBreak += 1;
+      saveState();
+      syncAllUi();
 
       fetch('/focus/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskId, minutes, type: currentType })
       }).then(() => {
-        // Update stats
         const sessionsEl = document.getElementById('today-sessions');
         const minutesEl = document.getElementById('today-minutes');
-        sessionsEl.textContent = parseInt(sessionsEl.textContent) + 1;
-        minutesEl.textContent = parseInt(minutesEl.textContent) + minutes;
+        sessionsEl.textContent = parseInt(sessionsEl.textContent, 10) + 1;
+        minutesEl.textContent = parseInt(minutesEl.textContent, 10) + minutes;
       }).catch(console.error);
+    } else if (currentType === 'longBreak') {
+      state.completedSinceLongBreak = 0;
+      saveState();
+      syncAllUi();
     }
 
-    // Show notification
     if (Notification.permission === 'granted') {
-      new Notification('Focus Timer Selesai! 🍅', {
-        body: currentType === 'work' ? 'Waktu istirahat!' : 'Waktu fokus lagi!',
+      new Notification('Focus Timer Selesai!', {
+        body: currentType === 'work' ? 'Waktu istirahat.' : 'Waktu fokus lagi.',
         icon: '/favicon.ico'
       });
     }
 
-    // Alert
-    alert(`${TIMER_LABELS[currentType]} selesai! 🎉`);
+    alert(`${TIMER_LABELS[currentType]} selesai!`);
 
-    // Auto-switch type
     if (currentType === 'work') {
-      setTimerType('shortBreak');
+      if (requiresLockedLongBreak() && canUseLongBreak()) {
+        setTimerType('longBreak');
+      } else {
+        setTimerType('shortBreak');
+      }
     } else {
       setTimerType('work');
     }
@@ -256,21 +399,15 @@
   function playNotificationSound() {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-      // Play a pleasant two-tone notification
-      [0, 0.2].forEach((delay, i) => {
+      [0, 0.2].forEach((delay, index) => {
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
-
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-
         oscillator.type = 'sine';
-        oscillator.frequency.value = i === 0 ? 523.25 : 659.25; // C5, E5
-
+        oscillator.frequency.value = index === 0 ? 523.25 : 659.25;
         gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + delay);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.5);
-
         oscillator.start(audioCtx.currentTime + delay);
         oscillator.stop(audioCtx.currentTime + delay + 0.5);
       });
@@ -279,12 +416,13 @@
     }
   }
 
-  // Request notification permission on load
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
 
-  // Initialize display
+  totalSeconds = getDurationForType(currentType);
+  remainingSeconds = totalSeconds;
+  syncAllUi();
   updateDisplay();
 </script>
 

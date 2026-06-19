@@ -62,13 +62,14 @@ router.post('/log', async (req, res) => {
   try {
     const userId = req.session.user.id;
     const { taskId, minutes, type } = req.body;
+    const parsedMinutes = parseInt(minutes, 10);
 
     await logActivity(prisma, req, {
       action: 'focus_session',
       entityType: 'task',
       entityId: taskId || '',
       taskId: taskId || null,
-      metadata: { minutes: parseInt(minutes) || 25, type: type || 'work' }
+      metadata: { minutes: Number.isFinite(parsedMinutes) && parsedMinutes > 0 ? parsedMinutes : 30, type: type || 'work' }
     });
 
     res.json({ success: true });
