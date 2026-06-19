@@ -3,219 +3,327 @@
 <div class="max-w-5xl mx-auto">
   <div class="mb-8">
     <h1 class="text-4xl font-bold mb-2">Panduan Penggunaan</h1>
-    <p class="text-gray-500 text-lg">Maulana Corp Project Management untuk brand, project, task, chat, dan reminder tim.</p>
+    <p class="text-gray-500 text-lg">Maulana Corp Project Management untuk workspace, brand, project, task, report, chat, dan reminder tim.</p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-    <section class="bg-white border rounded-3xl p-6">
-      <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-sitemap text-blue-600"></i> Role</h2>
-      <div class="space-y-3 text-sm text-gray-600">
-        <p><strong>Owner</strong> membuat workspace/brand dan mengelola semua brand, partner, project, member, dan seluruh task.</p>
-        <p><strong>Partner</strong> mengelola brand yang di-assign oleh Owner, termasuk project dan member di brand itu.</p>
-        <p><strong>Admin</strong> mengelola project, member, dan task di brand tempat dia diberi akses. Admin tidak membuat workspace baru.</p>
-        <p><strong>Member</strong> mengerjakan task, komentar, checklist, chat, dan upload file sesuai akses brand.</p>
-      </div>
-    </section>
-
-    <section class="bg-white border rounded-3xl p-6">
-      <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-rocket text-blue-600"></i> Alur Cepat</h2>
-      <ol class="space-y-3 text-sm text-gray-600">
-        <li><strong>1.</strong> Owner membuat brand dari menu Kelola Brand.</li>
-        <li><strong>2.</strong> Owner assign Partner, lalu Partner/Admin mengundang member.</li>
-        <li><strong>3.</strong> Buat project dari menu Proyek, lalu buka board Kanban.</li>
-        <li><strong>4.</strong> Buat task, assign PIC, beri deadline, prioritas, label, checklist, dan attachment.</li>
-      </ol>
-    </section>
-  </div>
-
-  <div class="bg-white border rounded-3xl p-6 mb-6">
-    <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-star text-blue-600"></i> Fitur Aktif</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-columns text-blue-600 mr-2"></i>Kanban Board</div>
-        <p class="text-sm text-gray-600">Drag task antar To Do, In Progress, dan Done. Filter task berdasarkan prioritas.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-tasks text-emerald-600 mr-2"></i>Detail Task</div>
-        <p class="text-sm text-gray-600">Edit task, checklist, komentar, label, attachment, activity log, status cepat, dan hapus task.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-comments text-amber-600 mr-2"></i>Chat Proyek</div>
-        <p class="text-sm text-gray-600">Ada di bagian bawah board project. Bisa kirim teks, file, image, dan paste screenshot langsung.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-inbox text-blue-600 mr-2"></i>Inbox Personal</div>
-        <p class="text-sm text-gray-600">Chat 1-on-1 dari menu Inbox. Bisa kirim file/image dan paste screenshot seperti chat project.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-bell text-purple-600 mr-2"></i>Notifikasi</div>
-        <p class="text-sm text-gray-600">Lonceng menampilkan assign task, pesan personal, dan reminder deadline.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-calendar-check text-red-600 mr-2"></i>Reminder Deadline</div>
-        <p class="text-sm text-gray-600">Menu Reminder menampilkan task aktif dengan deadline dan tombol untuk mengirim pengingat ke assignee.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-search text-gray-700 mr-2"></i>Search Global</div>
-        <p class="text-sm text-gray-600">Cari task, project, atau user dari kolom search di topbar atau menu Search di mobile.</p>
-      </div>
-      <div class="border rounded-2xl p-4">
-        <div class="font-bold mb-1"><i class="fas fa-tags text-teal-600 mr-2"></i>Label & Activity Log</div>
-        <p class="text-sm text-gray-600">Label membantu klasifikasi task. Activity log mencatat create, update, checklist, komentar, upload, dan perubahan label.</p>
-      </div>
+  <div class="mb-8">
+    <div class="inline-flex flex-wrap gap-2 p-2 bg-white border rounded-2xl">
+      <a href="/panduan?tab=umum"
+         class="px-4 py-2 rounded-xl text-sm font-semibold transition <%= activeTab === 'umum' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' %>">
+        <i class="fas fa-book-open mr-2"></i>UMUM
+      </a>
+      <a href="/panduan?tab=report"
+         class="px-4 py-2 rounded-xl text-sm font-semibold transition <%= activeTab === 'report' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' %>">
+        <i class="fas fa-chart-column mr-2"></i>REPORT
+      </a>
     </div>
   </div>
 
-  <div class="bg-white border rounded-3xl p-6 mb-6">
-    <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-paperclip text-blue-600"></i> Upload, Image, dan Screenshot</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Chat Project</div>
-        Buka project, scroll ke Chat Proyek, klik paperclip atau paste screenshot dari clipboard.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Inbox Personal</div>
-        Buka Inbox, pilih kontak, lalu kirim teks/file/image atau paste screenshot.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Task Attachment</div>
-        Buka detail task, upload file dari panel Attachment di sisi kanan.
-      </div>
+  <% if (activeTab === 'report') { %>
+    <div class="space-y-6">
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+          <i class="fas fa-chart-column text-blue-600"></i> Report Project
+        </h2>
+        <div class="space-y-3 text-sm text-gray-600">
+          <p><strong>Report itu menempel per project.</strong> Jadi report di Project A hanya untuk Project A, report di Project B hanya untuk Project B. Datanya tidak saling tercampur.</p>
+          <p>Contoh: kalau kamu punya project <strong>100 Posting Tiktok</strong> dan project <strong>Optimalkan Produk Muswim</strong>, masing-masing punya halaman report sendiri, summary sendiri, trend sendiri, dan export CSV sendiri.</p>
+          <p>Kalau dalam satu project ada beberapa brand dalam 1 workspace, kamu bisa isi <strong>Breakdown Brand</strong> supaya output-nya tetap bisa dipisah per brand di dalam project yang sama.</p>
+        </div>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+          <i class="fas fa-route text-emerald-600"></i> Alur Pakai Cepat
+        </h2>
+        <ol class="space-y-3 text-sm text-gray-600">
+          <li><strong>1.</strong> Buka project yang ingin dipantau.</li>
+          <li><strong>2.</strong> Klik tombol <strong>Report</strong> di header halaman project, sejajar dengan tombol Gantt.</li>
+          <li><strong>3.</strong> Isi <strong>Tanggal</strong> report.</li>
+          <li><strong>4.</strong> Kalau project mencakup beberapa brand, pilih <strong>Breakdown Brand</strong>. Kalau tidak perlu, biarkan kosong.</li>
+          <li><strong>5.</strong> Isi angka progres harian pada kolom yang tersedia, misalnya <strong>Target</strong>, <strong>Generate</strong>, dan <strong>Upload</strong>.</li>
+          <li><strong>6.</strong> Tambahkan <strong>Catatan</strong> kalau ada konteks tambahan, lalu klik <strong>Simpan Report Harian</strong>.</li>
+          <li><strong>7.</strong> Setelah tersimpan, data langsung masuk ke tabel report, summary, trend, dan breakdown brand project tersebut.</li>
+        </ol>
+      </section>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="bg-white border rounded-3xl p-6">
+          <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+            <i class="fas fa-layer-group text-purple-600"></i> Versi 1
+          </h3>
+          <div class="space-y-3 text-sm text-gray-600">
+            <p><strong>Versi 1</strong> cocok kalau format report-nya sederhana dan sama terus.</p>
+            <p>Default kolomnya:</p>
+            <ul class="space-y-2">
+              <li><strong>Target</strong>: target output hari itu.</li>
+              <li><strong>Generate</strong>: jumlah hasil yang sudah dibuat.</li>
+              <li><strong>Upload</strong>: jumlah hasil yang sudah naik/posting.</li>
+            </ul>
+            <p>Contoh pakai:</p>
+            <div class="bg-gray-50 rounded-2xl p-4 font-mono text-xs text-gray-700">
+              1-6-2026 | Target 70 | Generate 68 | Upload 60
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white border rounded-3xl p-6">
+          <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+            <i class="fas fa-sliders text-amber-600"></i> Versi 2
+          </h3>
+          <div class="space-y-3 text-sm text-gray-600">
+            <p><strong>Versi 2</strong> dipakai kalau kebutuhan tiap project beda.</p>
+            <p>Di panel <strong>Setup Kolom Report</strong>, manager bisa ubah nama kolom sesuai project, misalnya:</p>
+            <ul class="space-y-2">
+              <li><strong>Script</strong></li>
+              <li><strong>Shoot</strong></li>
+              <li><strong>Edit</strong></li>
+              <li><strong>Upload</strong></li>
+              <li><strong>Leads</strong></li>
+            </ul>
+            <p>Artinya 1 project bisa punya format report sendiri tanpa mengubah project lain.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+          <i class="fas fa-table-list text-blue-600"></i> Penjelasan Tiap Bagian
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Input Progres Harian</div>
+            Tempat isi data report per tanggal. Ini area utama untuk menambah data baru.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Summary Output</div>
+            Rekap otomatis untuk <strong>hari ini</strong>, <strong>7 hari</strong>, dan <strong>30 hari</strong>.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Trend</div>
+            Grafik batang harian. Dipakai buat lihat progres naik, turun, atau stagnan.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Data Report Harian</div>
+            Tabel semua input yang pernah dimasukkan ke project itu.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Breakdown Per Brand</div>
+            Rekap khusus per brand kalau saat input kamu memilih brand di field breakdown.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Export CSV</div>
+            Ambil semua data report project ke file CSV untuk Excel atau Google Sheets.
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+          <i class="fas fa-code-branch text-teal-600"></i> Kapan Pakai Breakdown Brand
+        </h2>
+        <div class="space-y-3 text-sm text-gray-600">
+          <p><strong>Pakai breakdown brand</strong> kalau 1 project dipakai untuk beberapa brand sekaligus.</p>
+          <p>Contoh: project <strong>100 Posting Perhari</strong> dipakai untuk <strong>BE.SYAR'I</strong>, <strong>MUSWIM</strong>, dan <strong>OBERBE</strong>. Saat input report, pilih brand yang sesuai supaya nanti bisa direkap per brand.</p>
+          <p><strong>Tidak perlu breakdown brand</strong> kalau project itu memang khusus 1 brand saja.</p>
+        </div>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-5 flex items-center gap-2">
+          <i class="fas fa-circle-question text-red-600"></i> FAQ Singkat
+        </h2>
+        <div class="space-y-4 text-sm text-gray-600">
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Apakah report project satu terhubung ke project lain?</div>
+            Tidak. Report selalu terpisah per project.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Kalau saya ubah kolom di project A, apakah project B ikut berubah?</div>
+            Tidak. Setup kolom berlaku hanya untuk project yang sedang dibuka.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Siapa yang bisa atur kolom report?</div>
+            Owner, Partner yang punya akses, atau Admin brand yang mengelola project tersebut.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Kalau salah input data bagaimana?</div>
+            Buka tabel <strong>Data Report Harian</strong>, lalu hapus baris yang salah dan input ulang.
+          </div>
+        </div>
+      </section>
     </div>
-  </div>
+  <% } else { %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-sitemap text-blue-600"></i> Role</h2>
+        <div class="space-y-3 text-sm text-gray-600">
+          <p><strong>Owner</strong> membuat workspace/brand dan mengelola semua brand, partner, project, member, dan seluruh task.</p>
+          <p><strong>Partner</strong> mengelola brand yang di-assign oleh Owner, termasuk project dan member di brand itu.</p>
+          <p><strong>Admin</strong> mengelola project, member, dan task di brand tempat dia diberi akses. Admin tidak membuat workspace baru.</p>
+          <p><strong>Member</strong> mengerjakan task, komentar, checklist, chat, dan upload file sesuai akses brand.</p>
+        </div>
+      </section>
 
-  <div class="bg-white border rounded-3xl p-6">
-    <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-shield-alt text-blue-600"></i> Catatan Akses</h2>
-    <p class="text-sm text-gray-600">
-      Owner bisa melihat semua data. Partner hanya melihat brand yang di-assign. Admin dan Member hanya melihat workspace tempat mereka menjadi anggota.
-      Task, project chat, search, reminder, dan inbox mengikuti batas akses tersebut.
-    </p>
-  </div>
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-rocket text-blue-600"></i> Alur Cepat</h2>
+        <ol class="space-y-3 text-sm text-gray-600">
+          <li><strong>1.</strong> Owner membuat brand dari menu Kelola Brand.</li>
+          <li><strong>2.</strong> Owner assign Partner, lalu Partner/Admin mengundang member.</li>
+          <li><strong>3.</strong> Buat project dari menu Proyek, lalu buka board Kanban.</li>
+          <li><strong>4.</strong> Buat task, assign PIC, beri deadline, prioritas, label, checklist, dan attachment.</li>
+        </ol>
+      </section>
+    </div>
 
-  <div class="bg-white border rounded-3xl p-6">
-    <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-magic text-purple-600"></i> Fitur Baru</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Sub-Checklist</div>
-        Setiap checklist item bisa punya turunan. Klik tombol <i class="fas fa-plus text-blue-500"></i> yang muncul saat hover untuk menambah sub-checklist.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Task Preview</div>
-        Klik task card di kanban board untuk membuka preview panel slide-in dari kanan. Lihat status, priority, checklist progress, dan item yang belum selesai.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Quick-Move Status</div>
-        Setiap task card punya tombol cepat: "Mulai" (TODO→Doing), "Selesai" (Doing→Done), "Buka" (Done→Todo). Tanpa drag & drop.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Cheers Reactions</div>
-        Tambahkan emoji reaction (👍🔥❤️😂🎉👀) di setiap komentar task. Klik ikon smile untuk memilih emoji.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">@Mention di Komentar</div>
-        Ketik @ di kolom komentar untuk mention nama user. Autocomplete muncul otomatis.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Threaded Comment</div>
-        Reply ke komentar tertentu dengan klik tombol "Reply". Thread muncul dengan indentasi di bawah komentar utama.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">File di Komentar</div>
-        Lampirkan file langsung di komentar. Klik "Lampirkan file" di bawah input komentar. File tersimpan di media project.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Task Dependencies</div>
-        Tambahkan dependency di detail task. Task bisa bergantung pada task lain. Status ditampilkan: ✅ selesai, ⏳ belum selesai.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Task Templates</div>
-        Buat template task + checklist baku. Klik "Dari Template" di kanban untuk membuat task dari template. Cocok untuk task berulang.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Bulk Actions</div>
-        Pilih beberapa task sekaligus (klik "Bulk Select" atau tekan B), lalu pindahkan batch ke status berbeda atau hapus sekaligus.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Keyboard Shortcuts</div>
-        <div class="mt-1 space-y-1">
-          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">N</kbd> — Buat task baru</div>
-          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">B</kbd> — Bulk select mode</div>
-          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">Esc</kbd> — Tutup modal/panel</div>
-          <div><kbd class="bg-gray-200 px-1.5 py-0.5 rounded text-xs font-mono">?</kbd> — Toggle bantuan</div>
+    <div class="bg-white border rounded-3xl p-6 mb-6">
+      <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-star text-blue-600"></i> Fitur Aktif</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-columns text-blue-600 mr-2"></i>Kanban Board</div>
+          <p class="text-sm text-gray-600">Drag task antar To Do, In Progress, dan Done. Filter task berdasarkan prioritas.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-tasks text-emerald-600 mr-2"></i>Detail Task</div>
+          <p class="text-sm text-gray-600">Edit task, checklist, komentar, label, attachment, activity log, status cepat, dan hapus task.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-comments text-amber-600 mr-2"></i>Chat Proyek</div>
+          <p class="text-sm text-gray-600">Ada di bagian bawah board project. Bisa kirim teks, file, image, dan paste screenshot langsung.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-inbox text-blue-600 mr-2"></i>Inbox Personal</div>
+          <p class="text-sm text-gray-600">Chat 1-on-1 dari menu Inbox. Bisa kirim file/image dan paste screenshot seperti chat project.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-bell text-purple-600 mr-2"></i>Notifikasi</div>
+          <p class="text-sm text-gray-600">Lonceng menampilkan assign task, pesan personal, dan reminder deadline.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-calendar-check text-red-600 mr-2"></i>Reminder Deadline</div>
+          <p class="text-sm text-gray-600">Menu Reminder menampilkan task aktif dengan deadline dan tombol untuk mengirim pengingat ke assignee.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-search text-gray-700 mr-2"></i>Search Global</div>
+          <p class="text-sm text-gray-600">Cari task, project, atau user dari kolom search di topbar atau menu Search di mobile.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-tags text-teal-600 mr-2"></i>Label & Activity Log</div>
+          <p class="text-sm text-gray-600">Label membantu klasifikasi task. Activity log mencatat create, update, checklist, komentar, upload, dan perubahan label.</p>
         </div>
       </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Dashboard Kinerja</div>
-        Menu "Kinerja Tim" di sidebar. Lihat performa per member: completion rate, task breakdown, overdue. Filter per brand.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">My Tasks Board</div>
-        Menu "Tugas Saya" di sidebar. View personal lintas project dengan filter status, checklist progress, dan quick-move buttons.
-      </div>
-      <div class="bg-gray-50 rounded-2xl p-4">
-        <div class="font-semibold text-gray-800 mb-1">Invite Link</div>
-        Generate link invite per brand di halaman Kelola Brand. User yang buka link otomatis join brand. 1 user max 1 workspace.
-      </div>
     </div>
-  </div>
-</div>
 
-<div class="bg-white border rounded-3xl p-6 mt-6">
-  <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-rocket text-emerald-600"></i> Produktivitas, Komunikasi & Monitoring</h2>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-lock text-blue-500 mr-1.5"></i>Assign Proyek per-Orang</div>
-      Project sekarang punya akses spesifik. Buka kanban, klik "Anggota", tambah orang yang boleh lihat proyek itu. Owner/Partner/Admin brand selalu bisa lihat semua. Member biasa hanya lihat proyek yang di-assign ke dia.
+    <div class="bg-white border rounded-3xl p-6 mb-6">
+      <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-paperclip text-blue-600"></i> Upload, Image, dan Screenshot</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Chat Project</div>
+          Buka project, scroll ke Chat Proyek, klik paperclip atau paste screenshot dari clipboard.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Inbox Personal</div>
+          Buka Inbox, pilih kontak, lalu kirim teks/file/image atau paste screenshot.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Task Attachment</div>
+          Buka detail task, upload file dari panel Attachment di sisi kanan.
+        </div>
+      </div>
     </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-repeat text-teal-600 mr-1.5"></i>Tugas Berulang</div>
-      Klik "Berulang" di kanban untuk membuat task yang otomatis dibuat lagi tiap hari, Senin-Jumat, atau hari tertentu setiap minggu. Cocok untuk task rutin seperti posting konten harian.
+
+    <div class="bg-white border rounded-3xl p-6 mb-6">
+      <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-shield-alt text-blue-600"></i> Catatan Akses</h2>
+      <p class="text-sm text-gray-600">
+        Owner bisa melihat semua data. Partner hanya melihat brand yang di-assign. Admin dan Member hanya melihat workspace tempat mereka menjadi anggota.
+        Task, project chat, search, reminder, dan inbox mengikuti batas akses tersebut.
+      </p>
     </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-calendar-days text-purple-600 mr-1.5"></i>Kalender</div>
-      Menu "Kalender" di sidebar. Lihat semua deadline task lintas proyek dalam tampilan bulanan, warna berbeda untuk akan datang/lewat deadline/selesai.
+
+    <div class="bg-white border rounded-3xl p-6 mb-6">
+      <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-magic text-purple-600"></i> Fitur Baru</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Sub-Checklist</div>
+          Setiap checklist item bisa punya turunan. Klik tombol plus di kanan item untuk menambah sub-checklist.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Task Preview</div>
+          Klik task card di kanban board untuk membuka preview panel slide-in dari kanan.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Quick-Move Status</div>
+          Setiap task card punya tombol cepat untuk pindah status tanpa drag and drop.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Cheers Reactions</div>
+          Tambahkan emoji reaction di komentar task.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">@Mention di Komentar</div>
+          Ketik @ di kolom komentar untuk mention nama user. Autocomplete muncul otomatis.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Threaded Comment</div>
+          Reply ke komentar tertentu dan balasan akan tetap terkait ke komentar asal.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">File di Komentar</div>
+          Lampirkan file langsung di komentar task.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Task Dependencies</div>
+          Tambahkan dependency di detail task untuk memantau task yang saling bergantung.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Task Templates</div>
+          Buat template task dan checklist baku untuk dipakai ulang.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Bulk Actions</div>
+          Pilih beberapa task sekaligus, lalu pindahkan batch atau hapus sekaligus.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Dashboard Kinerja</div>
+          Menu Kinerja Tim menampilkan performa per member dan beban kerja saat ini.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Invite Link</div>
+          Generate link invite per brand dari halaman Kelola Brand.
+        </div>
+      </div>
     </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-calendar-day text-emerald-600 mr-1.5"></i>Tugas Hari Ini</div>
-      Di halaman "Tugas Saya", klik filter "Hari Ini" untuk fokus ke task yang deadline-nya hari ini atau sudah lewat.
+
+    <div class="bg-white border rounded-3xl p-6">
+      <h2 class="text-2xl font-bold mb-5 flex items-center gap-2"><i class="fas fa-rocket text-emerald-600"></i> Produktivitas, Komunikasi & Monitoring</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Assign Proyek per-Orang</div>
+          Project punya akses spesifik. Owner, Partner, dan Admin brand selalu bisa lihat semua project di brand-nya. Member biasa hanya lihat project yang di-assign.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Tugas Berulang</div>
+          Klik Berulang di kanban untuk membuat task otomatis tiap hari, weekdays, atau mingguan.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Kalender</div>
+          Menu Kalender menampilkan deadline task lintas project dalam tampilan bulanan.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Pengumuman</div>
+          Owner bisa kirim pengumuman ke semua user lewat menu Pengumuman.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Pin Pesan Chat</div>
+          Hover pesan di chat project lalu klik pin untuk menaruh pesan penting di atas.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Reminder Telegram</div>
+          Isi Telegram Chat ID di Profil Saya agar reminder deadline masuk ke Telegram juga.
+        </div>
+      </div>
     </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-bullhorn text-purple-600 mr-1.5"></i>Pengumuman</div>
-      Owner bisa kirim pengumuman ke semua user lewat menu "Pengumuman". Muncul sebagai banner di atas semua halaman + notifikasi + Telegram (kalau Chat ID sudah diisi).
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-thumbtack text-amber-600 mr-1.5"></i>Pin Pesan Chat</div>
-      Hover pesan di Chat Proyek, klik ikon pin yang muncul. Pesan penting akan selalu tampil di atas chat box sampai di-unpin.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-briefcase text-amber-600 mr-1.5"></i>Beban Kerja Tim</div>
-      Di "Kinerja Tim", section "Beban Kerja Tim" menampilkan jumlah task aktif tiap orang saat ini (bukan completion rate), dengan indikator Santai/Sedang/Berat — gampang lihat siapa kebanyakan kerjaan.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-triangle-exclamation text-red-600 mr-1.5"></i>Eskalasi Overdue</div>
-      Task yang sudah 2 hari lewat deadline otomatis menotif manager/owner brand tersebut, bukan cuma assignee-nya — supaya nggak ada yang kelewat lama tanpa diketahui atasan.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-chart-line text-blue-600 mr-1.5"></i>Laporan Mingguan Otomatis</div>
-      Tiap Senin pagi, manager/owner tiap brand otomatis dapat ringkasan: task selesai minggu lalu, task overdue, dan top performer — via notifikasi + Telegram.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fab fa-telegram text-blue-500 mr-1.5"></i>Reminder Telegram</div>
-      Isi Telegram Chat ID di Profil Saya. Reminder deadline (H-2, H-1, hari H, dan tiap hari kalau sudah lewat deadline) otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-bell text-blue-500 mr-1.5"></i>Notifikasi Desktop (Push)</div>
-      Klik "Aktifkan" di banner biru yang muncul di atas halaman. Notifikasi tetap muncul walau tab browser tertutup, asal browser masih berjalan.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-at text-blue-500 mr-1.5"></i>@Mention di Chat Proyek</div>
-      Ketik @ di kolom chat proyek (bukan cuma komentar task) untuk mention dan notif otomatis ke orang yang di-tag.
-    </div>
-    <div class="bg-gray-50 rounded-2xl p-4">
-      <div class="font-semibold text-gray-800 mb-1"><i class="fas fa-box-archive text-amber-600 mr-1.5"></i>Arsip Proyek</div>
-      Proyek yang sudah tidak aktif bisa diarsipkan (bukan dihapus) lewat tombol arsip di kanban. Owner bisa lihat/pulihkan/hapus permanen dari menu Arsip di halaman Semua Proyek.
-    </div>
-  </div>
+  <% } %>
 </div>
 
 <%- include('partials/footer') %>
