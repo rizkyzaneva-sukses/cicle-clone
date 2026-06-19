@@ -1,0 +1,219 @@
+<%- include('partials/header', { title: 'Anggota Holding' }) %>
+
+<div class="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+  <div>
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Anggota Holding</h1>
+    <p class="text-gray-500 mt-1">Lihat semua user app dan atur mereka masuk ke brand mana saja dalam holding</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/brands" class="px-4 py-2.5 border rounded-2xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+      Kelola Workspace & Brand
+    </a>
+  </div>
+</div>
+
+<div class="bg-white border rounded-3xl p-6 mb-6 shadow-sm">
+  <form method="GET" action="/members/holding" class="flex flex-col sm:flex-row gap-3 sm:items-end">
+    <div class="flex-1">
+      <label class="block text-sm font-medium mb-1.5">Pilih Workspace / Holding</label>
+      <select name="workspaceId" class="w-full border rounded-2xl px-4 py-3">
+        <% workspaces.forEach(item => { %>
+          <option value="<%= item.id %>" <%= workspace && workspace.id === item.id ? 'selected' : '' %>><%= item.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button type="submit" class="px-5 py-3 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+      Buka Data Holding
+    </button>
+  </form>
+</div>
+
+<% if (workspace) { %>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white border rounded-2xl p-5 shadow-sm">
+      <div class="text-3xl font-bold text-blue-600"><%= holdingMembers.length %></div>
+      <div class="text-sm text-gray-500 mt-1">User di Holding Ini</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-5 shadow-sm">
+      <div class="text-3xl font-bold text-purple-600"><%= workspace.brands.length %></div>
+      <div class="text-sm text-gray-500 mt-1">Brand di Holding</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-5 shadow-sm">
+      <div class="text-3xl font-bold text-emerald-600"><%= allUsers.length %></div>
+      <div class="text-sm text-gray-500 mt-1">Total User App</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-5 shadow-sm">
+      <div class="text-3xl font-bold text-amber-600"><%= allUsers.filter(user => !user.inActiveWorkspace).length %></div>
+      <div class="text-sm text-gray-500 mt-1">User App di Luar Holding Ini</div>
+    </div>
+  </div>
+
+  <div class="bg-white border rounded-3xl p-6 mb-6 shadow-sm">
+    <h2 class="font-semibold text-lg mb-2">Masukkan User App ke Holding Ini</h2>
+    <p class="text-sm text-gray-500 mb-4">Pakai email akun yang sudah terdaftar, lalu centang brand yang harus dia akses.</p>
+
+    <form action="/members/holding/<%= workspace.id %>/add-user" method="POST">
+      <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-5">
+        <div>
+          <label class="block text-sm font-medium mb-1.5">Email User App</label>
+          <input type="email" name="email" list="all-user-emails" required placeholder="nama@email.com"
+            class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
+          <datalist id="all-user-emails">
+            <% allUsers.forEach(user => { %>
+              <option value="<%= user.email %>"><%= user.name %></option>
+            <% }) %>
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1.5">Assign ke Brand</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <% workspace.brands.forEach(brand => { %>
+              <label class="flex items-center gap-2 border rounded-2xl px-4 py-3 hover:bg-gray-50">
+                <input type="checkbox" name="brandIds" value="<%= brand.id %>" class="accent-blue-600">
+                <span class="text-sm font-medium text-gray-700"><%= brand.name %></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <div class="mt-5 flex justify-end">
+        <button type="submit" class="px-5 py-3 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+          Masukkan ke Holding & Assign Brand
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="bg-white border rounded-3xl shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b bg-gray-50">
+      <div class="font-semibold text-gray-700">Anggota Holding: <%= workspace.name %></div>
+      <div class="text-xs text-gray-400 mt-1">Atur checkbox brand untuk menambah atau mencabut akses brand user biasa.</div>
+    </div>
+
+    <% if (holdingMembers.length === 0) { %>
+      <div class="px-6 py-12 text-center text-gray-400">
+        <i class="fas fa-users text-4xl mb-3 block"></i>
+        Belum ada user di holding ini
+      </div>
+    <% } else { %>
+      <div class="divide-y">
+        <% holdingMembers.forEach(member => { %>
+          <% const memberBrandIds = member.brandMemberships.map(item => item.id); %>
+          <div class="px-6 py-5">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div class="flex items-start gap-4 min-w-0">
+                <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0">
+                  <% if (member.avatar) { %>
+                    <img src="<%= member.avatar %>" alt="Foto <%= member.name %>" class="w-full h-full object-cover">
+                  <% } else { %>
+                    <%= member.name.charAt(0).toUpperCase() %>
+                  <% } %>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <div class="font-semibold text-gray-900"><%= member.name %></div>
+                    <% if (member.id === currentUserId) { %>
+                      <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">Kamu</span>
+                    <% } %>
+                    <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700"><%= member.platformRole %></span>
+                  </div>
+                  <div class="text-sm text-gray-500 mt-0.5"><%= member.email %></div>
+                  <div class="flex flex-wrap gap-2 mt-3">
+                    <% member.workspaceRoles.forEach(role => { %>
+                      <span class="px-2.5 py-1 text-xs rounded-full bg-purple-100 text-purple-700"><%= role %></span>
+                    <% }) %>
+                    <% member.partnerBrands.forEach(brand => { %>
+                      <span class="px-2.5 py-1 text-xs rounded-full bg-amber-100 text-amber-700">Partner: <%= brand.name %></span>
+                    <% }) %>
+                    <% member.brandMemberships.forEach(brand => { %>
+                      <span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-700"><%= brand.name %> • <%= brand.role %></span>
+                    <% }) %>
+                    <% if (member.workspaceRoles.length === 0 && member.partnerBrands.length === 0 && member.brandMemberships.length === 0) { %>
+                      <span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-500">Belum ada akses brand</span>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+
+              <details class="lg:w-[26rem]">
+                <summary class="list-none cursor-pointer inline-flex items-center gap-2 px-4 py-2 border rounded-2xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                  <i class="fas fa-sliders"></i> Atur Brand
+                </summary>
+                <form action="/members/holding/<%= workspace.id %>/users/<%= member.id %>/brands" method="POST"
+                  class="mt-3 border rounded-3xl p-4 bg-gray-50/60">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <% workspace.brands.forEach(brand => { %>
+                      <label class="flex items-center gap-2 border rounded-2xl bg-white px-4 py-3 hover:bg-gray-50">
+                        <input type="checkbox" name="brandIds" value="<%= brand.id %>" <%= memberBrandIds.includes(brand.id) ? 'checked' : '' %> class="accent-blue-600">
+                        <span class="text-sm font-medium text-gray-700"><%= brand.name %></span>
+                      </label>
+                    <% }) %>
+                  </div>
+                  <% if (member.workspaceRoles.length > 0 || member.partnerBrands.length > 0) { %>
+                    <p class="text-xs text-amber-600 mt-3">
+                      User ini juga punya akses dari level workspace / partner. Form ini hanya mengatur membership brand biasa.
+                    </p>
+                  <% } %>
+                  <div class="mt-4 flex justify-end">
+                    <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+                      Simpan Assign Brand
+                    </button>
+                  </div>
+                </form>
+              </details>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="bg-white border rounded-3xl shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b bg-gray-50">
+      <div class="font-semibold text-gray-700">Semua User App Terdaftar</div>
+      <div class="text-xs text-gray-400 mt-1">Ini daftar seluruh akun yang sudah terdaftar di app, termasuk yang belum masuk ke holding ini.</div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-white border-b">
+          <tr class="text-left text-gray-500">
+            <th class="px-6 py-3 font-medium">User</th>
+            <th class="px-6 py-3 font-medium">Role App</th>
+            <th class="px-6 py-3 font-medium">Workspace / Holding</th>
+            <th class="px-6 py-3 font-medium">Status di Holding Ini</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          <% allUsers.forEach(user => { %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4">
+                <div class="font-medium text-gray-900"><%= user.name %></div>
+                <div class="text-xs text-gray-500 mt-0.5"><%= user.email %></div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="px-2.5 py-1 text-xs rounded-full bg-blue-100 text-blue-700"><%= user.platformRole %></span>
+              </td>
+              <td class="px-6 py-4 text-gray-600">
+                <%= user.workspaceNames.length > 0 ? user.workspaceNames.join(', ') : 'Belum terhubung ke holding' %>
+              </td>
+              <td class="px-6 py-4">
+                <% if (user.inActiveWorkspace) { %>
+                  <span class="px-2.5 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">Sudah ada di holding ini</span>
+                <% } else { %>
+                  <span class="px-2.5 py-1 text-xs rounded-full bg-gray-100 text-gray-600">Belum ada di holding ini</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <div class="bg-white border rounded-3xl p-12 text-center">
+    <i class="fas fa-building text-5xl text-gray-200 mb-4"></i>
+    <p class="text-gray-500">Belum ada workspace untuk dikelola.</p>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

@@ -52,6 +52,134 @@ async function canManageCompany(req, companyId) {
   return !!adminMembership;
 }
 
+async function getUserWorkspaceIds(userId) {
+  const [memberships, partnerAccess, workspaceRoles, ownedWorkspaces] = await Promise.all([
+    prisma.membership.findMany({
+      where: { userId },
+      include: { company: { select: { workspaceId: true } } }
+    }),
+    prisma.partnerAccess.findMany({
+      where: { userId },
+      include: { company: { select: { workspaceId: true } } }
+    }),
+    prisma.workspacePartner.findMany({
+      where: { userId },
+      select: { workspaceId: true }
+    }),
+    prisma.workspace.findMany({
+      where: { ownerId: userId },
+      select: { id: true }
+    })
+  ]);
+
+  const workspaceIds = new Set();
+  memberships.forEach(membership => {
+    if (membership.company?.workspaceId) workspaceIds.add(membership.company.workspaceId);
+  });
+  partnerAccess.forEach(access => {
+    if (access.company?.workspaceId) workspaceIds.add(access.company.workspaceId);
+  });
+  workspaceRoles.forEach(access => {
+    if (access.workspaceId) workspaceIds.add(access.workspaceId);
+  });
+  ownedWorkspaces.forEach(workspace => {
+    if (workspace.id) workspaceIds.add(workspace.id);
+  });
+
+  return [...workspaceIds];
+}
+
+async function buildHoldingWorkspaceView(workspaceId) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    include: {
+      owner: true,
+      partners: {
+        include: { user: true },
+        orderBy: { assignedAt: 'asc' }
+      },
+      brands: {
+        select: { id: true, name: true, description: true, avatar: true },
+        orderBy: { createdAt: 'asc' }
+      }
+    }
+  });
+  if (!workspace) return null;
+
+  const [memberships, partnerAccess] = await Promise.all([
+    prisma.membership.findMany({
+      where: { company: { workspaceId } },
+      include: {
+        user: true,
+        company: { select: { id: true, name: true } }
+      },
+      orderBy: { joinedAt: 'asc' }
+    }),
+    prisma.partnerAccess.findMany({
+      where: { company: { workspaceId } },
+      include: {
+        user: true,
+        company: { select: { id: true, name: true } }
+      },
+      orderBy: { assignedAt: 'asc' }
+    })
+  ]);
+
+  const rows = new Map();
+  const ensureRow = (user) => {
+    if (!rows.has(user.id)) {
+      rows.set(user.id, {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        platformRole: user.platformRole,
+        workspaceRoles: new Set(),
+        brandMemberships: new Map(),
+        partnerBrands: new Map()
+      });
+    }
+    return rows.get(user.id);
+  };
+
+  if (workspace.owner) {
+    ensureRow(workspace.owner).workspaceRoles.add('OWNER');
+  }
+
+  workspace.partners.forEach(partner => {
+    ensureRow(partner.user).workspaceRoles.add(partner.role);
+  });
+
+  memberships.forEach(membership => {
+    const row = ensureRow(membership.user);
+    row.brandMemberships.set(membership.companyId, {
+      id: membership.company.id,
+      name: membership.company.name,
+      role: membership.role
+    });
+  });
+
+  partnerAccess.forEach(access => {
+    const row = ensureRow(access.user);
+    row.partnerBrands.set(access.companyId, {
+      id: access.company.id,
+      name: access.company.name
+    });
+  });
+
+  return {
+    workspace,
+    rows: [...rows.values()]
+      .map(row => ({
+        ...row,
+        workspaceRoles: [...row.workspaceRoles],
+        brandMemberships: [...row.brandMemberships.values()],
+        partnerBrands: [...row.partnerBrands.values()]
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'id'))
+  };
+}
+
 async function getResettableTarget(req, targetUserId, companyId) {
   const { id: currentUserId, platformRole = 'user' } = req.session.user;
   if (!companyId || targetUserId === currentUserId) return null;
@@ -73,6 +201,250 @@ async function getResettableTarget(req, targetUserId, companyId) {
   });
   return targetMembership ? target : null;
 }
+
+router.get('/holding', async (req, res) => {
+  const userId = req.session.user.id;
+  const platformRole = req.session.user.platformRole || 'user';
+
+  if (platformRole !== 'owner') {
+    req.flash('error', 'Fitur ini khusus Owner');
+    return res.redirect('/members');
+  }
+
+  const workspaces = await prisma.workspace.findMany({
+    include: {
+      brands: {
+        select: { id: true, name: true },
+        orderBy: { createdAt: 'asc' }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  const activeWorkspaceId = String(req.query.workspaceId || workspaces[0]?.id || '');
+  const holdingView = activeWorkspaceId ? await buildHoldingWorkspaceView(activeWorkspaceId) : null;
+
+  const allUsers = await prisma.user.findMany({
+    include: {
+      memberships: {
+        include: {
+          company: {
+            select: {
+              workspaceId: true,
+              workspace: { select: { name: true } }
+            }
+          }
+        }
+      },
+      partnerAccess: {
+        include: {
+          company: {
+            select: {
+              workspaceId: true,
+              workspace: { select: { name: true } }
+            }
+          }
+        }
+      },
+      workspaceRoles: {
+        include: {
+          workspace: { select: { id: true, name: true } }
+        }
+      },
+      ownedWorkspaces: {
+        select: { id: true, name: true }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  const allUserRows = allUsers.map(user => {
+    const workspaceNames = new Set();
+    user.memberships.forEach(membership => {
+      if (membership.company?.workspace?.name) workspaceNames.add(membership.company.workspace.name);
+    });
+    user.partnerAccess.forEach(access => {
+      if (access.company?.workspace?.name) workspaceNames.add(access.company.workspace.name);
+    });
+    user.workspaceRoles.forEach(access => {
+      if (access.workspace?.name) workspaceNames.add(access.workspace.name);
+    });
+    user.ownedWorkspaces.forEach(workspace => {
+      if (workspace.name) workspaceNames.add(workspace.name);
+    });
+
+    const workspaceIds = new Set();
+    user.memberships.forEach(membership => {
+      if (membership.company?.workspaceId) workspaceIds.add(membership.company.workspaceId);
+    });
+    user.partnerAccess.forEach(access => {
+      if (access.company?.workspaceId) workspaceIds.add(access.company.workspaceId);
+    });
+    user.workspaceRoles.forEach(access => {
+      if (access.workspace?.id) workspaceIds.add(access.workspace.id);
+    });
+    user.ownedWorkspaces.forEach(workspace => {
+      if (workspace.id) workspaceIds.add(workspace.id);
+    });
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      platformRole: user.platformRole,
+      workspaceNames: [...workspaceNames],
+      inActiveWorkspace: activeWorkspaceId ? workspaceIds.has(activeWorkspaceId) : false
+    };
+  });
+
+  res.render('members-holding', {
+    title: 'Anggota Holding',
+    workspaces,
+    workspace: holdingView?.workspace || null,
+    holdingMembers: holdingView?.rows || [],
+    allUsers: allUserRows,
+    currentUserId: userId
+  });
+});
+
+router.post('/holding/:workspaceId/add-user', async (req, res) => {
+  const workspaceId = req.params.workspaceId;
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const selectedBrandIds = Array.isArray(req.body.brandIds)
+    ? req.body.brandIds
+    : req.body.brandIds ? [req.body.brandIds] : [];
+
+  try {
+    if (req.session.user.platformRole !== 'owner') {
+      req.flash('error', 'Fitur ini khusus Owner');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    if (!email) {
+      req.flash('error', 'Email user app wajib diisi');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    if (selectedBrandIds.length === 0) {
+      req.flash('error', 'Pilih minimal satu brand');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { brands: { select: { id: true, name: true } } }
+    });
+    if (!workspace) {
+      req.flash('error', 'Workspace tidak ditemukan');
+      return res.redirect('/members/holding');
+    }
+
+    const validBrandIds = new Set(workspace.brands.map(brand => brand.id));
+    const brandIds = selectedBrandIds.filter(id => validBrandIds.has(id));
+    if (brandIds.length === 0) {
+      req.flash('error', 'Brand tujuan tidak valid');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const target = await prisma.user.findUnique({ where: { email } });
+    if (!target) {
+      req.flash('error', 'User app dengan email tersebut belum terdaftar');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const workspaceIds = await getUserWorkspaceIds(target.id);
+    if (workspaceIds.some(id => id !== workspaceId)) {
+      req.flash('error', `${target.name} sudah terhubung ke workspace lain`);
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    await prisma.membership.createMany({
+      data: brandIds.map(companyId => ({
+        userId: target.id,
+        companyId,
+        role: 'member'
+      })),
+      skipDuplicates: true
+    });
+
+    req.flash('success', `${target.name} berhasil dimasukkan ke holding dan di-assign ke brand terpilih`);
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal menambahkan user ke holding');
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  }
+});
+
+router.post('/holding/:workspaceId/users/:userId/brands', async (req, res) => {
+  const workspaceId = req.params.workspaceId;
+  const targetUserId = req.params.userId;
+  const selectedBrandIds = Array.isArray(req.body.brandIds)
+    ? req.body.brandIds
+    : req.body.brandIds ? [req.body.brandIds] : [];
+
+  try {
+    if (req.session.user.platformRole !== 'owner') {
+      req.flash('error', 'Fitur ini khusus Owner');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { brands: { select: { id: true } } }
+    });
+    if (!workspace) {
+      req.flash('error', 'Workspace tidak ditemukan');
+      return res.redirect('/members/holding');
+    }
+
+    const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) {
+      req.flash('error', 'User tidak ditemukan');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const workspaceIds = await getUserWorkspaceIds(target.id);
+    if (workspaceIds.some(id => id !== workspaceId)) {
+      req.flash('error', `${target.name} sudah terhubung ke workspace lain`);
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const workspaceBrandIds = workspace.brands.map(brand => brand.id);
+    const validBrandIds = new Set(workspaceBrandIds);
+    const brandIds = selectedBrandIds.filter(id => validBrandIds.has(id));
+
+    await prisma.$transaction(async (tx) => {
+      await tx.membership.deleteMany({
+        where: {
+          userId: targetUserId,
+          companyId: {
+            in: workspaceBrandIds.filter(id => !brandIds.includes(id))
+          }
+        }
+      });
+
+      if (brandIds.length > 0) {
+        await tx.membership.createMany({
+          data: brandIds.map(companyId => ({
+            userId: targetUserId,
+            companyId,
+            role: 'member'
+          })),
+          skipDuplicates: true
+        });
+      }
+    });
+
+    req.flash('success', `Brand untuk ${target.name} berhasil diperbarui`);
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal memperbarui assign brand user');
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  }
+});
 
 router.get('/', async (req, res) => {
   const userId = req.session.user.id;
