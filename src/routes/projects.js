@@ -5,6 +5,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { logActivity } = require('../lib/activity');
 const { hasCompanyAccess, hasProjectAccess, isCompanyManager } = require('../lib/access');
 const { notifyUser } = require('../lib/notify');
+const { generateRecurringTask } = require('../lib/recurringTasks');
 
 router.use(requireAuth);
 
@@ -953,10 +954,15 @@ router.post('/:id/recurring', requireAdmin, async (req, res) => {
         frequency,
         weekday: frequency === 'WEEKLY' && weekday !== undefined && weekday !== '' ? parseInt(weekday) : null
       },
-      include: { assignee: true }
+      include: {
+        assignee: true,
+        project: { select: { id: true, name: true } }
+      }
     });
 
-    res.json({ success: true, template });
+    const generatedTask = await generateRecurringTask(template, req.app.get('io'));
+
+    res.json({ success: true, template, generatedTask });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal membuat tugas berulang' });

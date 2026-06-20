@@ -1073,6 +1073,9 @@ async function createRecurring() {
     `;
     document.getElementById('recurring-list').appendChild(row);
     document.getElementById('recurring-title').value = '';
+    if (data.generatedTask) {
+      window.location.reload();
+    }
   } catch (e) {
     alert('Gagal membuat tugas berulang');
   }

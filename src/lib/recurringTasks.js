@@ -16,8 +16,6 @@ function shouldRunToday(template, now) {
 }
 
 async function runRecurringTaskGenerator(io, now = new Date()) {
-  const today = dateKey(now);
-
   const templates = await prisma.recurringTaskTemplate.findMany({
     where: { active: true },
     include: { project: { select: { id: true, name: true } } }
@@ -25,9 +23,36 @@ async function runRecurringTaskGenerator(io, now = new Date()) {
 
   let generated = 0;
   for (const template of templates) {
-    if (!shouldRunToday(template, now)) continue;
+    const task = await generateRecurringTask(template, io, now);
+    if (task) generated++;
+  }
 
-    const task = await prisma.task.create({
+  if (generated > 0) console.log(`[Recurring] Generated ${generated} task(s) for ${dateKey(now)}`);
+
+  return generated;
+}
+
+async function generateRecurringTask(template, io, now = new Date()) {
+  if (!shouldRunToday(template, now)) return null;
+
+  const today = dateKey(now);
+  const task = await prisma.$transaction(async (tx) => {
+    // Claim this template/day before creating the task so scheduler and HTTP requests
+    // cannot generate the same recurring task concurrently.
+    const claimed = await tx.recurringTaskTemplate.updateMany({
+      where: {
+        id: template.id,
+        active: true,
+        OR: [
+          { lastRunDate: null },
+          { lastRunDate: { not: today } }
+        ]
+      },
+      data: { lastRunDate: today }
+    });
+    if (claimed.count === 0) return null;
+
+    return tx.task.create({
       data: {
         title: template.title,
         description: template.description,
@@ -38,12 +63,11 @@ async function runRecurringTaskGenerator(io, now = new Date()) {
         status: 'TODO'
       }
     });
+  });
 
-    await prisma.recurringTaskTemplate.update({
-      where: { id: template.id },
-      data: { lastRunDate: today }
-    });
+  if (!task) return null;
 
+  try {
     await logActivity(prisma, { session: { user: null } }, {
       action: 'created',
       entityType: 'task',
@@ -57,11 +81,11 @@ async function runRecurringTaskGenerator(io, now = new Date()) {
       await ensureProjectMember(template.assigneeId, template.projectId);
       await notifyUser(io, template.assigneeId, `Tugas rutin baru: "${task.title}" (${template.project.name})`, `/tasks/${task.id}`);
     }
-
-    generated++;
+  } catch (error) {
+    console.error('Recurring task post-create action failed:', error.message);
   }
 
-  if (generated > 0) console.log(`[Recurring] Generated ${generated} task(s) for ${today}`);
+  return task;
 }
 
-module.exports = { runRecurringTaskGenerator };
+module.exports = { generateRecurringTask, runRecurringTaskGenerator };
