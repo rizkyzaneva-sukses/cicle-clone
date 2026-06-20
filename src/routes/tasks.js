@@ -193,6 +193,36 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
+// Quick inline update: title only
+router.patch('/:id/title', async (req, res) => {
+  try {
+    const title = String(req.body.title || '').trim();
+    if (!title) return res.status(400).json({ error: 'Judul task wajib diisi' });
+
+    const existingTask = await canAccessTask(req.session.user, req.params.id);
+    if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
+
+    const task = await prisma.task.update({
+      where: { id: existingTask.id },
+      data: { title }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'updated',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { title: task.title }
+    });
+
+    res.json({ success: true, task });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal memperbarui judul task' });
+  }
+});
+
 // Quick inline update: assignee only
 router.patch('/:id/assignee', async (req, res) => {
   try {

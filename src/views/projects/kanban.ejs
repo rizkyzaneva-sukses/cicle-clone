@@ -1809,7 +1809,19 @@ if (fab) {
 <!-- Task Preview Panel (slide-in from right) -->
 <div id="preview-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
   <div class="flex items-center justify-between px-6 py-4 border-b">
-    <h3 class="text-lg font-bold text-gray-900 truncate flex-1" id="preview-title"></h3>
+    <div id="preview-title-display" class="flex items-center gap-2 min-w-0 flex-1">
+      <h3 class="text-lg font-bold text-gray-900 truncate" id="preview-title"></h3>
+      <button type="button" onclick="startPreviewTitleEdit()" class="shrink-0 p-1 text-gray-300 hover:text-blue-500 transition" title="Edit judul">
+        <i class="fas fa-pen text-xs"></i>
+      </button>
+    </div>
+    <form id="preview-title-form" class="hidden items-center gap-2 min-w-0 flex-1" onsubmit="savePreviewTitle(event)">
+      <input id="preview-title-input" type="text" required maxlength="255"
+        class="min-w-0 flex-1 border rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-blue-400"
+        onkeydown="if(event.key==='Escape'){event.preventDefault();cancelPreviewTitleEdit()}">
+      <button type="submit" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Simpan"><i class="fas fa-check"></i></button>
+      <button type="button" onclick="cancelPreviewTitleEdit()" class="p-2 text-gray-400 hover:bg-gray-100 rounded-lg" title="Batal"><i class="fas fa-times"></i></button>
+    </form>
     <button onclick="closePreview()" class="ml-3 p-2 rounded-xl hover:bg-gray-100 text-gray-500"><i class="fas fa-times text-lg"></i></button>
   </div>
   <div class="flex-1 overflow-y-auto p-6 space-y-5">
@@ -1960,6 +1972,7 @@ const _origClose = closePreview;
 closePreview = function() {
   document.getElementById('preview-overlay').classList.add('hidden');
   closeAllPreviewPopovers();
+  cancelPreviewTitleEdit();
   _origClose();
 };
 
@@ -1988,6 +2001,60 @@ function closeAllPreviewPopovers() {
   ['status', 'priority', 'due', 'assignee'].forEach(k => {
     document.getElementById(`preview-popover-${k}`)?.classList.add('hidden');
   });
+}
+
+function startPreviewTitleEdit() {
+  const task = tasks.find(item => item.id === previewTaskId);
+  if (!task) return;
+  closeAllPreviewPopovers();
+  document.getElementById('preview-title-display').classList.add('hidden');
+  const form = document.getElementById('preview-title-form');
+  form.classList.remove('hidden');
+  form.classList.add('flex');
+  const input = document.getElementById('preview-title-input');
+  input.value = task.title;
+  input.focus();
+  input.select();
+}
+
+function cancelPreviewTitleEdit() {
+  const form = document.getElementById('preview-title-form');
+  form.classList.add('hidden');
+  form.classList.remove('flex');
+  document.getElementById('preview-title-display').classList.remove('hidden');
+}
+
+async function savePreviewTitle(event) {
+  event.preventDefault();
+  const task = tasks.find(item => item.id === previewTaskId);
+  const input = document.getElementById('preview-title-input');
+  const title = input.value.trim();
+  if (!task || !title) {
+    input.focus();
+    return;
+  }
+
+  const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  try {
+    const res = await fetch(`/tasks/${previewTaskId}/title`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal memperbarui judul');
+
+    task.title = data.task.title;
+    cancelPreviewTitleEdit();
+    refreshPreviewUI();
+    renderKanban();
+  } catch (error) {
+    alert(error.message || 'Gagal memperbarui judul');
+    input.focus();
+  } finally {
+    submitButton.disabled = false;
+  }
 }
 
 document.addEventListener('click', (e) => {
@@ -2067,6 +2134,7 @@ async function previewUpdateField(kind, value) {
 function refreshPreviewUI() {
   const t = tasks.find(x => x.id === previewTaskId);
   if (!t) return;
+  document.getElementById('preview-title').textContent = t.title;
   document.getElementById('preview-status').textContent = STATUS_LABEL_PREVIEW[t.status] || t.status;
   const p = PRIO_LABEL_PREVIEW[t.priority] || PRIO_LABEL_PREVIEW.NONE;
   document.getElementById('preview-priority').innerHTML = t.priority && t.priority !== 'NONE'
