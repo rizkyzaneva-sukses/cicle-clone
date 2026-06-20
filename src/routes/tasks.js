@@ -300,7 +300,92 @@ router.patch('/:id/priority', async (req, res) => {
   }
 });
 
-// Update task — JSON (from kanban edit)
+// Update task from HTML forms on the task detail page.
+router.post('/:id/update', async (req, res) => {
+  try {
+    const existingTask = await canAccessTask(req.session.user, req.params.id);
+    if (!existingTask) {
+      req.flash('error', 'Akses ditolak');
+      return res.redirect('/projects');
+    }
+
+    const hasField = (name) => Object.prototype.hasOwnProperty.call(req.body, name);
+    const data = {};
+
+    if (hasField('title')) {
+      const title = String(req.body.title || '').trim();
+      if (!title) {
+        req.flash('error', 'Judul task wajib diisi');
+        return res.redirect(`/tasks/${existingTask.id}`);
+      }
+      data.title = title;
+    }
+    if (hasField('description')) data.description = String(req.body.description || '').trim() || null;
+
+    if (hasField('status')) {
+      const allowedStatuses = ['TODO', 'IN_PROGRESS', 'DONE'];
+      if (!allowedStatuses.includes(req.body.status)) {
+        req.flash('error', 'Status task tidak valid');
+        return res.redirect(`/tasks/${existingTask.id}`);
+      }
+      data.status = req.body.status;
+    }
+
+    if (hasField('priority')) {
+      const allowedPriorities = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+      data.priority = allowedPriorities.includes(req.body.priority) ? req.body.priority : 'NONE';
+    }
+
+    if (hasField('dueDate')) {
+      const dueDateRaw = String(req.body.dueDate || '').trim();
+      const dueDate = dueDateRaw ? new Date(`${dueDateRaw}T00:00:00`) : null;
+      if (dueDate && Number.isNaN(dueDate.getTime())) {
+        req.flash('error', 'Deadline tidak valid');
+        return res.redirect(`/tasks/${existingTask.id}`);
+      }
+      data.dueDate = dueDate;
+    }
+
+    if (hasField('assigneeId')) {
+      const assigneeId = String(req.body.assigneeId || '').trim() || null;
+      if (!await isValidAssignee(assigneeId, existingTask.project.companyId)) {
+        req.flash('error', 'Assignee bukan anggota brand ini');
+        return res.redirect(`/tasks/${existingTask.id}`);
+      }
+      data.assigneeId = assigneeId;
+
+      if (assigneeId && assigneeId !== existingTask.assigneeId) {
+        await ensureProjectMember(assigneeId, existingTask.projectId);
+        if (assigneeId !== req.session.user.id) {
+          await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${data.title || existingTask.title}"`, `/tasks/${existingTask.id}`);
+        }
+      }
+    }
+
+    const task = await prisma.task.update({
+      where: { id: existingTask.id },
+      data
+    });
+
+    await logActivity(prisma, req, {
+      action: 'updated',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { title: task.title }
+    });
+
+    req.flash('success', 'Task berhasil diperbarui');
+    res.redirect(`/tasks/${task.id}`);
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal memperbarui task');
+    res.redirect(`/tasks/${req.params.id}`);
+  }
+});
+
+// Update task via JSON from the kanban editor.
 router.put('/:id', async (req, res) => {
   try {
     const { title, description, assigneeId, dueDate, priority } = req.body;
