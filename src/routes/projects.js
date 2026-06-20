@@ -576,6 +576,76 @@ router.post('/:id/report/entries', async (req, res) => {
   }
 });
 
+router.post('/:id/report/entries/:entryId/edit', requireAdmin, async (req, res) => {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      include: { company: true }
+    });
+    const entry = await prisma.projectReportEntry.findUnique({
+      where: { id: req.params.entryId },
+      select: { id: true, projectId: true }
+    });
+    if (!project || !entry || entry.projectId !== project.id) {
+      req.flash('error', 'Data report tidak ditemukan');
+      return res.redirect(`/projects/${req.params.id}/report`);
+    }
+
+    const reportDateRaw = String(req.body.reportDate || '').trim();
+    const reportDate = new Date(`${reportDateRaw}T00:00:00`);
+    if (!reportDateRaw || Number.isNaN(reportDate.getTime())) {
+      req.flash('error', 'Tanggal report tidak valid');
+      return res.redirect(`/projects/${project.id}/report`);
+    }
+
+    const companyId = String(req.body.companyId || '').trim() || null;
+    if (companyId) {
+      const targetCompany = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { workspaceId: true }
+      });
+      if (!targetCompany || targetCompany.workspaceId !== project.company.workspaceId) {
+        req.flash('error', 'Brand breakdown harus berasal dari workspace yang sama');
+        return res.redirect(`/projects/${project.id}/report`);
+      }
+    }
+
+    const config = await prisma.projectReportConfig.findUnique({ where: { projectId: project.id } });
+    const columns = normalizeReportColumns(config?.columns);
+    const values = {};
+    columns.forEach(column => {
+      const rawValue = req.body[`metric_${column.key}`];
+      values[column.key] = column.type === 'number' ? Number(rawValue || 0) : String(rawValue || '').trim();
+      if (column.type === 'number' && Number.isNaN(values[column.key])) values[column.key] = 0;
+    });
+
+    await prisma.projectReportEntry.update({
+      where: { id: entry.id },
+      data: {
+        reportDate,
+        companyId,
+        values,
+        note: String(req.body.note || '').trim() || null
+      }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'project_report_updated',
+      entityType: 'project_report_entry',
+      entityId: entry.id,
+      projectId: project.id,
+      metadata: { reportDate: reportDateRaw, companyId, values }
+    });
+
+    req.flash('success', 'Data report berhasil diperbarui');
+    res.redirect(`/projects/${project.id}/report`);
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal memperbarui data report');
+    res.redirect(`/projects/${req.params.id}/report`);
+  }
+});
+
 router.post('/:id/report/entries/:entryId/delete', requireAdmin, async (req, res) => {
   try {
     const entry = await prisma.projectReportEntry.findUnique({

@@ -202,11 +202,25 @@
                 <td class="px-6 py-4 text-gray-400 text-xs"><%= entry.createdBy?.name || 'System' %></td>
                 <% if (canManageProject) { %>
                   <td class="px-6 py-4 text-right">
-                    <form action="/projects/<%= project.id %>/report/entries/<%= entry.id %>/delete" method="POST" onsubmit="return confirm('Hapus data report ini?')">
+                    <div class="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        data-entry-id="<%= entry.id %>"
+                        data-report-date="<%= new Date(entry.reportDate).toISOString().slice(0, 10) %>"
+                        data-company-id="<%= entry.companyId || '' %>"
+                        data-note="<%= entry.note || '' %>"
+                        data-values="<%= JSON.stringify(values) %>"
+                        onclick="openEditReport(this)"
+                        class="text-blue-500 hover:text-blue-600 text-xs px-2 py-1 rounded-lg hover:bg-blue-50"
+                        title="Edit report">
+                        <i class="fas fa-pen"></i>
+                      </button>
+                      <form action="/projects/<%= project.id %>/report/entries/<%= entry.id %>/delete" method="POST" onsubmit="return confirm('Hapus data report ini?')">
                       <button type="submit" class="text-red-500 hover:text-red-600 text-xs px-2 py-1 rounded-lg hover:bg-red-50">
                         <i class="fas fa-trash"></i>
                       </button>
-                    </form>
+                      </form>
+                    </div>
                   </td>
                 <% } %>
               </tr>
@@ -289,5 +303,85 @@
     </div>
   </div>
 </div>
+
+<% if (canManageProject) { %>
+  <div id="editReportModal" class="hidden fixed inset-0 z-[100] items-center justify-center p-4 bg-black/50" onclick="if(event.target===this) closeEditReport()">
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <div>
+          <h2 class="font-semibold text-lg">Edit Report Harian</h2>
+          <p class="text-xs text-gray-400 mt-1">Perbarui data report yang sudah tersimpan.</p>
+        </div>
+        <button type="button" onclick="closeEditReport()" class="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="editReportForm" method="POST" class="p-6 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Tanggal</label>
+            <input id="edit-report-date" type="date" name="reportDate" required class="w-full border rounded-2xl px-4 py-3">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Breakdown Brand</label>
+            <select id="edit-company-id" name="companyId" class="w-full border rounded-2xl px-4 py-3">
+              <option value="">Tanpa breakdown brand</option>
+              <% workspaceBrands.forEach(brand => { %>
+                <option value="<%= brand.id %>"><%= brand.name %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <% columns.forEach(column => { %>
+            <div>
+              <label class="block text-sm font-medium mb-1.5"><%= column.label %></label>
+              <input
+                id="edit-metric-<%= column.key %>"
+                type="<%= column.type === 'number' ? 'number' : 'text' %>"
+                name="metric_<%= column.key %>"
+                <%= column.type === 'number' ? 'min="0" step="1"' : '' %>
+                class="w-full border rounded-2xl px-4 py-3">
+            </div>
+          <% }) %>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1.5">Catatan</label>
+          <input id="edit-note" type="text" name="note" placeholder="Opsional" class="w-full border rounded-2xl px-4 py-3">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeEditReport()" class="px-5 py-3 border rounded-2xl font-medium hover:bg-gray-50">Batal</button>
+          <button type="submit" class="px-5 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openEditReport(button) {
+      const values = JSON.parse(button.dataset.values || '{}');
+      document.getElementById('editReportForm').action = `/projects/<%= project.id %>/report/entries/${button.dataset.entryId}/edit`;
+      document.getElementById('edit-report-date').value = button.dataset.reportDate;
+      document.getElementById('edit-company-id').value = button.dataset.companyId;
+      document.getElementById('edit-note').value = button.dataset.note;
+      <% columns.forEach(column => { %>
+        document.getElementById('edit-metric-<%= column.key %>').value = values['<%= column.key %>'] ?? '<%= column.type === 'number' ? '0' : '' %>';
+      <% }) %>
+      const modal = document.getElementById('editReportModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeEditReport() {
+      const modal = document.getElementById('editReportModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  </script>
+<% } %>
 
 <%- include('../partials/footer') %>
