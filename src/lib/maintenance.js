@@ -166,4 +166,18 @@ async function applyAccountHotfixes(client = prisma) {
   });
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes };
+// Ensure onboardingCompleted column exists + mark existing users as completed
+async function ensureOnboardingField(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "User"
+    ADD COLUMN IF NOT EXISTS "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false
+  `);
+  // Existing users sudah lama pake app → skip onboarding
+  await client.$executeRawUnsafe(`
+    UPDATE "User" SET "onboardingCompleted" = true
+    WHERE "onboardingCompleted" = false
+    AND "createdAt" < NOW() - INTERVAL '1 day'
+  `);
+}
+
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };

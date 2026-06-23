@@ -153,7 +153,11 @@ router.post('/register', async (req, res) => {
       : 'Akun berhasil dibuat. Bergabung ke brand via link invite...'
     );
     const nextUrl = req.body.next || '/';
-    res.redirect(nextUrl === '/invite/join' ? '/invite/join' : '/');
+    if (nextUrl === '/invite/join') {
+      return res.redirect('/invite/join');
+    }
+    // New user → onboarding dulu
+    return res.redirect('/onboarding');
   } catch (error) {
     console.error(error);
     const userCount = await prisma.user.count().catch(() => 1);
@@ -192,7 +196,14 @@ router.post('/login', async (req, res) => {
     };
 
     const nextUrl = req.query.next || req.body.next || '/';
-    res.redirect(nextUrl === '/invite/join' ? '/invite/join' : '/');
+    if (nextUrl === '/invite/join') {
+      return res.redirect('/invite/join');
+    }
+    // Check onboarding status
+    if (!user.onboardingCompleted) {
+      return res.redirect('/onboarding');
+    }
+    res.redirect('/');
   } catch (error) {
     console.error(error);
     res.render('auth/login', { error: 'Terjadi kesalahan' });

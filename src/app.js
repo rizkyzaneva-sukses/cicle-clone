@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes } = require('./lib/maintenance');
+const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField } = require('./lib/maintenance');
 const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
@@ -50,7 +50,7 @@ app.use(async (req, res, next) => {
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
-      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), ensureProjectReportTables(), ensureProjectChatReadTable(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes()]).catch((err) => {
+      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), ensureProjectReportTables(), ensureProjectChatReadTable(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes(), ensureOnboardingField()]).catch((err) => {
         maintenancePromise = null;
         console.error('Maintenance cleanup failed:', err);
       });
@@ -105,6 +105,22 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Onboarding redirect: kalau user belum selesai onboarding, redirect ke /onboarding
+app.use(async (req, res, next) => {
+  if (req.session.user && !req.path.startsWith('/onboarding') && !req.path.startsWith('/auth') && !req.path.startsWith('/telegram/webhook') && req.method === 'GET') {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: req.session.user.id },
+        select: { onboardingCompleted: true }
+      });
+      if (user && !user.onboardingCompleted) {
+        return res.redirect('/onboarding');
+      }
+    } catch (_) {}
+  }
+  next();
+});
+
 // Routes
 app.use('/auth', require('./routes/auth'));
 app.use('/brands', require('./routes/brands'));
@@ -131,6 +147,7 @@ app.use('/announcements', require('./routes/announcements'));
 app.use('/focus', require('./routes/focus'));
 app.use('/telegram', require('./routes/telegram'));
 app.use('/activity', require('./routes/activity'));
+app.use('/onboarding', require('./routes/onboarding'));
 
 // Dashboard — tampil berbeda per role
 app.get('/', async (req, res) => {

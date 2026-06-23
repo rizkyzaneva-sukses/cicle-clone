@@ -15,6 +15,7 @@ model User {
   avatar       String?
   platformRole String   @default("user") // owner, partner, user
   telegramChatId String?
+  onboardingCompleted Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -1,0 +1,274 @@
+<%- include('partials/header', { title: 'Setup Akun - Maulana Corp' }) %>
+
+<div class="min-h-screen flex items-center justify-center py-12 px-4">
+  <div class="w-full max-w-lg">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex w-16 h-16 bg-blue-600 rounded-3xl items-center justify-center mb-4">
+        <i class="fas fa-rocket text-white text-3xl"></i>
+      </div>
+      <h1 class="text-3xl font-bold mb-2">Selamat Datang! 🎉</h1>
+      <p class="text-gray-400">Lengkapi profilmu dulu sebelum mulai kerja</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="flex items-center justify-center gap-2 mb-8">
+      <div class="flex items-center gap-2" id="step-indicator">
+        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold" id="step1-dot">1</div>
+        <span class="text-sm font-medium" id="step1-label">Profil</span>
+        <div class="w-8 h-8 h-px bg-gray-600 mx-2"></div>
+        <div class="w-8 h-8 rounded-full bg-gray-600 text-gray-400 flex items-center justify-center text-sm font-bold" id="step2-dot">2</div>
+        <span class="text-sm text-gray-400" id="step2-label">Telegram</span>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="mb-4 p-3 bg-red-500/20 border border-red-500/50 text-red-400 rounded-2xl text-sm text-center">
+        <i class="fas fa-exclamation-circle mr-1"></i> <%= error %>
+      </div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="mb-4 p-3 bg-green-500/20 border border-green-500/50 text-green-400 rounded-2xl text-sm text-center">
+        <i class="fas fa-check-circle mr-1"></i> <%= success %>
+      </div>
+    <% } %>
+
+    <!-- STEP 1: Profile Setup -->
+    <div id="step1" class="bg-white border rounded-3xl p-8">
+      <h2 class="text-xl font-bold mb-1">Lengkapi Profil</h2>
+      <p class="text-gray-500 text-sm mb-6">Pastikan namamu benar, nanti tampil di task & chat</p>
+
+      <form method="POST" action="/onboarding/profile" enctype="multipart/form-data">
+        <!-- Avatar -->
+        <div class="flex items-center gap-4 mb-6">
+          <div class="relative group cursor-pointer" onclick="document.getElementById('avatarInput').click()">
+            <% if (user.avatar) { %>
+              <img src="<%= user.avatar %>" class="w-20 h-20 rounded-2xl object-cover border-2 border-gray-200">
+            <% } else { %>
+              <div class="w-20 h-20 rounded-2xl bg-blue-600/20 border-2 border-dashed border-blue-500 flex items-center justify-center">
+                <i class="fas fa-camera text-blue-400 text-xl"></i>
+              </div>
+            <% } %>
+            <div class="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+              <i class="fas fa-pen text-white text-sm"></i>
+            </div>
+          </div>
+          <input type="file" name="avatar" id="avatarInput" accept="image/*" class="hidden">
+          <div>
+            <p class="font-medium text-sm">Foto Profil</p>
+            <p class="text-xs text-gray-400">Klik untuk ganti (opsional)</p>
+          </div>
+        </div>
+
+        <!-- Name -->
+        <div class="mb-4">
+          <label class="text-sm font-medium">Nama Lengkap</label>
+          <input type="text" name="name" value="<%= user.name %>" required
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+        </div>
+
+        <!-- Email (readonly) -->
+        <div class="mb-6">
+          <label class="text-sm font-medium text-gray-400">Email</label>
+          <input type="email" value="<%= user.email %>" disabled
+            class="mt-1.5 w-full border px-5 py-3.5 rounded-2xl bg-gray-50 text-gray-400 cursor-not-allowed">
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl transition">
+          Simpan Profil
+        </button>
+      </form>
+
+      <div class="mt-4 text-center">
+        <button onclick="goToStep2()" class="text-sm text-gray-400 hover:text-white transition">
+          Lewati dulu →
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Telegram Connect -->
+    <div id="step2" class="bg-white border rounded-3xl p-8 hidden">
+      <h2 class="text-xl font-bold mb-1">
+        <i class="fab fa-telegram text-blue-500 mr-1"></i> Hubungkan Telegram
+      </h2>
+      <p class="text-gray-500 text-sm mb-6">
+        Biar reminder deadline otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
+      </p>
+
+      <% if (!telegramEnabled) { %>
+        <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl text-yellow-400 text-sm mb-4">
+          <i class="fas fa-info-circle mr-1"></i> Telegram belum diaktifkan oleh admin. Kamu bisa lewati dulu.
+        </div>
+      <% } else { %>
+
+        <!-- Connected State -->
+        <div id="telegram-connected" class="<%= telegramConnected ? '' : 'hidden' %>">
+          <div class="p-4 bg-green-500/10 border border-green-500/30 rounded-2xl text-center">
+            <div class="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <i class="fas fa-check text-green-400 text-xl"></i>
+            </div>
+            <p class="text-green-400 font-semibold mb-1">Telegram Terhubung! ✅</p>
+            <p class="text-gray-400 text-xs">Chat ID: <code class="bg-gray-100 px-2 py-0.5 rounded" id="chat-id-display"></code></p>
+          </div>
+        </div>
+
+        <!-- Not Connected State -->
+        <div id="telegram-not-connected" class="<%= telegramConnected ? 'hidden' : '' %>">
+          <!-- Auto Method -->
+          <div class="mb-4">
+            <p class="text-sm font-medium mb-3">
+              <span class="text-blue-400 font-bold">Cara paling gampang:</span> Klik tombol di bawah
+            </p>
+
+            <% if (deepLink) { %>
+              <a href="<%= deepLink %>" target="_blank"
+                class="flex items-center justify-center gap-2 w-full bg-[#229ED9] hover:bg-[#1a8bc4] text-white font-semibold py-3.5 rounded-2xl transition">
+                <i class="fab fa-telegram text-lg"></i>
+                Hubungkan via Telegram
+              </a>
+              <p class="text-xs text-gray-400 mt-2 text-center">
+                Buka Telegram → klik Start → otomatis tersambung
+              </p>
+            <% } %>
+          </div>
+
+          <!-- Polling Status -->
+          <div id="polling-status" class="hidden">
+            <div class="flex items-center justify-center gap-2 py-3 text-blue-400 text-sm">
+              <div class="animate-spin w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+              Menunggu kamu klik Start di Telegram...
+            </div>
+          </div>
+
+          <!-- Manual Method (Fallback) -->
+          <details class="mt-4">
+            <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition">
+              <i class="fas fa-keyboard mr-1"></i> Atau isi manual Chat ID
+            </summary>
+            <form method="POST" action="/onboarding/telegram" class="mt-3">
+              <div class="flex gap-2">
+                <input type="text" name="chatId" placeholder="565228988"
+                  pattern="\d{5,30}" required
+                  class="flex-1 border px-4 py-3 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-sm font-semibold transition">
+                  Simpan
+                </button>
+              </div>
+              <p class="text-xs text-gray-400 mt-2">
+                Kirim pesan apa saja ke <a href="https://t.me/<%= botUsername %>" target="_blank" class="text-blue-400 hover:underline">@<%= botUsername %></a>, lalu copy Chat ID dari
+                <a href="https://api.telegram.org/bot<%= process.env.TELEGRAM_BOT_TOKEN %>/getUpdates" target="_blank" class="text-blue-400 hover:underline">getUpdates</a>
+              </p>
+            </form>
+          </details>
+        </div>
+      <% } %>
+
+      <!-- Navigation Buttons -->
+      <div class="flex gap-3 mt-6">
+        <button onclick="goToStep1()" class="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-600 font-semibold py-3.5 rounded-2xl transition">
+          ← Kembali
+        </button>
+        <button onclick="completeOnboarding()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl transition">
+          Mulai Kerja 🚀
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const step1 = document.getElementById('step1');
+  const step2 = document.getElementById('step2');
+  const step1Dot = document.getElementById('step1-dot');
+  const step2Dot = document.getElementById('step2-dot');
+  const step1Label = document.getElementById('step1-label');
+  const step2Label = document.getElementById('step2-label');
+  const pollingStatus = document.getElementById('polling-status');
+  const telegramConnected = document.getElementById('telegram-connected');
+  const telegramNotConnected = document.getElementById('telegram-not-connected');
+
+  let pollInterval = null;
+
+  function goToStep1() {
+    step1.classList.remove('hidden');
+    step2.classList.add('hidden');
+    step1Dot.classList.replace('bg-gray-600', 'bg-blue-600');
+    step1Dot.classList.replace('text-gray-400', 'text-white');
+    step2Dot.classList.replace('bg-blue-600', 'bg-gray-600');
+    step2Dot.classList.replace('text-white', 'text-gray-400');
+    step1Label.classList.remove('text-gray-400');
+    step2Label.classList.add('text-gray-400');
+    stopPolling();
+  }
+
+  function goToStep2() {
+    step1.classList.add('hidden');
+    step2.classList.remove('hidden');
+    step1Dot.classList.replace('bg-blue-600', 'bg-gray-600');
+    step1Dot.classList.replace('text-white', 'text-gray-400');
+    step2Dot.classList.replace('bg-gray-600', 'bg-blue-600');
+    step2Dot.classList.replace('text-gray-400', 'text-white');
+    step1Label.classList.add('text-gray-400');
+    step2Label.classList.remove('text-gray-400');
+
+    // Start polling if not connected
+    if (<%= !telegramConnected %> && <%= telegramEnabled %>) {
+      startPolling();
+    }
+  }
+
+  function startPolling() {
+    pollingStatus.classList.remove('hidden');
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/onboarding/telegram-status');
+        const data = await res.json();
+        if (data.connected) {
+          stopPolling();
+          telegramNotConnected.classList.add('hidden');
+          telegramConnected.classList.remove('hidden');
+          document.getElementById('chat-id-display').textContent = data.chatId;
+        }
+      } catch (e) { /* ignore */ }
+    }, 2000); // poll every 2 seconds
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    pollingStatus.classList.add('hidden');
+  }
+
+  function completeOnboarding() {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/onboarding/complete';
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Avatar preview
+  document.getElementById('avatarInput')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const imgEl = document.querySelector('.relative img, .relative div');
+        if (imgEl && imgEl.tagName === 'DIV') {
+          const newImg = document.createElement('img');
+          newImg.src = ev.target.result;
+          newImg.className = 'w-20 h-20 rounded-2xl object-cover border-2 border-gray-200';
+          imgEl.replaceWith(newImg);
+        } else if (imgEl) {
+          imgEl.src = ev.target.result;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+</script>
+
+<%- include('partials/footer') %>
