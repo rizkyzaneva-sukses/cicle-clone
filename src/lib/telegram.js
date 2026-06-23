@@ -1,6 +1,8 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || 'zanevabasecamp_bot';
 const enabled = Boolean(BOT_TOKEN);
+let webhookSetupPromise = null;
+let webhookSetupUrl = '';
 
 async function sendTelegramMessage(chatId, text) {
   if (!enabled || !chatId) return null;
@@ -65,11 +67,48 @@ function getDeepLink(userId = '') {
     : `https://t.me/${BOT_USERNAME}`;
 }
 
+async function ensureTelegramWebhook(appUrl = process.env.APP_URL) {
+  if (!enabled || !appUrl) return null;
+
+  const baseUrl = String(appUrl).replace(/\/+$/, '');
+  const webhookUrl = `${baseUrl}/telegram/webhook/${BOT_TOKEN}`;
+  if (webhookSetupPromise && webhookSetupUrl === webhookUrl) return webhookSetupPromise;
+
+  webhookSetupUrl = webhookUrl;
+  webhookSetupPromise = (async () => {
+    try {
+      const infoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
+      const info = await infoRes.json();
+      if (info?.ok && info.result?.url === webhookUrl) return info.result;
+
+      const setRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: webhookUrl,
+          allowed_updates: ['message']
+        })
+      });
+      const data = await setRes.json();
+      if (!data.ok) console.error('Telegram webhook setup failed:', data.description);
+      else console.log('Telegram webhook configured:', webhookUrl.replace(BOT_TOKEN, '[token]'));
+      return data;
+    } catch (err) {
+      console.error('Telegram webhook setup error:', err.message);
+      webhookSetupPromise = null;
+      return null;
+    }
+  })();
+
+  return webhookSetupPromise;
+}
+
 module.exports = { 
   sendTelegramMessage, 
   sendTaskReminder,
   sendDeadlineAlert,
   getDeepLink,
+  ensureTelegramWebhook,
   enabled, 
   botUsername: BOT_USERNAME 
  };

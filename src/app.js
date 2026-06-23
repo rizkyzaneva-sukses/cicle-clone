@@ -13,6 +13,7 @@ const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
 const { maybeRunWeeklyReport } = require('./lib/weeklyReport');
+const { ensureTelegramWebhook } = require('./lib/telegram');
 
 const app = express();
 const server = http.createServer(app);
@@ -287,5 +288,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Maulana Corp Project Management running on port ${PORT} (listening on 0.0.0.0)`);
   console.log('Ready for EasyPanel deployment!');
   applyAccountHotfixes().catch((err) => console.error('Startup account hotfix failed:', err));
+  ensureTelegramWebhook().catch((err) => console.error('Telegram webhook setup failed:', err));
   startDailyScheduler(io, [runDailyReminders, runRecurringTaskGenerator, maybeRunWeeklyReport]);
 });

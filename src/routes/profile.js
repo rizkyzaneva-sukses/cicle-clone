@@ -5,7 +5,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
-const { botUsername, getDeepLink } = require('../lib/telegram');
+const { botUsername, ensureTelegramWebhook, getDeepLink } = require('../lib/telegram');
 const { upload } = require('../lib/upload');
 
 router.use(requireAuth);
@@ -37,12 +37,33 @@ router.get('/', async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.session.user.id }
   });
+  const publicProto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0];
+  const publicBaseUrl = `${publicProto}://${req.get('host')}`;
+  ensureTelegramWebhook(publicBaseUrl).catch(() => {});
+
   res.render('profile', { 
     title: 'Profil Saya', 
     user, 
     telegramBotUsername: botUsername,
     telegramDeepLink: getDeepLink(user.id)
   });
+});
+
+router.get('/telegram/status', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.session.user.id },
+      select: { telegramChatId: true }
+    });
+
+    res.json({
+      connected: Boolean(user?.telegramChatId),
+      telegramChatId: user?.telegramChatId || null
+    });
+  } catch (err) {
+    console.error('Telegram status check failed:', err);
+    res.status(500).json({ error: 'Gagal cek status Telegram' });
+  }
 });
 
 router.post('/update', async (req, res) => {

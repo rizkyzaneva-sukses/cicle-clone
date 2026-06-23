@@ -163,7 +163,7 @@
       Reminder via Telegram
     </h2>
 
-    <% if (user.telegramChatId) { %>
+    <div id="telegram-connected-panel" class="<%= user.telegramChatId ? '' : 'hidden' %>">
       <!-- SUDAH TERHUBUNG -->
       <div class="flex items-center justify-between gap-4 mt-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
         <div class="flex items-center gap-3">
@@ -173,26 +173,42 @@
           <div>
             <p class="text-sm font-semibold text-emerald-700">Terhubung ✅</p>
             <p class="text-xs text-emerald-600">Reminder deadline akan dikirim ke Telegram</p>
+            <p class="text-[11px] text-emerald-500 mt-1 font-mono" id="telegram-chat-id-display"><%= user.telegramChatId ? 'Chat ID: ' + user.telegramChatId : '' %></p>
           </div>
         </div>
         <a href="/telegram/test" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold transition">
           <i class="fas fa-paper-plane"></i> Test
         </a>
       </div>
-    <% } else { %>
+    </div>
+
+    <div id="telegram-disconnected-panel" class="<%= user.telegramChatId ? 'hidden' : '' %>">
+    <% if (!user.telegramChatId) { %>
       <!-- BELUM TERHUBUNG -->
       <p class="text-sm text-gray-500 mb-4">
         Hubungkan Telegram biar reminder deadline otomatis masuk ke Telegram kamu.
       </p>
       <% if (telegramDeepLink) { %>
-        <a href="<%= telegramDeepLink %>" target="_blank"
+        <a href="<%= telegramDeepLink %>" target="_blank" onclick="startTelegramConnectCheck()"
           class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#229ED9] hover:bg-[#1a8bc4] text-white rounded-2xl text-sm font-semibold transition">
           <i class="fab fa-telegram text-lg"></i>
           Hubungkan via Telegram
         </a>
+        <button type="button" onclick="checkTelegramStatus(true)"
+          class="ml-2 mt-2 sm:mt-0 inline-flex items-center justify-center gap-2 px-4 py-3 border rounded-2xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+          <i class="fas fa-rotate"></i>
+          Cek Status
+        </button>
+        <div id="telegram-waiting-panel" class="hidden mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <div class="font-semibold">Menunggu Telegram...</div>
+          <div class="text-xs mt-1" id="telegram-waiting-text">
+            Setelah klik Start di Telegram, status di sini akan dicek otomatis.
+          </div>
+        </div>
         <p class="text-xs text-gray-400 mt-2">Klik → buka Telegram → klik Start → selesai.</p>
       <% } %>
     <% } %>
+    </div>
   </section>
 
   <% if (user.platformRole === 'owner') { %>
@@ -241,6 +257,63 @@
       preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview foto profil" class="w-full h-full object-cover">';
     };
     reader.readAsDataURL(file);
+  }
+
+  let telegramPollTimer = null;
+  let telegramPollAttempts = 0;
+
+  function showTelegramWaiting(message) {
+    const panel = document.getElementById('telegram-waiting-panel');
+    const text = document.getElementById('telegram-waiting-text');
+    if (panel) panel.classList.remove('hidden');
+    if (text && message) text.textContent = message;
+  }
+
+  function showTelegramConnected(chatId) {
+    document.getElementById('telegram-disconnected-panel')?.classList.add('hidden');
+    document.getElementById('telegram-connected-panel')?.classList.remove('hidden');
+    const display = document.getElementById('telegram-chat-id-display');
+    if (display && chatId) display.textContent = 'Chat ID: ' + chatId;
+  }
+
+  async function checkTelegramStatus(reloadOnConnected = false) {
+    try {
+      const res = await fetch('/profile/telegram/status', {
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+
+      if (data.connected) {
+        if (telegramPollTimer) clearInterval(telegramPollTimer);
+        showTelegramConnected(data.telegramChatId);
+        if (reloadOnConnected) window.location.reload();
+        return true;
+      }
+
+      showTelegramWaiting('Belum terhubung. Pastikan klik Start dari tombol Hubungkan via Telegram, bukan mengetik /start manual.');
+      return false;
+    } catch (err) {
+      showTelegramWaiting('Gagal cek status. Coba klik Cek Status lagi.');
+      return false;
+    }
+  }
+
+  function startTelegramConnectCheck() {
+    showTelegramWaiting('Menunggu kamu klik Start di Telegram...');
+    telegramPollAttempts = 0;
+    if (telegramPollTimer) clearInterval(telegramPollTimer);
+
+    telegramPollTimer = setInterval(async () => {
+      telegramPollAttempts += 1;
+      const connected = await checkTelegramStatus(false);
+      if (connected || telegramPollAttempts >= 48) {
+        clearInterval(telegramPollTimer);
+        telegramPollTimer = null;
+        if (!connected) {
+          showTelegramWaiting('Belum terhubung. Kalau bot tidak membalas di Telegram, webhook bot kemungkinan belum aktif di server.');
+        }
+      }
+    }, 2500);
   }
 </script>
 
