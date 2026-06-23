@@ -547,7 +547,7 @@
           <i class="fas fa-search w-4 text-center"></i><span>Search</span>
         </a>
 
-        <% if (currentUser.platformRole === 'owner') { %>
+        <% if (currentUser.platformRole === 'owner' || currentUser.platformRole === 'partner') { %>
           <a href="/members/holding" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
             <%- (currentPath && currentPath.startsWith('/members/holding')) ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
             <i class="fas fa-users w-4 text-center"></i><span>Anggota Holding</span>

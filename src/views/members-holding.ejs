@@ -3,7 +3,7 @@
 <div class="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
   <div>
     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Anggota Holding</h1>
-    <p class="text-gray-500 mt-1">Lihat semua user app dan atur mereka masuk ke brand mana saja dalam holding</p>
+    <p class="text-gray-500 mt-1">Lihat user holding, pantau koneksi Telegram, dan atur akses brand sesuai role</p>
   </div>
   <div class="flex gap-2">
     <a href="/brands" class="px-4 py-2.5 border rounded-2xl text-sm font-medium text-gray-600 hover:bg-gray-50">
@@ -29,7 +29,7 @@
 </div>
 
 <% if (workspace) { %>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
     <div class="bg-white border rounded-2xl p-5 shadow-sm">
       <div class="text-3xl font-bold text-blue-600"><%= holdingMembers.length %></div>
       <div class="text-sm text-gray-500 mt-1">User di Holding Ini</div>
@@ -43,51 +43,63 @@
       <div class="text-sm text-gray-500 mt-1">Total User App</div>
     </div>
     <div class="bg-white border rounded-2xl p-5 shadow-sm">
+      <div class="text-3xl font-bold text-red-600"><%= holdingMembers.filter(member => !member.telegramChatId).length %></div>
+      <div class="text-sm text-gray-500 mt-1">Telegram Belum Diisi</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-5 shadow-sm">
       <div class="text-3xl font-bold text-amber-600"><%= allUsers.filter(user => !user.inActiveWorkspace).length %></div>
       <div class="text-sm text-gray-500 mt-1">User App di Luar Holding Ini</div>
     </div>
   </div>
 
-  <div class="bg-white border rounded-3xl p-6 mb-6 shadow-sm">
-    <h2 class="font-semibold text-lg mb-2">Masukkan User App ke Holding Ini</h2>
-    <p class="text-sm text-gray-500 mb-4">Pakai email akun yang sudah terdaftar, lalu centang brand yang harus dia akses.</p>
+  <% if (canManageHoldingMemberships) { %>
+    <div class="bg-white border rounded-3xl p-6 mb-6 shadow-sm">
+      <h2 class="font-semibold text-lg mb-2">Masukkan User App ke Holding Ini</h2>
+      <p class="text-sm text-gray-500 mb-4">Pakai email akun yang sudah terdaftar, lalu centang brand yang harus dia akses.</p>
 
-    <form action="/members/holding/<%= workspace.id %>/add-user" method="POST">
-      <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-5">
-        <div>
-          <label class="block text-sm font-medium mb-1.5">Email User App</label>
-          <input type="email" name="email" list="all-user-emails" required placeholder="nama@email.com"
-            class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
-          <datalist id="all-user-emails">
-            <% allUsers.forEach(user => { %>
-              <option value="<%= user.email %>"><%= user.name %></option>
-            <% }) %>
-          </datalist>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1.5">Assign ke Brand</label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <% workspace.brands.forEach(brand => { %>
-              <label class="flex items-center gap-2 border rounded-2xl px-4 py-3 hover:bg-gray-50">
-                <input type="checkbox" name="brandIds" value="<%= brand.id %>" class="accent-blue-600">
-                <span class="text-sm font-medium text-gray-700"><%= brand.name %></span>
-              </label>
-            <% }) %>
+      <form action="/members/holding/<%= workspace.id %>/add-user" method="POST">
+        <div class="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-5">
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Email User App</label>
+            <input type="email" name="email" list="all-user-emails" required placeholder="nama@email.com"
+              class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400">
+            <datalist id="all-user-emails">
+              <% allUsers.forEach(user => { %>
+                <option value="<%= user.email %>"><%= user.name %></option>
+              <% }) %>
+            </datalist>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1.5">Assign ke Brand</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <% workspace.brands.forEach(brand => { %>
+                <label class="flex items-center gap-2 border rounded-2xl px-4 py-3 hover:bg-gray-50">
+                  <input type="checkbox" name="brandIds" value="<%= brand.id %>" class="accent-blue-600">
+                  <span class="text-sm font-medium text-gray-700"><%= brand.name %></span>
+                </label>
+              <% }) %>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="mt-5 flex justify-end">
-        <button type="submit" class="px-5 py-3 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
-          Masukkan ke Holding & Assign Brand
-        </button>
-      </div>
-    </form>
-  </div>
+        <div class="mt-5 flex justify-end">
+          <button type="submit" class="px-5 py-3 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+            Masukkan ke Holding & Assign Brand
+          </button>
+        </div>
+      </form>
+    </div>
+  <% } %>
 
   <div class="bg-white border rounded-3xl shadow-sm overflow-hidden mb-6">
     <div class="px-6 py-4 border-b bg-gray-50">
       <div class="font-semibold text-gray-700">Anggota Holding: <%= workspace.name %></div>
-      <div class="text-xs text-gray-400 mt-1">Atur checkbox brand untuk menambah atau mencabut akses brand user biasa.</div>
+      <div class="text-xs text-gray-400 mt-1">
+        <% if (canManageHoldingMemberships) { %>
+          Atur akses brand dan Telegram Chat ID user dari satu tempat.
+        <% } else { %>
+          Pantau dan isi Telegram Chat ID user yang belum terhubung.
+        <% } %>
+      </div>
     </div>
 
     <% if (holdingMembers.length === 0) { %>
@@ -116,8 +128,22 @@
                       <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">Kamu</span>
                     <% } %>
                     <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700"><%= member.platformRole %></span>
+                    <% if (member.telegramChatId) { %>
+                      <span class="px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700">
+                        <i class="fab fa-telegram mr-1"></i>Telegram aktif
+                      </span>
+                    <% } else { %>
+                      <span class="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700">
+                        <i class="fas fa-triangle-exclamation mr-1"></i>Telegram belum diisi
+                      </span>
+                    <% } %>
                   </div>
                   <div class="text-sm text-gray-500 mt-0.5"><%= member.email %></div>
+                  <% if (member.telegramChatId) { %>
+                    <div class="text-xs text-emerald-600 mt-1">
+                      Chat ID: <span class="font-mono"><%= member.telegramChatId %></span>
+                    </div>
+                  <% } %>
                   <div class="flex flex-wrap gap-2 mt-3">
                     <% member.workspaceRoles.forEach(role => { %>
                       <span class="px-2.5 py-1 text-xs rounded-full bg-purple-100 text-purple-700"><%= role %></span>
@@ -135,32 +161,57 @@
                 </div>
               </div>
 
-              <details class="lg:w-[26rem]">
-                <summary class="list-none cursor-pointer inline-flex items-center gap-2 px-4 py-2 border rounded-2xl text-sm font-medium text-gray-600 hover:bg-gray-50">
-                  <i class="fas fa-sliders"></i> Atur Brand
-                </summary>
-                <form action="/members/holding/<%= workspace.id %>/users/<%= member.id %>/brands" method="POST"
-                  class="mt-3 border rounded-3xl p-4 bg-gray-50/60">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <% workspace.brands.forEach(brand => { %>
-                      <label class="flex items-center gap-2 border rounded-2xl bg-white px-4 py-3 hover:bg-gray-50">
-                        <input type="checkbox" name="brandIds" value="<%= brand.id %>" <%= memberBrandIds.includes(brand.id) ? 'checked' : '' %> class="accent-blue-600">
-                        <span class="text-sm font-medium text-gray-700"><%= brand.name %></span>
-                      </label>
-                    <% }) %>
-                  </div>
-                  <% if (member.workspaceRoles.length > 0 || member.partnerBrands.length > 0) { %>
-                    <p class="text-xs text-amber-600 mt-3">
-                      User ini juga punya akses dari level workspace / partner. Form ini hanya mengatur membership brand biasa.
-                    </p>
-                  <% } %>
-                  <div class="mt-4 flex justify-end">
-                    <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
-                      Simpan Assign Brand
-                    </button>
-                  </div>
-                </form>
-              </details>
+              <div class="flex flex-col gap-2 lg:w-[26rem]">
+                <% if (canManageTelegram) { %>
+                  <details>
+                    <summary class="list-none cursor-pointer inline-flex items-center gap-2 px-4 py-2 border rounded-2xl text-sm font-medium <%= member.telegramChatId ? 'text-emerald-700 border-emerald-200 hover:bg-emerald-50' : 'text-red-700 border-red-200 hover:bg-red-50' %>">
+                      <i class="fab fa-telegram"></i> <%= member.telegramChatId ? 'Edit Telegram' : 'Isi Telegram' %>
+                    </summary>
+                    <form action="/members/holding/<%= workspace.id %>/users/<%= member.id %>/telegram" method="POST"
+                      class="mt-3 border rounded-3xl p-4 bg-gray-50/60">
+                      <label class="block text-xs font-semibold text-gray-500 mb-1.5">Telegram Chat ID</label>
+                      <input type="text" name="telegramChatId" value="<%= member.telegramChatId || '' %>" placeholder="Contoh: 123456789"
+                        inputmode="numeric" pattern="-?[0-9]{5,30}"
+                        class="w-full border rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400">
+                      <p class="text-xs text-gray-400 mt-2">Kosongkan lalu simpan jika ingin menghapus Chat ID.</p>
+                      <div class="mt-4 flex justify-end">
+                        <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+                          Simpan Telegram
+                        </button>
+                      </div>
+                    </form>
+                  </details>
+                <% } %>
+
+                <% if (canManageHoldingMemberships) { %>
+                  <details>
+                    <summary class="list-none cursor-pointer inline-flex items-center gap-2 px-4 py-2 border rounded-2xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                      <i class="fas fa-sliders"></i> Atur Brand
+                    </summary>
+                    <form action="/members/holding/<%= workspace.id %>/users/<%= member.id %>/brands" method="POST"
+                      class="mt-3 border rounded-3xl p-4 bg-gray-50/60">
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <% workspace.brands.forEach(brand => { %>
+                          <label class="flex items-center gap-2 border rounded-2xl bg-white px-4 py-3 hover:bg-gray-50">
+                            <input type="checkbox" name="brandIds" value="<%= brand.id %>" <%= memberBrandIds.includes(brand.id) ? 'checked' : '' %> class="accent-blue-600">
+                            <span class="text-sm font-medium text-gray-700"><%= brand.name %></span>
+                          </label>
+                        <% }) %>
+                      </div>
+                      <% if (member.workspaceRoles.length > 0 || member.partnerBrands.length > 0) { %>
+                        <p class="text-xs text-amber-600 mt-3">
+                          User ini juga punya akses dari level workspace / partner. Form ini hanya mengatur membership brand biasa.
+                        </p>
+                      <% } %>
+                      <div class="mt-4 flex justify-end">
+                        <button type="submit" class="px-4 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-medium hover:bg-blue-700">
+                          Simpan Assign Brand
+                        </button>
+                      </div>
+                    </form>
+                  </details>
+                <% } %>
+              </div>
             </div>
           </div>
         <% }) %>
@@ -179,6 +230,7 @@
           <tr class="text-left text-gray-500">
             <th class="px-6 py-3 font-medium">User</th>
             <th class="px-6 py-3 font-medium">Role App</th>
+            <th class="px-6 py-3 font-medium">Telegram</th>
             <th class="px-6 py-3 font-medium">Workspace / Holding</th>
             <th class="px-6 py-3 font-medium">Status di Holding Ini</th>
           </tr>
@@ -192,6 +244,18 @@
               </td>
               <td class="px-6 py-4">
                 <span class="px-2.5 py-1 text-xs rounded-full bg-blue-100 text-blue-700"><%= user.platformRole %></span>
+              </td>
+              <td class="px-6 py-4">
+                <% if (user.telegramChatId) { %>
+                  <span class="px-2.5 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700">
+                    <i class="fab fa-telegram mr-1"></i>Aktif
+                  </span>
+                  <div class="text-[11px] text-gray-400 font-mono mt-1"><%= user.telegramChatId %></div>
+                <% } else { %>
+                  <span class="px-2.5 py-1 text-xs rounded-full bg-red-100 text-red-700">
+                    <i class="fas fa-triangle-exclamation mr-1"></i>Belum diisi
+                  </span>
+                <% } %>
               </td>
               <td class="px-6 py-4 text-gray-600">
                 <%= user.workspaceNames.length > 0 ? user.workspaceNames.join(', ') : 'Belum terhubung ke holding' %>

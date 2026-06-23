@@ -89,6 +89,58 @@ async function getUserWorkspaceIds(userId) {
   return [...workspaceIds];
 }
 
+async function getManageableHoldingWorkspaces(req) {
+  const { id: userId, platformRole = 'user' } = req.session.user;
+
+  if (platformRole === 'owner') {
+    return prisma.workspace.findMany({
+      include: {
+        brands: {
+          select: { id: true, name: true },
+          orderBy: { createdAt: 'asc' }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+
+  if (platformRole !== 'partner') return [];
+
+  return prisma.workspace.findMany({
+    where: {
+      OR: [
+        { partners: { some: { userId } } },
+        { brands: { some: { partnerAccess: { some: { userId } } } } }
+      ]
+    },
+    include: {
+      brands: {
+        select: { id: true, name: true },
+        orderBy: { createdAt: 'asc' }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+}
+
+async function canManageHoldingWorkspace(req, workspaceId) {
+  const { id: userId, platformRole = 'user' } = req.session.user;
+
+  if (platformRole === 'owner') return true;
+  if (platformRole !== 'partner') return false;
+
+  const [workspacePartner, brandPartner] = await Promise.all([
+    prisma.workspacePartner.findUnique({
+      where: { userId_workspaceId: { userId, workspaceId } }
+    }),
+    prisma.partnerAccess.findFirst({
+      where: { userId, company: { workspaceId } }
+    })
+  ]);
+
+  return Boolean(workspacePartner || brandPartner);
+}
+
 async function buildHoldingWorkspaceView(workspaceId) {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
@@ -134,6 +186,7 @@ async function buildHoldingWorkspaceView(workspaceId) {
         email: user.email,
         avatar: user.avatar,
         platformRole: user.platformRole,
+        telegramChatId: user.telegramChatId,
         workspaceRoles: new Set(),
         brandMemberships: new Map(),
         partnerBrands: new Map()
@@ -206,25 +259,37 @@ router.get('/holding', async (req, res) => {
   const userId = req.session.user.id;
   const platformRole = req.session.user.platformRole || 'user';
 
-  if (platformRole !== 'owner') {
-    req.flash('error', 'Fitur ini khusus Owner');
+  if (!['owner', 'partner'].includes(platformRole)) {
+    req.flash('error', 'Fitur ini khusus Owner / Partner');
     return res.redirect('/members');
   }
 
-  const workspaces = await prisma.workspace.findMany({
-    include: {
-      brands: {
-        select: { id: true, name: true },
-        orderBy: { createdAt: 'asc' }
-      }
-    },
-    orderBy: { createdAt: 'asc' }
-  });
+  const workspaces = await getManageableHoldingWorkspaces(req);
 
   const activeWorkspaceId = String(req.query.workspaceId || workspaces[0]?.id || '');
+  const canOpenWorkspace = activeWorkspaceId
+    ? workspaces.some(workspace => workspace.id === activeWorkspaceId)
+    : false;
+  if (activeWorkspaceId && !canOpenWorkspace) {
+    req.flash('error', 'Kamu tidak punya akses ke holding tersebut');
+    return res.redirect('/members/holding');
+  }
+
   const holdingView = activeWorkspaceId ? await buildHoldingWorkspaceView(activeWorkspaceId) : null;
 
+  const userScopeWhere = platformRole === 'owner'
+    ? {}
+    : {
+        OR: [
+          { memberships: { some: { company: { workspaceId: activeWorkspaceId } } } },
+          { partnerAccess: { some: { company: { workspaceId: activeWorkspaceId } } } },
+          { workspaceRoles: { some: { workspaceId: activeWorkspaceId } } },
+          { ownedWorkspaces: { some: { id: activeWorkspaceId } } }
+        ]
+      };
+
   const allUsers = await prisma.user.findMany({
+    where: userScopeWhere,
     include: {
       memberships: {
         include: {
@@ -293,6 +358,7 @@ router.get('/holding', async (req, res) => {
       email: user.email,
       avatar: user.avatar,
       platformRole: user.platformRole,
+      telegramChatId: user.telegramChatId,
       workspaceNames: [...workspaceNames],
       inActiveWorkspace: activeWorkspaceId ? workspaceIds.has(activeWorkspaceId) : false
     };
@@ -304,8 +370,65 @@ router.get('/holding', async (req, res) => {
     workspace: holdingView?.workspace || null,
     holdingMembers: holdingView?.rows || [],
     allUsers: allUserRows,
-    currentUserId: userId
+    currentUserId: userId,
+    canManageHoldingMemberships: platformRole === 'owner',
+    canManageTelegram: ['owner', 'partner'].includes(platformRole)
   });
+});
+
+router.post('/holding/:workspaceId/users/:userId/telegram', async (req, res) => {
+  const workspaceId = req.params.workspaceId;
+  const targetUserId = req.params.userId;
+  const telegramChatId = String(req.body.telegramChatId || '').trim();
+
+  try {
+    if (!(await canManageHoldingWorkspace(req, workspaceId))) {
+      req.flash('error', 'Kamu tidak punya akses ke holding tersebut');
+      return res.redirect('/members/holding');
+    }
+
+    if (telegramChatId && !/^-?\d{5,30}$/.test(telegramChatId)) {
+      req.flash('error', 'Telegram Chat ID harus berupa angka, contoh: 123456789');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, name: true, platformRole: true }
+    });
+    if (!target) {
+      req.flash('error', 'User tidak ditemukan');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const targetWorkspaceIds = await getUserWorkspaceIds(target.id);
+    if (!targetWorkspaceIds.includes(workspaceId)) {
+      req.flash('error', `${target.name} bukan anggota holding ini`);
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    if (req.session.user.platformRole === 'partner' && target.platformRole === 'owner') {
+      req.flash('error', 'Partner tidak bisa mengubah Telegram Chat ID owner');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    await prisma.user.update({
+      where: { id: target.id },
+      data: { telegramChatId: telegramChatId || null }
+    });
+
+    req.flash(
+      'success',
+      telegramChatId
+        ? `Telegram Chat ID ${target.name} berhasil disimpan`
+        : `Telegram Chat ID ${target.name} berhasil dikosongkan`
+    );
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal menyimpan Telegram Chat ID');
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  }
 });
 
 router.post('/holding/:workspaceId/add-user', async (req, res) => {
