@@ -1,6 +1,30 @@
 <%- include('../partials/header', { title: project.name + ' | Kanban' }) %>
 <% const canManageProject = currentUser.platformRole === 'owner' || currentUser.platformRole === 'partner' || userRole === 'admin'; %>
 
+<style>
+  .kanban-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+  }
+
+  .kanban-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .kanban-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .kanban-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+    border-radius: 999px;
+  }
+
+  .kanban-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.65);
+  }
+</style>
+
 <!-- Priority Filter Bar -->
 <div class="flex items-center gap-2 mb-5 overflow-x-auto pb-2 lg:flex-wrap" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
   <span class="text-sm text-gray-500 font-medium mr-1 shrink-0">Filter:</span>
@@ -196,9 +220,9 @@
 </div>
 
 <!-- Kanban Board -->
-<div class="flex lg:grid lg:grid-cols-3 gap-4 lg:gap-6 overflow-x-auto pb-4 lg:pb-0 snap-x snap-mandatory" id="kanban-board" style="-webkit-overflow-scrolling:touch">
+<div class="flex lg:grid lg:grid-cols-3 lg:items-stretch gap-4 lg:gap-6 overflow-x-auto pb-4 lg:pb-0 snap-x snap-mandatory" id="kanban-board" style="-webkit-overflow-scrolling:touch">
   <!-- To Do -->
-  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start">
+  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start flex flex-col lg:h-[calc(100vh-19rem)] lg:min-h-[520px] lg:max-h-[760px]">
     <div class="flex items-center justify-between mb-3 sm:mb-4 px-1">
       <div class="flex items-center gap-2">
         <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-400 rounded-full"></div>
@@ -206,14 +230,14 @@
       </div>
       <span class="bg-gray-100 text-gray-600 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-mono" id="count-todo">0</span>
     </div>
-    <div id="column-TODO" class="kanban-column space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gray-50" 
+    <div id="column-TODO" class="kanban-column kanban-scroll space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] lg:min-h-0 lg:flex-1 max-h-[65vh] lg:max-h-none overflow-y-auto overscroll-contain p-1.5 sm:p-2 pr-2 rounded-xl sm:rounded-2xl bg-gray-50"
          ondrop="drop(event, 'TODO')" ondragover="allowDrop(event)">
       <!-- Tasks populated by JS -->
     </div>
   </div>
 
   <!-- In Progress -->
-  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start">
+  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start flex flex-col lg:h-[calc(100vh-19rem)] lg:min-h-[520px] lg:max-h-[760px]">
     <div class="flex items-center justify-between mb-3 sm:mb-4 px-1">
       <div class="flex items-center gap-2">
         <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-amber-400 rounded-full"></div>
@@ -221,13 +245,13 @@
       </div>
       <span class="bg-amber-100 text-amber-600 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-mono" id="count-in_progress">0</span>
     </div>
-    <div id="column-IN_PROGRESS" class="kanban-column space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gray-50" 
+    <div id="column-IN_PROGRESS" class="kanban-column kanban-scroll space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] lg:min-h-0 lg:flex-1 max-h-[65vh] lg:max-h-none overflow-y-auto overscroll-contain p-1.5 sm:p-2 pr-2 rounded-xl sm:rounded-2xl bg-gray-50"
          ondrop="drop(event, 'IN_PROGRESS')" ondragover="allowDrop(event)">
     </div>
   </div>
 
   <!-- Done -->
-  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start">
+  <div class="bg-white rounded-2xl lg:rounded-3xl p-3 sm:p-5 border shadow-sm min-w-[85vw] lg:min-w-0 snap-start flex flex-col lg:h-[calc(100vh-19rem)] lg:min-h-[520px] lg:max-h-[760px]">
     <div class="flex items-center justify-between mb-3 sm:mb-4 px-1">
       <div class="flex items-center gap-2">
         <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-500 rounded-full"></div>
@@ -235,7 +259,7 @@
       </div>
       <span class="bg-emerald-100 text-emerald-600 text-[10px] sm:text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-mono" id="count-done">0</span>
     </div>
-    <div id="column-DONE" class="kanban-column space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gray-50" 
+    <div id="column-DONE" class="kanban-column kanban-scroll space-y-2 sm:space-y-3 min-h-[200px] sm:min-h-[420px] lg:min-h-0 lg:flex-1 max-h-[65vh] lg:max-h-none overflow-y-auto overscroll-contain p-1.5 sm:p-2 pr-2 rounded-xl sm:rounded-2xl bg-gray-50"
          ondrop="drop(event, 'DONE')" ondragover="allowDrop(event)">
     </div>
   </div>
