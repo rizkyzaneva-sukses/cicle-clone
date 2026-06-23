@@ -25,8 +25,9 @@
   }
 </style>
 
-<!-- Priority Filter Bar -->
-<div class="flex items-center gap-2 mb-5 overflow-x-auto pb-2 lg:flex-wrap" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
+<!-- Priority Filter + Task Search -->
+<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-5">
+  <div class="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 lg:flex-wrap" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
   <span class="text-sm text-gray-500 font-medium mr-1 shrink-0">Filter:</span>
   <button onclick="setFilter('ALL')" id="filter-ALL"
     class="px-3 py-1.5 text-xs rounded-full border font-medium transition bg-blue-600 text-white border-blue-600 shrink-0">
@@ -48,6 +49,19 @@
     class="px-3 py-1.5 text-xs rounded-full border font-medium transition text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0">
     🔵 Low
   </button>
+  </div>
+  <div class="relative w-full lg:w-80">
+    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+    <input id="task-search-input" type="search" autocomplete="off"
+      oninput="setTaskSearch(this.value)"
+      placeholder="Cari task, PIC, label..."
+      class="w-full rounded-2xl border bg-white py-2.5 pl-9 pr-10 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+    <button id="task-search-clear" type="button" onclick="clearTaskSearch()"
+      class="hidden absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+      title="Bersihkan pencarian">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
 </div>
 
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
@@ -539,6 +553,7 @@ const PRIO = {
 };
 
 let activeFilter = 'ALL';
+let activeTaskSearch = '';
 
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
@@ -608,6 +623,49 @@ function setFilter(f) {
   renderKanban();
 }
 
+function setTaskSearch(value) {
+  activeTaskSearch = String(value || '').trim().toLowerCase();
+  document.getElementById('task-search-clear')?.classList.toggle('hidden', !activeTaskSearch);
+  renderKanban();
+}
+
+function clearTaskSearch() {
+  const input = document.getElementById('task-search-input');
+  if (input) input.value = '';
+  setTaskSearch('');
+  input?.focus();
+}
+
+function flattenChecklistText(items = []) {
+  return items.map(item => [
+    item.content || '',
+    flattenChecklistText(item.children || [])
+  ].join(' ')).join(' ');
+}
+
+function taskMatchesSearch(task) {
+  if (!activeTaskSearch) return true;
+
+  const labels = (task.labels || [])
+    .map(tl => tl.label)
+    .filter(Boolean)
+    .map(label => `${label.name || ''} ${label.color || ''}`)
+    .join(' ');
+
+  const haystack = [
+    task.title,
+    task.description,
+    task.assignee?.name,
+    task.assignee?.email,
+    task.priority,
+    PRIO[task.priority]?.label,
+    labels,
+    flattenChecklistText(task.checklists || [])
+  ].join(' ').toLowerCase();
+
+  return activeTaskSearch.split(/\s+/).every(term => haystack.includes(term));
+}
+
 function normalizeChecklistItems(items) {
   return Array.isArray(items) ? items.map(item => ({
     ...item,
@@ -674,7 +732,10 @@ function renderKanban() {
   Object.values(columns).forEach(col => col.innerHTML = '');
   let counts = { TODO: 0, IN_PROGRESS: 0, DONE: 0 };
 
-  const filtered = activeFilter === 'ALL' ? tasks : tasks.filter(t => t.priority === activeFilter);
+  const filtered = tasks.filter(task => {
+    const matchesPriority = activeFilter === 'ALL' || task.priority === activeFilter;
+    return matchesPriority && taskMatchesSearch(task);
+  });
 
   filtered.forEach(task => {
     const column = columns[task.status];
@@ -739,6 +800,16 @@ function renderKanban() {
   document.getElementById('count-todo').textContent = counts.TODO;
   document.getElementById('count-in_progress').textContent = counts.IN_PROGRESS;
   document.getElementById('count-done').textContent = counts.DONE;
+
+  Object.entries(columns).forEach(([status, column]) => {
+    if (counts[status] > 0) return;
+    const empty = document.createElement('div');
+    empty.className = 'rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-xs text-gray-400';
+    empty.textContent = activeTaskSearch || activeFilter !== 'ALL'
+      ? 'Tidak ada task cocok'
+      : 'Belum ada task';
+    column.appendChild(empty);
+  });
 }
 
 // Drag and Drop functions
