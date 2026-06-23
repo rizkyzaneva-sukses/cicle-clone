@@ -158,52 +158,40 @@
   </div>
 
   <section class="bg-white border rounded-3xl p-5 sm:p-6 shadow-sm">
-    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
-      <div class="max-w-2xl">
-        <h2 class="font-semibold text-lg mb-2 flex items-center gap-2 text-gray-900">
-          <i class="fab fa-telegram text-blue-500"></i>
-          Reminder via Telegram
-        </h2>
-        <p class="text-sm text-gray-500">
-          Hubungkan Telegram kamu biar reminder deadline otomatis dikirim ke Telegram, bukan cuma notifikasi di app.
-        </p>
-        <ol class="text-xs text-gray-500 mt-4 space-y-1 list-decimal list-inside">
-          <% if (telegramBotUsername) { %>
-            <li>Buka <a href="https://t.me/<%= telegramBotUsername %>" target="_blank" class="text-blue-600 hover:underline">@<%= telegramBotUsername %></a> di Telegram, lalu klik <b>Start</b>.</li>
-          <% } else { %>
-            <li>Buka bot Telegram yang dipakai tim ini, klik <b>Start</b>.</li>
-          <% } %>
-          <li>Paling gampang: klik tombol <b>Hubungkan Telegram</b> di kanan, nanti akun kamu akan langsung tersambung otomatis ke bot.</li>
-          <li>Kalau belum otomatis, baru isi manual Telegram Chat ID di kolom bawah.</li>
-        </ol>
-      </div>
+    <h2 class="font-semibold text-lg mb-2 flex items-center gap-2 text-gray-900">
+      <i class="fab fa-telegram text-blue-500"></i>
+      Reminder via Telegram
+    </h2>
 
+    <% if (user.telegramChatId) { %>
+      <!-- SUDAH TERHUBUNG -->
+      <div class="flex items-center justify-between gap-4 mt-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+            <i class="fas fa-check text-emerald-600"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-emerald-700">Terhubung ✅</p>
+            <p class="text-xs text-emerald-600">Reminder deadline akan dikirim ke Telegram</p>
+          </div>
+        </div>
+        <a href="/telegram/test" class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold transition">
+          <i class="fas fa-paper-plane"></i> Test
+        </a>
+      </div>
+    <% } else { %>
+      <!-- BELUM TERHUBUNG -->
+      <p class="text-sm text-gray-500 mb-4">
+        Hubungkan Telegram biar reminder deadline otomatis masuk ke Telegram kamu.
+      </p>
       <% if (telegramDeepLink) { %>
         <a href="<%= telegramDeepLink %>" target="_blank"
-          class="inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl text-sm font-semibold transition shrink-0">
-          <i class="fab fa-telegram"></i>
-          Hubungkan Telegram
+          class="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#229ED9] hover:bg-[#1a8bc4] text-white rounded-2xl text-sm font-semibold transition">
+          <i class="fab fa-telegram text-lg"></i>
+          Hubungkan via Telegram
         </a>
+        <p class="text-xs text-gray-400 mt-2">Klik → buka Telegram → klik Start → selesai.</p>
       <% } %>
-    </div>
-
-    <form action="/profile/telegram" method="POST" class="mt-5 flex flex-col sm:flex-row gap-3">
-      <input type="text" name="telegramChatId" value="<%= user.telegramChatId || '' %>" placeholder="Contoh: 123456789"
-        class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
-      <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold transition whitespace-nowrap">
-        Simpan Telegram
-      </button>
-    </form>
-    <p class="text-xs text-gray-400 mt-3">
-      Link bot tim: <a href="https://t.me/<%= telegramBotUsername || 'zanevabasecamp_bot' %>" target="_blank" class="text-blue-600 hover:underline">https://t.me/<%= telegramBotUsername || 'zanevabasecamp_bot' %></a>
-    </p>
-    <% if (user.telegramChatId) { %>
-      <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mt-3">
-        <p class="text-xs text-emerald-600"><i class="fas fa-check-circle mr-1"></i>Telegram Chat ID sudah aktif.</p>
-        <a href="/telegram/test" class="text-xs text-blue-600 hover:underline">
-          <i class="fas fa-paper-plane mr-1"></i>Kirim Pesan Test
-        </a>
-      </div>
     <% } %>
   </section>
 
