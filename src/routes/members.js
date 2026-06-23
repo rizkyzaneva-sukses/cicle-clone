@@ -141,6 +141,39 @@ async function canManageHoldingWorkspace(req, workspaceId) {
   return Boolean(workspacePartner || brandPartner);
 }
 
+async function deleteUserAccount(tx, userId) {
+  await tx.task.updateMany({
+    where: { assigneeId: userId },
+    data: { assigneeId: null }
+  });
+  await tx.recurringTaskTemplate.updateMany({
+    where: { assigneeId: userId },
+    data: { assigneeId: null }
+  });
+  await tx.projectReportEntry.updateMany({
+    where: { createdById: userId },
+    data: { createdById: null }
+  });
+  await tx.announcement.updateMany({
+    where: { createdById: userId },
+    data: { createdById: null }
+  });
+  await tx.workspace.updateMany({
+    where: { ownerId: userId },
+    data: { ownerId: null }
+  });
+  await tx.activityLog.updateMany({
+    where: { userId },
+    data: { userId: null }
+  });
+
+  await tx.comment.deleteMany({ where: { userId } });
+  await tx.chatMessage.deleteMany({ where: { userId } });
+  await tx.membership.deleteMany({ where: { userId } });
+
+  await tx.user.delete({ where: { id: userId } });
+}
+
 async function buildHoldingWorkspaceView(workspaceId) {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
@@ -371,6 +404,7 @@ router.get('/holding', async (req, res) => {
     holdingMembers: holdingView?.rows || [],
     allUsers: allUserRows,
     currentUserId: userId,
+    currentPlatformRole: platformRole,
     canManageHoldingMemberships: platformRole === 'owner',
     canManageTelegram: ['owner', 'partner'].includes(platformRole)
   });
@@ -427,6 +461,55 @@ router.post('/holding/:workspaceId/users/:userId/telegram', async (req, res) => 
   } catch (err) {
     console.error(err);
     req.flash('error', 'Gagal menyimpan Telegram Chat ID');
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  }
+});
+
+router.post('/holding/:workspaceId/users/:userId/delete-account', async (req, res) => {
+  const workspaceId = req.params.workspaceId;
+  const targetUserId = req.params.userId;
+  const currentUser = req.session.user;
+
+  try {
+    if (!(await canManageHoldingWorkspace(req, workspaceId))) {
+      req.flash('error', 'Kamu tidak punya akses ke holding tersebut');
+      return res.redirect('/members/holding');
+    }
+
+    if (targetUserId === currentUser.id) {
+      req.flash('error', 'Tidak bisa menghapus akun sendiri');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, name: true, email: true, platformRole: true }
+    });
+    if (!target) {
+      req.flash('error', 'User tidak ditemukan');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    const targetWorkspaceIds = await getUserWorkspaceIds(target.id);
+    if (!targetWorkspaceIds.includes(workspaceId)) {
+      req.flash('error', `${target.name} bukan anggota holding ini`);
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    if (currentUser.platformRole === 'partner' && target.platformRole !== 'user') {
+      req.flash('error', 'Partner hanya bisa menghapus akun user biasa');
+      return res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await deleteUserAccount(tx, target.id);
+    });
+
+    req.flash('success', `Akun ${target.name} (${target.email}) berhasil dihapus`);
+    res.redirect(`/members/holding?workspaceId=${workspaceId}`);
+  } catch (err) {
+    console.error(err);
+    req.flash('error', 'Gagal menghapus akun user');
     res.redirect(`/members/holding?workspaceId=${workspaceId}`);
   }
 });
