@@ -71,6 +71,26 @@ router.post('/push/test', async (req, res) => {
   }
 });
 
+router.get('/counts', async (req, res) => {
+  const userId = req.session.user.id;
+  const [unreadNotifications, unreadNotificationGroups, unreadDirectMessages] = await Promise.all([
+    prisma.notification.count({ where: { userId, isRead: false } }),
+    prisma.notification.groupBy({
+      by: ['type'],
+      where: { userId, isRead: false },
+      _count: { _all: true }
+    }),
+    prisma.directMessage.count({ where: { receiverId: userId, readAt: null } })
+  ]);
+
+  const groups = { PROJECT_TASK: 0, DIRECT_CHAT: 0, OTHER: 0 };
+  unreadNotificationGroups.forEach((group) => {
+    groups[group.type] = group._count._all;
+  });
+
+  res.json({ unreadNotifications, unreadNotificationGroups: groups, unreadDirectMessages });
+});
+
 // Get recent notifications (JSON, for dropdown)
 router.get('/', async (req, res) => {
   const { type } = req.query;
@@ -96,8 +116,8 @@ router.post('/read-all', async (req, res) => {
 
 // Mark one as read
 router.post('/:id/read', async (req, res) => {
-  await prisma.notification.update({
-    where: { id: req.params.id },
+  await prisma.notification.updateMany({
+    where: { id: req.params.id, userId: req.session.user.id },
     data: { isRead: true }
   });
   res.json({ success: true });

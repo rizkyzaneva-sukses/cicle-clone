@@ -9,17 +9,28 @@ router.use(requireAuth);
 
 async function markConversationAsRead(req, otherUserId) {
   const currentUserId = req.session.user.id;
-  const unreadMessages = await prisma.directMessage.findMany({
-    where: {
-      senderId: otherUserId,
-      receiverId: currentUserId,
-      readAt: null
-    },
-    select: { id: true, senderId: true }
-  });
+  const link = `/inbox/${otherUserId}`;
+  const [unreadMessages, notificationResult] = await prisma.$transaction([
+    prisma.directMessage.findMany({
+      where: {
+        senderId: otherUserId,
+        receiverId: currentUserId,
+        readAt: null
+      },
+      select: { id: true, senderId: true }
+    }),
+    prisma.notification.updateMany({
+      where: {
+        userId: currentUserId,
+        link,
+        isRead: false
+      },
+      data: { isRead: true }
+    })
+  ]);
 
   if (unreadMessages.length === 0) {
-    return { readAt: null, messageIds: [] };
+    return { readAt: null, messageIds: [], notificationCount: notificationResult.count };
   }
 
   const readAt = new Date();
@@ -43,7 +54,7 @@ async function markConversationAsRead(req, otherUserId) {
     });
   });
 
-  return { readAt, messageIds: unreadMessages.map(message => message.id) };
+  return { readAt, messageIds: unreadMessages.map(message => message.id), notificationCount: notificationResult.count };
 }
 
 async function getContacts(user) {
@@ -121,8 +132,9 @@ async function renderInbox(req, res, selectedUserId = null) {
   }
 
   let messages = [];
+  let readResult = { readAt: null, messageIds: [], notificationCount: 0 };
   if (selectedUser) {
-    await markConversationAsRead(req, selectedUser.id);
+    readResult = await markConversationAsRead(req, selectedUser.id);
 
     messages = await prisma.directMessage.findMany({
       where: {
@@ -146,6 +158,7 @@ async function renderInbox(req, res, selectedUserId = null) {
     contacts,
     selectedUser,
     messages,
+    readResult,
     currentUserId: currentUser.id
   });
 }
@@ -179,7 +192,8 @@ router.post('/:userId/read', async (req, res) => {
     res.json({
       success: true,
       messageIds: result.messageIds,
-      readAt: result.readAt ? result.readAt.toISOString() : null
+      readAt: result.readAt ? result.readAt.toISOString() : null,
+      notificationCount: result.notificationCount
     });
   } catch (error) {
     console.error(error);

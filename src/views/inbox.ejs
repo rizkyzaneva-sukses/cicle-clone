@@ -76,6 +76,7 @@
 const currentUserId = '<%= currentUserId %>';
 const selectedUserId = '<%= selectedUser.id %>';
 const initialMessages = <%- JSON.stringify(messages) %>;
+const initialReadResult = <%- JSON.stringify(readResult || { messageIds: [], notificationCount: 0 }) %>;
 const socket = io();
 let dmFiles = [];
 
@@ -137,6 +138,13 @@ function updateDmSeenStatus(messageIds, readAt) {
   });
 }
 
+function applyReadResult(result) {
+  if (!result) return;
+  if ((result.messageIds || []).length > 0 || result.notificationCount > 0) {
+    if (typeof refreshHeaderUnreadCounts === 'function') refreshHeaderUnreadCounts();
+  }
+}
+
 function refreshDmFilePill() {
   const pill = document.getElementById('dm-file-pill');
   if (dmFiles.length === 0) {
@@ -193,12 +201,14 @@ async function markConversationSeen() {
     if (result.success && result.messageIds?.length) {
       updateDmSeenStatus(result.messageIds, result.readAt);
     }
+    if (result.success) applyReadResult(result);
   } catch (error) {
     console.error(error);
   }
 }
 
 initialMessages.forEach(appendDm);
+applyReadResult(initialReadResult);
 markConversationSeen();
 </script>
 <% } %>

@@ -432,16 +432,16 @@
             <% const notifGroups = unreadNotificationGroups || { PROJECT_TASK: 0, DIRECT_CHAT: 0, OTHER: 0 }; %>
             <div class="grid grid-cols-4 gap-1 px-2 py-2 border-b bg-white text-xs">
               <button type="button" data-notif-tab="ALL" onclick="setNotifFilter('ALL')" class="notif-tab px-2 py-1.5 rounded-lg font-medium bg-blue-50 text-blue-700 hover:bg-gray-100 active">
-                Semua <span class="ml-1 text-gray-400"><%= unreadNotifications %></span>
+                Semua <span id="notif-count-all" class="ml-1 text-gray-400"><%= unreadNotifications %></span>
               </button>
               <button type="button" data-notif-tab="PROJECT_TASK" onclick="setNotifFilter('PROJECT_TASK')" class="notif-tab px-2 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
-                Proyek <span class="ml-1 text-gray-400"><%= notifGroups.PROJECT_TASK || 0 %></span>
+                Proyek <span id="notif-count-project-task" class="ml-1 text-gray-400"><%= notifGroups.PROJECT_TASK || 0 %></span>
               </button>
               <button type="button" data-notif-tab="DIRECT_CHAT" onclick="setNotifFilter('DIRECT_CHAT')" class="notif-tab px-2 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
-                Personal <span class="ml-1 text-gray-400"><%= notifGroups.DIRECT_CHAT || 0 %></span>
+                Personal <span id="notif-count-direct-chat" class="ml-1 text-gray-400"><%= notifGroups.DIRECT_CHAT || 0 %></span>
               </button>
               <button type="button" data-notif-tab="OTHER" onclick="setNotifFilter('OTHER')" class="notif-tab px-2 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
-                Lainnya <span class="ml-1 text-gray-400"><%= notifGroups.OTHER || 0 %></span>
+                Lainnya <span id="notif-count-other" class="ml-1 text-gray-400"><%= notifGroups.OTHER || 0 %></span>
               </button>
             </div>
             <div id="notif-list" class="max-h-72 overflow-y-auto">
@@ -774,6 +774,55 @@ function setNotifFilter(type) {
   loadNotifications();
 }
 
+function formatBadgeCount(count) {
+  return count > 9 ? '9+' : String(count);
+}
+
+function setHeaderBadge(selector, count, className, parentSelector) {
+  const existing = document.querySelector(selector);
+  if (count <= 0) {
+    existing?.remove();
+    return;
+  }
+
+  const badge = existing || document.createElement('span');
+  badge.textContent = formatBadgeCount(count);
+  if (!existing) {
+    badge.id = selector.replace('#', '');
+    badge.className = className;
+    const parent = document.querySelector(parentSelector);
+    parent?.appendChild(badge);
+  }
+}
+
+async function refreshHeaderUnreadCounts() {
+  const res = await fetch('/notifications/counts');
+  if (!res.ok) return;
+  const counts = await res.json();
+
+  setHeaderBadge(
+    '#notif-badge',
+    counts.unreadNotifications || 0,
+    'absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold',
+    '#notif-wrapper button'
+  );
+  setHeaderBadge(
+    '#inbox-badge',
+    counts.unreadDirectMessages || 0,
+    'absolute top-1 right-1 w-4 h-4 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-bold',
+    'a[href="/inbox"]'
+  );
+
+  const allCount = document.getElementById('notif-count-all');
+  const projectCount = document.getElementById('notif-count-project-task');
+  const directCount = document.getElementById('notif-count-direct-chat');
+  const otherCount = document.getElementById('notif-count-other');
+  if (allCount) allCount.textContent = counts.unreadNotifications || 0;
+  if (projectCount) projectCount.textContent = counts.unreadNotificationGroups?.PROJECT_TASK || 0;
+  if (directCount) directCount.textContent = counts.unreadNotificationGroups?.DIRECT_CHAT || 0;
+  if (otherCount) otherCount.textContent = counts.unreadNotificationGroups?.OTHER || 0;
+}
+
 async function loadNotifications() {
   notifLoaded = true;
   const params = currentNotifFilter === 'ALL' ? '' : `?type=${encodeURIComponent(currentNotifFilter)}`;
@@ -789,7 +838,7 @@ async function loadNotifications() {
   list.innerHTML = notifications.map(n => {
     const meta = notifTypeMeta(n.type);
     return `
-    <a href="${escapeHtml(n.link || '#')}" onclick="markRead('${escapeHtml(n.id)}')"
+    <a href="${escapeHtml(n.link || '#')}" onclick="return openNotification(event, '${escapeHtml(n.id)}')"
       class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b last:border-b-0 ${n.isRead ? 'opacity-60' : ''}">
       <div class="w-2 h-2 rounded-full mt-2 shrink-0 ${n.isRead ? 'bg-gray-300' : meta.dot}"></div>
       <div class="flex-1 min-w-0">
@@ -808,9 +857,24 @@ async function markRead(id) {
   await fetch(`/notifications/${id}/read`, { method: 'POST' });
 }
 
+async function openNotification(event, id) {
+  event.preventDefault();
+  const target = event.currentTarget;
+  try {
+    await markRead(id);
+    notifLoaded = false;
+    await refreshHeaderUnreadCounts();
+  } catch (error) {
+    console.error('Mark notification read failed:', error);
+  }
+  window.location.href = target.getAttribute('href') || '#';
+  return false;
+}
+
 async function markAllRead() {
   await fetch('/notifications/read-all', { method: 'POST' });
-  document.getElementById('notif-badge')?.remove();
+  await refreshHeaderUnreadCounts();
+  notifLoaded = false;
   await loadNotifications();
 }
 
