@@ -477,13 +477,22 @@ model TemplateChecklist {
   @@index([templateId])
 }
 
+enum NotificationType {
+  PROJECT_TASK
+  DIRECT_CHAT
+  OTHER
+}
+
 model Notification {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String
   content   String
   link      String?
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  type      NotificationType @default(OTHER)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, isRead])
 }

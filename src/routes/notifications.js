@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
-const { enabled: pushEnabled, vapidPublicKey } = require('../lib/push');
+const { enabled: pushEnabled, vapidPublicKey, sendPushToUser } = require('../lib/push');
 
 router.use(requireAuth);
+
+const validTypes = new Set(['PROJECT_TASK', 'DIRECT_CHAT', 'OTHER']);
 
 // Browser push setup: public key + enable flag for the client to check before subscribing
 router.get('/push/public-key', (req, res) => {
@@ -45,10 +47,38 @@ router.post('/push/unsubscribe', async (req, res) => {
   }
 });
 
+router.get('/push/status', async (req, res) => {
+  const subscriptions = await prisma.pushSubscription.count({ where: { userId: req.session.user.id } });
+  res.json({ enabled: pushEnabled, publicKey: vapidPublicKey, subscriptions });
+});
+
+router.post('/push/test', async (req, res) => {
+  try {
+    const result = await sendPushToUser(req.session.user.id, {
+      title: 'Tes notifikasi Maulana Corp',
+      body: 'Notifikasi desktop aktif dan siap dipakai.',
+      url: '/'
+    });
+
+    if (!result.enabled) return res.status(400).json({ error: 'Notifikasi desktop belum diaktifkan oleh admin platform' });
+    if (result.total === 0) return res.status(400).json({ error: 'Device ini belum tersubscribe ke notifikasi desktop' });
+    if (result.sent === 0) return res.status(500).json({ error: 'Notif tes belum berhasil dikirim', result });
+
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal mengirim notif tes' });
+  }
+});
+
 // Get recent notifications (JSON, for dropdown)
 router.get('/', async (req, res) => {
+  const { type } = req.query;
+  const where = { userId: req.session.user.id };
+  if (validTypes.has(type)) where.type = type;
+
   const notifications = await prisma.notification.findMany({
-    where: { userId: req.session.user.id },
+    where,
     orderBy: { createdAt: 'desc' },
     take: 15
   });

@@ -424,7 +424,25 @@
           <div id="notif-dropdown" class="hidden absolute right-0 top-12 w-80 bg-white border shadow-xl rounded-2xl overflow-hidden z-[60]">
             <div class="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
               <span class="font-semibold text-sm">Notifikasi</span>
-              <button onclick="markAllRead()" class="text-xs text-blue-600 hover:underline">Tandai semua dibaca</button>
+              <div class="flex items-center gap-3">
+                <button onclick="testPushNotification()" class="text-xs text-gray-500 hover:text-blue-600" title="Tes notifikasi desktop">Tes</button>
+                <button onclick="markAllRead()" class="text-xs text-blue-600 hover:underline">Tandai semua dibaca</button>
+              </div>
+            </div>
+            <% const notifGroups = unreadNotificationGroups || { PROJECT_TASK: 0, DIRECT_CHAT: 0, OTHER: 0 }; %>
+            <div class="grid grid-cols-4 gap-1 px-2 py-2 border-b bg-white text-xs">
+              <button type="button" data-notif-tab="ALL" onclick="setNotifFilter('ALL')" class="notif-tab px-2 py-1.5 rounded-lg font-medium bg-blue-50 text-blue-700 hover:bg-gray-100 active">
+                Semua <span class="ml-1 text-gray-400"><%= unreadNotifications %></span>
+              </button>
+              <button type="button" data-notif-tab="PROJECT_TASK" onclick="setNotifFilter('PROJECT_TASK')" class="notif-tab px-2 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
+                Proyek <span class="ml-1 text-gray-400"><%= notifGroups.PROJECT_TASK || 0 %></span>
+              </button>
+              <button type="button" data-notif-tab="DIRECT_CHAT" onclick="setNotifFilter('DIRECT_CHAT')" class="notif-tab px-2 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
+                Personal <span class="ml-1 text-gray-400"><%= notifGroups.DIRECT_CHAT || 0 %></span>
+              </button>
+              <button type="button" data-notif-tab="OTHER" onclick="setNotifFilter('OTHER')" class="notif-tab px-2 py-1.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
+                Lainnya <span class="ml-1 text-gray-400"><%= notifGroups.OTHER || 0 %></span>
+              </button>
             </div>
             <div id="notif-list" class="max-h-72 overflow-y-auto">
               <div class="text-center text-gray-400 text-sm py-8" id="notif-empty">Memuat...</div>
@@ -722,35 +740,68 @@ document.addEventListener('DOMContentLoaded', syncThemeIcon);
 
 // Notification dropdown
 let notifLoaded = false;
+let currentNotifFilter = 'ALL';
 function toggleNotifDropdown() {
   const dd = document.getElementById('notif-dropdown');
   dd.classList.toggle('hidden');
   if (!dd.classList.contains('hidden') && !notifLoaded) loadNotifications();
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function notifTypeMeta(type) {
+  if (type === 'PROJECT_TASK') return { label: 'Proyek/Task', dot: 'bg-blue-500' };
+  if (type === 'DIRECT_CHAT') return { label: 'Chat Personal', dot: 'bg-emerald-500' };
+  return { label: 'Lainnya', dot: 'bg-amber-500' };
+}
+
+function setNotifFilter(type) {
+  currentNotifFilter = type || 'ALL';
+  notifLoaded = false;
+  document.querySelectorAll('.notif-tab').forEach((tab) => {
+    const isActive = tab.dataset.notifTab === currentNotifFilter;
+    tab.classList.toggle('bg-blue-50', isActive);
+    tab.classList.toggle('text-blue-700', isActive);
+    tab.classList.toggle('text-gray-600', !isActive);
+  });
+  loadNotifications();
+}
+
 async function loadNotifications() {
   notifLoaded = true;
-  const res = await fetch('/notifications');
+  const params = currentNotifFilter === 'ALL' ? '' : `?type=${encodeURIComponent(currentNotifFilter)}`;
+  const res = await fetch(`/notifications${params}`);
   const notifications = await res.json();
   const list = document.getElementById('notif-list');
-  const empty = document.getElementById('notif-empty');
 
   if (notifications.length === 0) {
-    if (empty) empty.textContent = 'Tidak ada notifikasi';
+    list.innerHTML = '<div class="text-center text-gray-400 text-sm py-8" id="notif-empty">Tidak ada notifikasi</div>';
     return;
   }
-  if (empty) empty.remove();
 
-  list.innerHTML = notifications.map(n => `
-    <a href="${n.link || '#'}" onclick="markRead('${n.id}')"
+  list.innerHTML = notifications.map(n => {
+    const meta = notifTypeMeta(n.type);
+    return `
+    <a href="${escapeHtml(n.link || '#')}" onclick="markRead('${escapeHtml(n.id)}')"
       class="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 border-b last:border-b-0 ${n.isRead ? 'opacity-60' : ''}">
-      <div class="w-2 h-2 rounded-full mt-2 shrink-0 ${n.isRead ? 'bg-gray-300' : 'bg-blue-500'}"></div>
+      <div class="w-2 h-2 rounded-full mt-2 shrink-0 ${n.isRead ? 'bg-gray-300' : meta.dot}"></div>
       <div class="flex-1 min-w-0">
-        <p class="text-sm ${n.isRead ? 'text-gray-500' : 'text-gray-800 font-medium'}">${n.content}</p>
+        <div class="flex items-center gap-2 mb-0.5">
+          <span class="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">${meta.label}</span>
+        </div>
+        <p class="text-sm ${n.isRead ? 'text-gray-500' : 'text-gray-800 font-medium'}">${escapeHtml(n.content)}</p>
         <p class="text-xs text-gray-400 mt-0.5">${new Date(n.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
       </div>
     </a>
-  `).join('');
+  `;
+  }).join('');
 }
 
 async function markRead(id) {
@@ -826,55 +877,94 @@ function dismissPushBanner() {
   localStorage.setItem('pushBannerDismissed', '1');
 }
 
-async function enablePushNotifications() {
+async function getPushConfig() {
+  const keyRes = await fetch('/notifications/push/public-key');
+  return keyRes.json();
+}
+
+async function ensurePushSubscription({ requestPermission = false } = {}) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert('Browser ini tidak mendukung notifikasi desktop');
-    return;
+    throw new Error('Browser ini tidak mendukung notifikasi desktop');
   }
-  try {
-    const keyRes = await fetch('/notifications/push/public-key');
-    const { enabled, publicKey } = await keyRes.json();
-    if (!enabled || !publicKey) {
-      alert('Notifikasi desktop belum diaktifkan oleh admin platform');
-      return;
-    }
+  if (typeof Notification === 'undefined') {
+    throw new Error('Browser ini tidak mendukung notifikasi desktop');
+  }
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      dismissPushBanner();
-      return;
-    }
+  const { enabled, publicKey } = await getPushConfig();
+  if (!enabled || !publicKey) {
+    throw new Error('Notifikasi desktop belum diaktifkan oleh admin platform');
+  }
 
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
-    }
+  let permission = Notification.permission;
+  if (permission === 'default' && requestPermission) {
+    permission = await Notification.requestPermission();
+  }
+  if (permission !== 'granted') {
+    throw new Error('Izin notifikasi desktop belum aktif');
+  }
 
-    await fetch('/notifications/push/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sub.toJSON())
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
+  }
 
+  const saveRes = await fetch('/notifications/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sub.toJSON())
+  });
+  if (!saveRes.ok) {
+    const data = await saveRes.json().catch(() => ({}));
+    throw new Error(data.error || 'Gagal menyimpan subscription notifikasi');
+  }
+
+  return sub;
+}
+
+async function enablePushNotifications() {
+  try {
+    await ensurePushSubscription({ requestPermission: true });
     dismissPushBanner();
+    await testPushNotification(false);
   } catch (err) {
     console.error('Push subscribe failed:', err);
+    alert(err.message || 'Gagal mengaktifkan notifikasi desktop');
+  }
+}
+
+async function testPushNotification(showSuccessAlert = true) {
+  try {
+    await ensurePushSubscription({ requestPermission: true });
+    const res = await fetch('/notifications/push/test', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Gagal mengirim notif tes');
+    if (showSuccessAlert) alert('Notif tes dikirim. Kalau belum muncul, cek Focus Assist/Do Not Disturb OS.');
+  } catch (err) {
+    console.error('Push test failed:', err);
+    alert(err.message || 'Gagal mengirim notif tes');
   }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
-  if (localStorage.getItem('pushBannerDismissed')) return;
-
+  if (typeof Notification === 'undefined') return;
   try {
     const res = await fetch('/notifications/push/public-key');
     const { enabled } = await res.json();
-    if (enabled) document.getElementById('push-banner')?.classList.remove('hidden');
+    if (!enabled) return;
+
+    if (Notification.permission === 'granted') {
+      await ensurePushSubscription();
+      return;
+    }
+
+    if (Notification.permission === 'default' && !localStorage.getItem('pushBannerDismissed')) {
+      document.getElementById('push-banner')?.classList.remove('hidden');
+    }
   } catch (e) {}
 });
 <% } %>

@@ -45,6 +45,7 @@ app.use(async (req, res, next) => {
   res.locals.currentCompany = null;
   res.locals.userRole = 'member';
   res.locals.unreadNotifications = 0;
+  res.locals.unreadNotificationGroups = { PROJECT_TASK: 0, DIRECT_CHAT: 0, OTHER: 0 };
   res.locals.unreadDirectMessages = 0;
   res.locals.latestAnnouncement = null;
 
@@ -70,11 +71,19 @@ app.use(async (req, res, next) => {
       }
       await ensureDefaultWorkspace(prisma, req.session.user);
 
-      const [unreadCount, directUnreadCount] = await Promise.all([
+      const [unreadCount, unreadNotificationGroups, directUnreadCount] = await Promise.all([
         prisma.notification.count({ where: { userId, isRead: false } }),
+        prisma.notification.groupBy({
+          by: ['type'],
+          where: { userId, isRead: false },
+          _count: { _all: true }
+        }),
         prisma.directMessage.count({ where: { receiverId: userId, readAt: null } })
       ]);
       res.locals.unreadNotifications = unreadCount;
+      unreadNotificationGroups.forEach((group) => {
+        res.locals.unreadNotificationGroups[group.type] = group._count._all;
+      });
       res.locals.unreadDirectMessages = directUnreadCount;
 
       // Current workspace/brand context (untuk sidebar label)
