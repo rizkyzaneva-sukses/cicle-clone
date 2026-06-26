@@ -408,15 +408,39 @@
         <% } %>
         <% task.progressUpdates.forEach(update => { %>
           <% const meta = progressStatusMeta[update.status] || ['bg-gray-100 text-gray-600', 'Update'] %>
-          <div class="border rounded-2xl px-4 py-3">
+          <div class="border rounded-2xl px-4 py-3" id="progress-update-<%= update.id %>">
             <div class="flex flex-wrap items-center gap-2 mb-2">
               <span class="text-sm font-semibold"><%= update.author.name %></span>
               <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold <%= meta[0] %>"><%= meta[1] %></span>
               <span class="text-xs text-gray-400">
                 <%= new Date(update.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %>
               </span>
+              <% if (update.author.id === currentUserId) { %>
+                <button type="button"
+                  onclick='showProgressEdit("<%= update.id %>", <%- JSON.stringify(update.status || "ON_TRACK") %>, <%- JSON.stringify(update.content) %>)'
+                  class="ml-auto text-xs text-gray-400 hover:text-blue-600">
+                  <i class="fas fa-pen mr-1"></i>Edit
+                </button>
+                <button type="button" onclick="deleteProgressUpdate('<%= update.id %>')" class="text-xs text-gray-400 hover:text-red-600">
+                  <i class="fas fa-trash"></i>
+                </button>
+              <% } %>
             </div>
-            <p class="text-sm text-gray-700 whitespace-pre-wrap"><%= update.content %></p>
+            <p class="text-sm text-gray-700 whitespace-pre-wrap" id="progress-content-<%= update.id %>"><%= update.content %></p>
+            <% if (update.author.id === currentUserId) { %>
+              <div id="progress-edit-<%= update.id %>" class="hidden mt-3 space-y-2">
+                <select class="progress-edit-status w-full sm:w-48 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-400">
+                  <option value="ON_TRACK">On track</option>
+                  <option value="BLOCKED">Blocked</option>
+                  <option value="NEED_REVIEW">Need review</option>
+                </select>
+                <textarea rows="3" class="progress-edit-content w-full border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-400 resize-none"></textarea>
+                <div class="flex gap-2 justify-end">
+                  <button type="button" onclick="hideProgressEdit('<%= update.id %>')" class="px-3 py-1.5 border rounded-xl text-xs text-gray-600 hover:bg-gray-50">Batal</button>
+                  <button type="button" onclick="saveProgressUpdate('<%= update.id %>')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700">Simpan</button>
+                </div>
+              </div>
+            <% } %>
           </div>
         <% }) %>
       </div>
@@ -877,6 +901,52 @@ async function addSubCheck(parentId, input) {
     subList.appendChild(div);
     input.value = '';
     updateChecklistMeta();
+  }
+}
+
+function showProgressEdit(id, status, content) {
+  const form = document.getElementById(`progress-edit-${id}`);
+  if (!form) return;
+  form.classList.remove('hidden');
+  form.querySelector('.progress-edit-status').value = status || 'ON_TRACK';
+  form.querySelector('.progress-edit-content').value = content || '';
+  form.querySelector('.progress-edit-content').focus();
+}
+
+function hideProgressEdit(id) {
+  document.getElementById(`progress-edit-${id}`)?.classList.add('hidden');
+}
+
+async function saveProgressUpdate(id) {
+  const form = document.getElementById(`progress-edit-${id}`);
+  if (!form) return;
+  const status = form.querySelector('.progress-edit-status').value;
+  const content = form.querySelector('.progress-edit-content').value.trim();
+  if (!content) return alert('Progress update wajib diisi');
+
+  try {
+    const res = await fetch(`/tasks/${taskId}/progress-updates/${id}`, {
+      method: 'PATCH',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, content })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal memperbarui progress update');
+    window.location.reload();
+  } catch (error) {
+    alert(error.message || 'Gagal memperbarui progress update');
+  }
+}
+
+async function deleteProgressUpdate(id) {
+  if (!confirm('Hapus progress update ini?')) return;
+  try {
+    const res = await fetch(`/tasks/${taskId}/progress-updates/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menghapus progress update');
+    document.getElementById(`progress-update-${id}`)?.remove();
+  } catch (error) {
+    alert(error.message || 'Gagal menghapus progress update');
   }
 }
 

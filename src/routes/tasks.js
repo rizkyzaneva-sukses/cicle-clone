@@ -314,6 +314,73 @@ router.post('/:id/progress-updates', async (req, res) => {
   }
 });
 
+router.patch('/:id/progress-updates/:updateId', async (req, res) => {
+  try {
+    const task = await canAccessTask(req.session.user, req.params.id);
+    if (!task) return res.status(403).json({ error: 'Akses ditolak' });
+
+    const existing = await prisma.taskProgressUpdate.findUnique({
+      where: { id: req.params.updateId }
+    });
+    if (!existing || existing.taskId !== task.id) return res.status(404).json({ error: 'Progress update tidak ditemukan' });
+    if (existing.authorId !== req.session.user.id) return res.status(403).json({ error: 'Hanya pembuat progress yang bisa mengedit' });
+
+    const content = String(req.body.content || '').trim();
+    const allowedStatuses = ['ON_TRACK', 'BLOCKED', 'NEED_REVIEW'];
+    const status = allowedStatuses.includes(req.body.status) ? req.body.status : null;
+    if (!content) return res.status(400).json({ error: 'Progress update wajib diisi' });
+
+    const update = await prisma.taskProgressUpdate.update({
+      where: { id: existing.id },
+      data: { content, status },
+      include: { author: { select: { id: true, name: true } } }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'progress_updated',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { status, content, edited: true }
+    });
+
+    res.json({ success: true, update });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal memperbarui progress update' });
+  }
+});
+
+router.delete('/:id/progress-updates/:updateId', async (req, res) => {
+  try {
+    const task = await canAccessTask(req.session.user, req.params.id);
+    if (!task) return res.status(403).json({ error: 'Akses ditolak' });
+
+    const existing = await prisma.taskProgressUpdate.findUnique({
+      where: { id: req.params.updateId }
+    });
+    if (!existing || existing.taskId !== task.id) return res.status(404).json({ error: 'Progress update tidak ditemukan' });
+    if (existing.authorId !== req.session.user.id) return res.status(403).json({ error: 'Hanya pembuat progress yang bisa menghapus' });
+
+    await prisma.taskProgressUpdate.delete({ where: { id: existing.id } });
+
+    await logActivity(prisma, req, {
+      action: 'progress_deleted',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { content: existing.content, status: existing.status }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal menghapus progress update' });
+  }
+});
+
 // Quick inline update: assignee only
 router.patch('/:id/assignee', async (req, res) => {
   try {

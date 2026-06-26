@@ -741,6 +741,7 @@ function renderProgressUpdate(update, compact = false) {
   if (!update) return '<p class="text-sm text-gray-400">Belum ada progress update</p>';
 
   const meta = progressStatusMeta(update.status);
+  const canEdit = update.author?.id === currentUserId;
   const date = update.createdAt
     ? new Date(update.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
     : 'Baru saja';
@@ -751,6 +752,7 @@ function renderProgressUpdate(update, compact = false) {
         <span class="text-xs font-semibold text-gray-700">${escapeHtml(update.author?.name || 'User')}</span>
         <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.cls}">${meta.label}</span>
         <span class="text-[10px] text-gray-400">${date}</span>
+        ${canEdit ? `<button type="button" onclick="showPreviewProgressEdit('${update.id}')" class="ml-auto text-[10px] text-gray-400 hover:text-blue-600"><i class="fas fa-pen mr-1"></i>Edit</button>` : ''}
       </div>
       <p class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(update.content)}</p>
     </div>`;
@@ -2123,6 +2125,20 @@ if (fab) {
     <div>
       <div class="text-xs text-gray-400 font-medium mb-2">Progress Update Terakhir</div>
       <div id="preview-progress-latest"></div>
+      <form id="preview-progress-edit-form" class="hidden mt-3 space-y-2" onsubmit="savePreviewProgressUpdate(event)">
+        <input type="hidden" name="updateId">
+        <select name="status" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+          <option value="ON_TRACK">On track</option>
+          <option value="BLOCKED">Blocked</option>
+          <option value="NEED_REVIEW">Need review</option>
+        </select>
+        <textarea name="content" rows="3"
+          class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 resize-none"></textarea>
+        <div class="flex gap-2 justify-end">
+          <button type="button" onclick="hidePreviewProgressEdit()" class="px-3 py-1.5 border rounded-xl text-xs text-gray-600 hover:bg-gray-50">Batal</button>
+          <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700">Simpan</button>
+        </div>
+      </form>
       <form id="preview-progress-form" class="mt-3 space-y-2" onsubmit="addPreviewProgressUpdate(event)">
         <select name="status" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-400">
           <option value="ON_TRACK">On track</option>
@@ -2468,6 +2484,49 @@ async function addPreviewProgressUpdate(event) {
     renderPreviewProgress(task);
   } catch (err) {
     alert(err.message || 'Gagal menambah progress update');
+  }
+}
+
+function showPreviewProgressEdit(updateId) {
+  const task = tasks.find(x => x.id === previewTaskId);
+  const update = task?.progressUpdates?.find(item => item.id === updateId);
+  if (!update) return;
+  const form = document.getElementById('preview-progress-edit-form');
+  form.elements.updateId.value = update.id;
+  form.elements.status.value = update.status || 'ON_TRACK';
+  form.elements.content.value = update.content || '';
+  form.classList.remove('hidden');
+  document.getElementById('preview-progress-form')?.classList.add('hidden');
+  form.elements.content.focus();
+}
+
+function hidePreviewProgressEdit() {
+  document.getElementById('preview-progress-edit-form')?.classList.add('hidden');
+  document.getElementById('preview-progress-form')?.classList.remove('hidden');
+}
+
+async function savePreviewProgressUpdate(event) {
+  event.preventDefault();
+  const form = event.target;
+  const task = tasks.find(x => x.id === previewTaskId);
+  const updateId = form.elements.updateId.value;
+  const status = form.elements.status.value;
+  const content = form.elements.content.value.trim();
+  if (!task || !updateId || !content) return;
+
+  try {
+    const res = await fetch(`/tasks/${previewTaskId}/progress-updates/${updateId}`, {
+      method: 'PATCH',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, content })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal memperbarui progress update');
+    task.progressUpdates = (task.progressUpdates || []).map(item => item.id === updateId ? data.update : item);
+    hidePreviewProgressEdit();
+    renderPreviewProgress(task);
+  } catch (err) {
+    alert(err.message || 'Gagal memperbarui progress update');
   }
 }
 
