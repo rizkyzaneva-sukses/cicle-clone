@@ -7,6 +7,7 @@ const { logActivity } = require('../lib/activity');
 const { hasProjectAccess, ensureProjectMember } = require('../lib/access');
 const { notifyUser } = require('../lib/notify');
 const { extractMentionedUserIds } = require('../lib/mentions');
+const { syncProjectArchiveState } = require('../lib/projectArchive');
 
 router.use(requireAuth);
 
@@ -103,6 +104,8 @@ router.get('/:id', async (req, res) => {
 router.post('/create', async (req, res) => {
   try {
     const { title, description, projectId, assigneeId, dueDate, status, priority } = req.body;
+    const allowedStatuses = ['TODO', 'IN_PROGRESS', 'DONE'];
+    const normalizedStatus = allowedStatuses.includes(status) ? status : 'TODO';
     const checklists = Array.isArray(req.body.checklists)
       ? req.body.checklists.map(item => String(item || '').trim()).filter(Boolean).slice(0, 100)
       : [];
@@ -119,7 +122,7 @@ router.post('/create', async (req, res) => {
         projectId,
         assigneeId: assigneeId || null,
         dueDate: dueDate ? new Date(dueDate) : null,
-        status: status || 'TODO',
+        status: normalizedStatus,
         priority: priority || 'NONE',
         checklists: checklists.length > 0 ? {
           create: checklists.map((content, position) => ({ content, position }))
@@ -154,7 +157,9 @@ router.post('/create', async (req, res) => {
       }
     }
 
-    res.json({ success: true, task });
+    const projectArchiveState = await syncProjectArchiveState(prisma, projectId, req);
+
+    res.json({ success: true, task, projectArchiveState });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal membuat tugas' });
@@ -165,6 +170,11 @@ router.post('/create', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   try {
     const { status, position } = req.body;
+    const allowedStatuses = ['TODO', 'IN_PROGRESS', 'DONE'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Status task tidak valid' });
+    }
+
     const existingTask = await canAccessTask(req.session.user, req.params.id);
     if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
 
@@ -186,7 +196,9 @@ router.patch('/:id/status', async (req, res) => {
       metadata: { status }
     });
 
-    res.json({ success: true, task });
+    const projectArchiveState = await syncProjectArchiveState(prisma, task.projectId, req);
+
+    res.json({ success: true, task, projectArchiveState });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal update tugas' });
@@ -406,6 +418,18 @@ router.post('/:id/update', async (req, res) => {
       metadata: { title: task.title }
     });
 
+    if (hasField('status')) {
+      const projectArchiveState = await syncProjectArchiveState(prisma, task.projectId, req);
+      if (projectArchiveState.status === 'archived') {
+        req.flash('success', 'Task berhasil diperbarui. Semua task selesai, project otomatis masuk Arsip.');
+        return res.redirect('/projects');
+      }
+      if (projectArchiveState.status === 'unarchived') {
+        req.flash('success', 'Task berhasil diperbarui. Project otomatis dikembalikan ke daftar aktif.');
+        return res.redirect(`/tasks/${task.id}`);
+      }
+    }
+
     req.flash('success', 'Task berhasil diperbarui');
     res.redirect(`/tasks/${task.id}`);
   } catch (error) {
@@ -473,7 +497,8 @@ router.delete('/:id', async (req, res) => {
         metadata: { title: task.title }
       });
     }
-    res.json({ success: true });
+    const projectArchiveState = await syncProjectArchiveState(prisma, task.projectId, req);
+    res.json({ success: true, projectArchiveState });
   } catch (error) {
     res.status(500).json({ error: 'Gagal hapus' });
   }
@@ -810,7 +835,12 @@ router.patch('/:id/project', async (req, res) => {
       metadata: { fromProjectId: existingTask.projectId, toProjectId: targetProjectId }
     });
 
-    res.json({ success: true, task });
+    const [sourceProjectArchiveState, targetProjectArchiveState] = await Promise.all([
+      syncProjectArchiveState(prisma, existingTask.projectId, req),
+      syncProjectArchiveState(prisma, targetProjectId, req)
+    ]);
+
+    res.json({ success: true, task, projectArchiveState: targetProjectArchiveState, sourceProjectArchiveState });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal memindahkan task' });

@@ -41,6 +41,7 @@ router.get('/', async (req, res) => {
         prisma.project.findMany({
           where: {
             companyId: { in: companyIds },
+            archivedAt: null,
             OR: [
               { name: { contains: q, mode: 'insensitive' } },
               { description: { contains: q, mode: 'insensitive' } }
@@ -51,7 +52,7 @@ router.get('/', async (req, res) => {
         }),
         prisma.task.findMany({
           where: {
-            project: { companyId: { in: companyIds } },
+            project: { companyId: { in: companyIds }, archivedAt: null },
             OR: [
               { title: { contains: q, mode: 'insensitive' } },
               { description: { contains: q, mode: 'insensitive' } }

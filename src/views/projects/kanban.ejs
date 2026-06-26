@@ -696,6 +696,15 @@ function insertTaskIntoBoard(task) {
   return normalizedTask;
 }
 
+let projectArchiveRedirecting = false;
+function handleProjectArchiveState(state) {
+  if (!state || state.status !== 'archived' || projectArchiveRedirecting) return false;
+  projectArchiveRedirecting = true;
+  alert('Semua task sudah selesai. Project otomatis masuk Arsip.');
+  window.location.href = '/projects';
+  return true;
+}
+
 function findChecklistItem(items, checklistId) {
   for (const item of items || []) {
     if (item.id === checklistId) return item;
@@ -833,7 +842,9 @@ async function moveStatus(taskId, newStatus) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
     });
-    if (!res.ok) throw new Error('failed');
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'failed');
+    handleProjectArchiveState(data.projectArchiveState);
     socket.emit('task-updated', { taskId, status: newStatus, projectId });
   } catch (e) {
     task.status = oldStatus;
@@ -912,9 +923,13 @@ async function drop(ev, newStatus) {
       body: JSON.stringify({ status: newStatus })
     });
     
-    if (res.ok) {
+    const data = await res.json();
+    if (res.ok && data.success) {
       // Emit to others
+      handleProjectArchiveState(data.projectArchiveState);
       socket.emit('task-updated', { taskId, status: newStatus, projectId });
+    } else {
+      throw new Error(data.error || 'Gagal update status tugas');
     }
   } catch (e) {
     console.error(e);
@@ -1023,6 +1038,7 @@ async function createTask(e) {
       insertTaskIntoBoard(result.task);
       hideCreateTaskModal();
       form.reset();
+      handleProjectArchiveState(result.projectArchiveState);
     } else {
       alert(result.error || 'Gagal membuat tugas');
     }
@@ -1481,32 +1497,40 @@ function toggleSelect(taskId) {
 }
 
 async function bulkMove(status) {
+  let archiveState = null;
   for (const taskId of selectedTasks) {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
       task.status = status;
-      await fetch(`/tasks/${taskId}/status`, {
+      const res = await fetch(`/tasks/${taskId}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
+      const data = await res.json().catch(() => ({}));
+      if (data.projectArchiveState?.status === 'archived') archiveState = data.projectArchiveState;
     }
   }
   selectedTasks.clear();
   bulkMode = false;
   document.getElementById('bulk-bar').classList.add('hidden');
   renderKanban();
+  handleProjectArchiveState(archiveState);
 }
 
 async function bulkDelete() {
   if (!confirm(`Hapus ${selectedTasks.size} task?`)) return;
+  let archiveState = null;
   for (const taskId of selectedTasks) {
-    await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+    const res = await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (data.projectArchiveState?.status === 'archived') archiveState = data.projectArchiveState;
     tasks = tasks.filter(t => t.id !== taskId);
   }
   selectedTasks.clear();
   bulkMode = false;
   document.getElementById('bulk-bar').classList.add('hidden');
   renderKanban();
+  handleProjectArchiveState(archiveState);
 }
 
 async function bulkAssign() {
@@ -2217,6 +2241,7 @@ async function previewUpdateField(kind, value) {
     }
     refreshPreviewUI();
     renderKanban();
+    handleProjectArchiveState(data.projectArchiveState);
     if (kind === 'status') socket.emit('task-updated', { taskId: previewTaskId, status: t.status, projectId });
   } catch (err) {
     Object.assign(t, before);

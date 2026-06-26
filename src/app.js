@@ -174,7 +174,7 @@ app.get('/', async (req, res) => {
           brands: {
             include: {
               partnerAccess: { include: { user: true } },
-              projects: true,
+              projects: { where: { archivedAt: null } },
               memberships: true
             },
             orderBy: { createdAt: 'desc' }
@@ -203,7 +203,7 @@ app.get('/', async (req, res) => {
         include: {
           workspace: {
             include: {
-              brands: { include: { projects: true, memberships: true } }
+              brands: { include: { projects: { where: { archivedAt: null } }, memberships: true } }
             }
           }
         }
@@ -213,7 +213,7 @@ app.get('/', async (req, res) => {
         where: { userId },
         include: {
           company: {
-            include: { projects: true, memberships: true }
+            include: { projects: { where: { archivedAt: null } }, memberships: true }
           }
         }
       });
@@ -248,7 +248,7 @@ app.get('/', async (req, res) => {
     if (companies.length > 0) {
       const companyId = companies[0].id;
       [projects, tasksDone, tasksPending] = await Promise.all([
-        prisma.project.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' }, take: 6 }),
+        prisma.project.findMany({ where: { companyId, archivedAt: null }, orderBy: { createdAt: 'desc' }, take: 6 }),
         prisma.task.count({ where: { project: { companyId }, status: 'DONE' } }),
         prisma.task.count({ where: { project: { companyId }, status: { in: ['TODO', 'IN_PROGRESS'] } } })
       ]);

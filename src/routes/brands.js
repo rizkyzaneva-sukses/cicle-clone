@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
           include: {
             partnerAccess: { include: { user: true } },
             memberships: true,
-            projects: true
+            projects: { where: { archivedAt: null } }
           },
           orderBy: { createdAt: 'desc' }
         }
