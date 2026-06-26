@@ -400,7 +400,7 @@
                   <% } %>
                 </div>
               </div>
-              <p class="text-sm text-gray-700 comment-content"><%= comment.content %></p>
+              <p class="text-sm text-gray-700 comment-content whitespace-pre-wrap"><%= comment.content %></p>
               <!-- Attached files -->
               <% if (comment.files && comment.files.length > 0) { %>
                 <div class="flex flex-wrap gap-2 mt-2">
@@ -456,7 +456,7 @@
                           <span class="text-xs font-semibold">${escapeHtml('<%= reply.user.name %>')}</span>
                           <span class="text-[10px] text-gray-400"><%= new Date(reply.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short'}) %></span>
                         </div>
-                        <p class="text-xs text-gray-700"><%= reply.content %></p>
+                        <p class="text-xs text-gray-700 whitespace-pre-wrap"><%= reply.content %></p>
                         <% if (reply.files && reply.files.length > 0) { %>
                           <div class="flex flex-wrap gap-1 mt-1">
                             <% reply.files.forEach(file => { %>
@@ -474,9 +474,9 @@
               <!-- Reply form -->
               <div id="reply-form-<%= comment.id %>" class="hidden mt-2 ml-4 pl-3 border-l-2 border-blue-300">
                 <div class="flex gap-2">
-                  <input type="text" id="reply-input-<%= comment.id %>" placeholder="Balas..."
-                    class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400"
-                    onkeypress="if(event.key==='Enter' && !event.shiftKey) addReply('<%= comment.id %>')">
+                  <textarea id="reply-input-<%= comment.id %>" rows="1" placeholder="Balas..."
+                    class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400 resize-none min-h-[34px] max-h-24"
+                    onkeydown="handleTaskCommentKeydown(event, () => addReply('<%= comment.id %>'))"></textarea>
                   <button onclick="addReply('<%= comment.id %>')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs hover:bg-blue-700">Kirim</button>
                 </div>
               </div>
@@ -495,9 +495,9 @@
         </div>
         <div class="flex-1">
           <div class="flex gap-2">
-            <input type="text" id="comment-input" placeholder="Tulis komentar..."
-              class="flex-1 border rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-              onkeypress="if(event.key==='Enter' && !event.shiftKey) addComment()">
+            <textarea id="comment-input" rows="1" placeholder="Tulis komentar..."
+              class="flex-1 border rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 resize-none min-h-[42px] max-h-32"
+              onkeydown="handleTaskCommentKeydown(event, addComment)"></textarea>
             <button onclick="addComment()" class="px-5 py-2.5 bg-blue-600 text-white rounded-2xl text-sm hover:bg-blue-700">
               Kirim
             </button>
@@ -889,7 +889,14 @@ function showSelectedFiles() {
 function showReplyForm(commentId) {
   const form = document.getElementById(`reply-form-${commentId}`);
   form.classList.toggle('hidden');
-  if (!form.classList.contains('hidden')) form.querySelector('input').focus();
+  if (!form.classList.contains('hidden')) form.querySelector('textarea, input').focus();
+}
+
+function handleTaskCommentKeydown(event, submitter) {
+  if (document.getElementById('mention-dropdown')) return;
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  event.preventDefault();
+  submitter();
 }
 
 // Comments with file upload
@@ -929,7 +936,7 @@ async function addComment() {
             <button onclick="deleteComment('${comment.id}')" class="text-xs text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
           </div>
         </div>
-        <p class="text-sm text-gray-700 comment-content">${escapeHtml(comment.content)}</p>
+        <p class="text-sm text-gray-700 comment-content whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
         ${filesHtml}
         <div class="flex items-center gap-1 mt-2 flex-wrap" id="reactions-${comment.id}">
           <div class="relative">
@@ -942,7 +949,7 @@ async function addComment() {
         </div>
         <div id="reply-form-${comment.id}" class="hidden mt-2 ml-4 pl-3 border-l-2 border-blue-300">
           <div class="flex gap-2">
-            <input type="text" id="reply-input-${comment.id}" placeholder="Balas..." class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" onkeypress="if(event.key==='Enter' && !event.shiftKey) addReply('${comment.id}')">
+            <textarea id="reply-input-${comment.id}" rows="1" placeholder="Balas..." class="flex-1 border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400 resize-none min-h-[34px] max-h-24" onkeydown="handleTaskCommentKeydown(event, () => addReply('${comment.id}'))"></textarea>
             <button onclick="addReply('${comment.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs hover:bg-blue-700">Kirim</button>
           </div>
         </div>
@@ -978,7 +985,7 @@ async function addReply(parentId) {
     div.id = `comment-${data.comment.id}`;
     div.innerHTML = `
       <div class="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">${data.comment.user.name.charAt(0)}</div>
-      <div class="flex-1"><div class="flex items-center gap-2 mb-0.5"><span class="text-xs font-semibold">${escapeHtml(data.comment.user.name)}</span><span class="text-[10px] text-gray-400">Baru saja</span></div><p class="text-xs text-gray-700">${escapeHtml(data.comment.content)}</p></div>
+      <div class="flex-1"><div class="flex items-center gap-2 mb-0.5"><span class="text-xs font-semibold">${escapeHtml(data.comment.user.name)}</span><span class="text-[10px] text-gray-400">Baru saja</span></div><p class="text-xs text-gray-700 whitespace-pre-wrap">${escapeHtml(data.comment.content)}</p></div>
     `;
     replyContainer.appendChild(div);
     input.value = '';
@@ -1048,42 +1055,13 @@ async function confirmDelete(e, id, projectId) {
 // Init
 function setupTaskMentionInputs() {
   setupMentionAutocomplete('comment-input', q => `/tasks/${taskId}/members?q=${encodeURIComponent(q)}`);
-  document.querySelectorAll('input[id^="reply-input-"]').forEach(input => {
+  document.querySelectorAll('[id^="reply-input-"]').forEach(input => {
     setupMentionAutocomplete(input.id, q => `/tasks/${taskId}/members?q=${encodeURIComponent(q)}`);
   });
 }
 
 function setupShiftEnterSubmit() {
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' || !event.shiftKey) return;
-
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
-
-    if (target.id === 'comment-input') {
-      event.preventDefault();
-      addComment();
-      return;
-    }
-
-    if (target.id?.startsWith('reply-input-')) {
-      event.preventDefault();
-      addReply(target.id.replace('reply-input-', ''));
-      return;
-    }
-
-    if (target.id === 'new-checklist') {
-      event.preventDefault();
-      addCheck();
-      return;
-    }
-
-    const subForm = target.closest('[id^="sub-form-"]');
-    if (subForm) {
-      event.preventDefault();
-      addSubCheck(subForm.id.replace('sub-form-', ''), target);
-    }
-  });
+  // Comment submit is handled directly on textareas so Shift+Enter can stay as newline.
 }
 
 document.addEventListener('DOMContentLoaded', () => {

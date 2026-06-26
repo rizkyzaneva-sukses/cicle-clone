@@ -313,9 +313,9 @@
       <i class="fas fa-paperclip"></i>
     </button>
     <input id="chat-files" type="file" multiple class="hidden" onchange="handleChatFiles(this.files)">
-    <input id="chat-input" type="text" placeholder="Ketik pesan..." 
-           class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400"
-           onkeypress="if(event.key === 'Enter' && !event.shiftKey) sendMessage()">
+    <textarea id="chat-input" rows="1" placeholder="Ketik pesan..."
+           class="flex-1 border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 resize-none min-h-[48px] max-h-32"
+           onkeydown="handleChatInputKeydown(event)"></textarea>
     <button onclick="sendMessage()" 
              class="px-5 sm:px-8 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 flex items-center">
       <i class="fas fa-paper-plane"></i>
@@ -870,6 +870,8 @@ function openPreview(taskId) {
   document.getElementById('preview-due').textContent = task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '-';
   document.getElementById('preview-assignee').textContent = task.assignee ? task.assignee.name : '-';
   document.getElementById('preview-desc').textContent = task.description || '-';
+  const previewDescInput = document.getElementById('preview-desc-input');
+  if (previewDescInput) previewDescInput.value = task.description || '';
 
   // Checklist progress
   document.getElementById('preview-check-pct').textContent = checklists.length > 0 ? `${checkPct}%` : '-';
@@ -1517,6 +1519,13 @@ async function bulkMove(status) {
   handleProjectArchiveState(archiveState);
 }
 
+function handleChatInputKeydown(event) {
+  if (document.getElementById('mention-dropdown')) return;
+  if (event.key !== 'Enter' || event.shiftKey) return;
+  event.preventDefault();
+  sendMessage();
+}
+
 async function bulkDelete() {
   if (!confirm(`Hapus ${selectedTasks.size} task?`)) return;
   let archiveState = null;
@@ -1603,12 +1612,6 @@ async function bulkMoveToProject() {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && e.shiftKey && e.target.id === 'chat-input') {
-    e.preventDefault();
-    sendMessage();
-    return;
-  }
-
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   switch(e.key) {
     case 'n': case 'N':
@@ -2026,8 +2029,22 @@ if (fab) {
 
     <!-- Description -->
     <div>
-      <div class="text-xs text-gray-400 font-medium mb-1">Deskripsi</div>
-      <p class="text-sm text-gray-700" id="preview-desc"></p>
+      <div class="text-xs text-gray-400 font-medium mb-1 flex items-center gap-1.5">
+        Deskripsi
+        <button type="button" onclick="showPreviewDescEdit()" class="text-gray-300 hover:text-blue-500 transition" title="Edit deskripsi"><i class="fas fa-pen text-[9px]"></i></button>
+      </div>
+      <div id="preview-desc-display">
+        <p class="text-sm text-gray-700 whitespace-pre-wrap" id="preview-desc"></p>
+      </div>
+      <div id="preview-desc-editor" class="hidden space-y-2">
+        <textarea id="preview-desc-input" rows="4"
+          class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 resize-none"
+          placeholder="Tulis deskripsi task..."></textarea>
+        <div class="flex gap-2 justify-end">
+          <button type="button" onclick="hidePreviewDescEdit()" class="px-3 py-1.5 border rounded-lg text-xs text-gray-600 hover:bg-gray-50">Batal</button>
+          <button type="button" onclick="savePreviewDesc()" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700">Simpan</button>
+        </div>
+      </div>
     </div>
 
     <!-- Checklist Progress -->
@@ -2041,6 +2058,14 @@ if (fab) {
       </div>
       <div class="text-xs text-gray-400 font-medium mb-2" id="preview-checklist-label">Checklist:</div>
       <div class="space-y-1.5" id="preview-pending"></div>
+      <div class="mt-3 flex gap-2">
+        <input type="text" id="preview-checklist-input" placeholder="Tambah checklist..."
+          class="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+          onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();addPreviewChecklist()}">
+        <button type="button" onclick="addPreviewChecklist()" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm hover:bg-blue-100" title="Tambah checklist">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
     </div>
   </div>
   <div class="border-t p-4">
@@ -2226,6 +2251,7 @@ async function previewUpdateField(kind, value) {
   if (kind === 'priority')  { endpoint = `/tasks/${previewTaskId}/priority`;  body = { priority: value }; t.priority = value; }
   if (kind === 'due')       { endpoint = `/tasks/${previewTaskId}/due-date`;  body = { dueDate: value }; t.dueDate = value ? new Date(value).toISOString() : null; }
   if (kind === 'assignee')  { endpoint = `/tasks/${previewTaskId}/assignee`;  body = { assigneeId: value.id }; t.assignee = value.id ? { id: value.id, name: value.name } : null; }
+  if (kind === 'description') { endpoint = `/tasks/${previewTaskId}/description`; body = { description: value }; t.description = value; }
   try {
     const res = await fetch(endpoint, {
       method: 'PATCH',
@@ -2238,6 +2264,7 @@ async function previewUpdateField(kind, value) {
       if (data.task.status) t.status = data.task.status;
       if (data.task.priority) t.priority = data.task.priority;
       if (data.task.dueDate !== undefined) t.dueDate = data.task.dueDate;
+      if (data.task.description !== undefined) t.description = data.task.description || '';
     }
     refreshPreviewUI();
     renderKanban();
@@ -2255,6 +2282,9 @@ function refreshPreviewUI() {
   const t = tasks.find(x => x.id === previewTaskId);
   if (!t) return;
   document.getElementById('preview-title').textContent = t.title;
+  document.getElementById('preview-desc').textContent = t.description || '-';
+  const previewDescInput = document.getElementById('preview-desc-input');
+  if (previewDescInput) previewDescInput.value = t.description || '';
   document.getElementById('preview-status').textContent = STATUS_LABEL_PREVIEW[t.status] || t.status;
   const p = PRIO_LABEL_PREVIEW[t.priority] || PRIO_LABEL_PREVIEW.NONE;
   document.getElementById('preview-priority').innerHTML = t.priority && t.priority !== 'NONE'
@@ -2276,6 +2306,26 @@ function refreshPreviewUI() {
   } else {
     document.getElementById('preview-assignee').innerHTML = '<span class="text-gray-400">-</span>';
   }
+}
+
+function showPreviewDescEdit() {
+  const t = tasks.find(x => x.id === previewTaskId);
+  if (!t) return;
+  document.getElementById('preview-desc-input').value = t.description || '';
+  document.getElementById('preview-desc-display').classList.add('hidden');
+  document.getElementById('preview-desc-editor').classList.remove('hidden');
+  document.getElementById('preview-desc-input').focus();
+}
+
+function hidePreviewDescEdit() {
+  document.getElementById('preview-desc-display').classList.remove('hidden');
+  document.getElementById('preview-desc-editor').classList.add('hidden');
+}
+
+async function savePreviewDesc() {
+  const value = document.getElementById('preview-desc-input').value.trim();
+  await previewUpdateField('description', value);
+  hidePreviewDescEdit();
 }
 
 async function togglePreviewChecklist(checklistId, checked) {
@@ -2301,6 +2351,30 @@ async function togglePreviewChecklist(checklistId, checked) {
     renderKanban();
     openPreview(previewTaskId);
     alert(err.message || 'Gagal update checklist');
+  }
+}
+
+async function addPreviewChecklist() {
+  const input = document.getElementById('preview-checklist-input');
+  const content = input.value.trim();
+  const task = tasks.find(x => x.id === previewTaskId);
+  if (!content || !task) return;
+
+  try {
+    const res = await fetch(`/checklist/task/${previewTaskId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menambah checklist');
+    task.checklists = normalizeChecklistItems([...(task.checklists || []), data.item]);
+    input.value = '';
+    renderKanban();
+    openPreview(previewTaskId);
+    document.getElementById('preview-checklist-input')?.focus();
+  } catch (err) {
+    alert(err.message || 'Gagal menambah checklist');
   }
 }
 
