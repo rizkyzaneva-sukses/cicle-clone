@@ -22,6 +22,29 @@ async function sendTelegramMessage(chatId, text) {
   }
 }
 
+async function sendTelegramPhoto(chatId, photoUrl, caption = '') {
+  if (!enabled || !chatId || !photoUrl) return null;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption,
+        parse_mode: 'HTML'
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) console.error('Telegram photo send failed:', data.description);
+    return data;
+  } catch (err) {
+    console.error('Telegram photo send error:', err.message);
+    return null;
+  }
+}
+
 async function sendTaskReminder(chatId, task) {
   const text = `📋 <b>Task Reminder</b>\n\n` +
     `<b>${task.title}</b>\n` +
@@ -105,6 +128,7 @@ async function ensureTelegramWebhook(appUrl = process.env.APP_URL) {
 
 module.exports = { 
   sendTelegramMessage, 
+  sendTelegramPhoto,
   sendTaskReminder,
   sendDeadlineAlert,
   getDeepLink,

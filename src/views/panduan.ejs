@@ -12,6 +12,14 @@
          class="px-4 py-2 rounded-xl text-sm font-semibold transition <%= activeTab === 'umum' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' %>">
         <i class="fas fa-book-open mr-2"></i>UMUM
       </a>
+      <a href="/panduan?tab=workflow"
+         class="px-4 py-2 rounded-xl text-sm font-semibold transition <%= activeTab === 'workflow' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' %>">
+        <i class="fas fa-route mr-2"></i>WORKFLOW BISNIS
+      </a>
+      <a href="/panduan?tab=fitur"
+         class="px-4 py-2 rounded-xl text-sm font-semibold transition <%= activeTab === 'fitur' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' %>">
+        <i class="fas fa-wand-magic-sparkles mr-2"></i>UPDATE FITUR
+      </a>
       <a href="/panduan?tab=report"
          class="px-4 py-2 rounded-xl text-sm font-semibold transition <%= activeTab === 'report' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100' %>">
         <i class="fas fa-chart-column mr-2"></i>REPORT
@@ -19,7 +27,103 @@
     </div>
   </div>
 
-  <% if (activeTab === 'report') { %>
+  <% if (activeTab === 'workflow') { %>
+    <div class="space-y-6">
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+          <i class="fas fa-route text-blue-600"></i> Workflow Utama Bisnis
+        </h2>
+        <p class="text-sm text-gray-600">Pakai alur ini agar kerja brand, project, task, progress, chat, dan report tidak tercampur.</p>
+      </section>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="bg-white border rounded-3xl p-6">
+          <h3 class="text-xl font-bold mb-4">1. Setup Brand & Tim</h3>
+          <ol class="space-y-3 text-sm text-gray-600">
+            <li><strong>Owner</strong> membuat workspace/brand.</li>
+            <li>Owner assign <strong>Partner/Admin</strong> untuk mengelola brand.</li>
+            <li>Admin/Owner undang member dan pastikan Telegram terhubung.</li>
+            <li>Setiap brand dipakai sebagai batas akses kerja dan report.</li>
+          </ol>
+        </div>
+        <div class="bg-white border rounded-3xl p-6">
+          <h3 class="text-xl font-bold mb-4">2. Buat Project</h3>
+          <ol class="space-y-3 text-sm text-gray-600">
+            <li>Buat project per campaign, event, target output, atau pekerjaan besar.</li>
+            <li>Tambahkan member project agar PIC yang relevan bisa akses.</li>
+            <li>Gunakan chat project untuk diskusi umum project.</li>
+            <li>Kalau project selesai, semua task Done akan otomatis masuk Arsip.</li>
+          </ol>
+        </div>
+        <div class="bg-white border rounded-3xl p-6">
+          <h3 class="text-xl font-bold mb-4">3. Pecah Kerja ke Task</h3>
+          <ol class="space-y-3 text-sm text-gray-600">
+            <li>Task besar bisa punya <strong>Parent Task</strong> dan child task.</li>
+            <li>Gunakan checklist untuk langkah kecil di dalam 1 task.</li>
+            <li>Set PIC, priority, deadline, label, dan dependency jika perlu.</li>
+            <li>Gunakan preview task untuk edit cepat tanpa membuka halaman detail.</li>
+          </ol>
+        </div>
+        <div class="bg-white border rounded-3xl p-6">
+          <h3 class="text-xl font-bold mb-4">4. Update Progres</h3>
+          <ol class="space-y-3 text-sm text-gray-600">
+            <li><strong>Progress Update</strong> dipakai untuk laporan progres resmi.</li>
+            <li><strong>Comment</strong> dipakai untuk diskusi, pertanyaan, revisi, dan lampiran.</li>
+            <li><strong>Activity Log</strong> mencatat perubahan otomatis sistem.</li>
+            <li>Status progress: On track, Blocked, Need review.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-5">Contoh Implementasi</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Event / Booth</div>
+            Project: Final Booth. Task: vendor, lighting, branding, final material. Progress update dipakai untuk laporan harian.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Konten Harian</div>
+            Project: 100 Posting. Task per batch atau per brand. Report project dipakai untuk target/generate/upload.
+          </div>
+          <div class="bg-gray-50 rounded-2xl p-4">
+            <div class="font-semibold text-gray-800 mb-1">Produk / Campaign</div>
+            Project per campaign. Parent task untuk pekerjaan besar, child task untuk tim desain/copy/upload/review.
+          </div>
+        </div>
+      </section>
+    </div>
+  <% } else if (activeTab === 'fitur') { %>
+    <div class="space-y-6">
+      <section class="bg-white border rounded-3xl p-6">
+        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+          <i class="fas fa-wand-magic-sparkles text-purple-600"></i> Update Fitur
+        </h2>
+        <p class="text-sm text-gray-600">Tab ini jadi changelog internal. Pengumuman dipakai untuk broadcast, tab ini dipakai untuk dokumentasi fitur yang bisa dibaca ulang.</p>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
+        <div class="space-y-5">
+          <div class="border-l-4 border-emerald-500 pl-4">
+            <div class="font-bold">Progress Update Task</div>
+            <p class="text-sm text-gray-600 mt-1">Task punya progress update terpisah dari comment. Bisa On track, Blocked, Need review, dan bisa diedit oleh pembuatnya.</p>
+          </div>
+          <div class="border-l-4 border-blue-500 pl-4">
+            <div class="font-bold">Preview Task Lebih Lengkap</div>
+            <p class="text-sm text-gray-600 mt-1">Preview bisa edit deskripsi, tambah checklist, checklist Done, tambah progress, serta melihat PIC dan priority di kartu board.</p>
+          </div>
+          <div class="border-l-4 border-purple-500 pl-4">
+            <div class="font-bold">Pengumuman + Image + Telegram</div>
+            <p class="text-sm text-gray-600 mt-1">Owner bisa broadcast pengumuman dengan image. User menerima notifikasi app, dan Telegram jika akun sudah terhubung.</p>
+          </div>
+          <div class="border-l-4 border-amber-500 pl-4">
+            <div class="font-bold">Auto Archive Project Done</div>
+            <p class="text-sm text-gray-600 mt-1">Project otomatis masuk Arsip saat semua task selesai, supaya daftar project aktif tidak penuh.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  <% } else if (activeTab === 'report') { %>
     <div class="space-y-6">
       <section class="bg-white border rounded-3xl p-6">
         <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">

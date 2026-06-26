@@ -9,12 +9,20 @@
   <% if (currentUser.platformRole === 'owner') { %>
   <div class="bg-white border rounded-3xl p-6 mb-6 shadow-sm">
     <h2 class="font-semibold text-lg mb-4 flex items-center gap-2"><i class="fas fa-bullhorn text-blue-600"></i> Buat Pengumuman Baru</h2>
-    <form action="/announcements" method="POST" class="space-y-3">
+    <form action="/announcements" method="POST" enctype="multipart/form-data" class="space-y-3">
       <textarea name="content" rows="3" required placeholder="Tulis pengumuman untuk semua tim..."
         class="w-full border rounded-2xl px-5 py-3 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"></textarea>
-      <button type="submit" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition">
-        <i class="fas fa-paper-plane mr-1.5"></i>Kirim ke Semua Tim
-      </button>
+      <label class="block">
+        <span class="text-sm font-medium text-gray-600">Image opsional</span>
+        <input type="file" name="image" accept="image/*"
+          class="mt-1.5 w-full border rounded-2xl px-4 py-3 text-sm file:mr-4 file:border-0 file:bg-blue-50 file:text-blue-700 file:px-3 file:py-2 file:rounded-xl file:font-semibold">
+      </label>
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+        <button type="submit" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium transition">
+          <i class="fas fa-paper-plane mr-1.5"></i>Kirim ke Semua Tim
+        </button>
+        <p class="text-xs text-gray-400">Masuk notifikasi app semua user dan Telegram untuk user yang sudah terhubung.</p>
+      </div>
     </form>
   </div>
   <% } %>
@@ -28,6 +36,11 @@
     <% } %>
     <% announcements.forEach(a => { %>
       <div class="bg-white border rounded-2xl p-5">
+        <% if (a.imageUrl) { %>
+          <a href="<%= a.imageUrl %>" target="_blank" class="block mb-4">
+            <img src="<%= a.imageUrl %>" alt="<%= a.imageName || 'Image pengumuman' %>" class="w-full max-h-96 object-contain rounded-2xl border bg-gray-50">
+          </a>
+        <% } %>
         <p class="text-gray-800 whitespace-pre-wrap"><%= a.content %></p>
         <div class="text-xs text-gray-400 mt-2">
           <%= a.createdBy ? a.createdBy.name : 'System' %> • <%= new Date(a.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>

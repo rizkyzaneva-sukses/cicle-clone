@@ -192,6 +192,8 @@ model RecurringTaskTemplate {
 model Announcement {
   id          String   @id @default(cuid())
   content     String
+  imageUrl    String?
+  imageName   String?
   createdById String?
   createdAt   DateTime @default(now())
 

@@ -110,6 +110,14 @@ async function ensureTaskProgressUpdateTable(client = prisma) {
   `);
 }
 
+async function ensureAnnouncementImageFields(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "Announcement"
+    ADD COLUMN IF NOT EXISTS "imageUrl" TEXT,
+    ADD COLUMN IF NOT EXISTS "imageName" TEXT
+  `);
+}
+
 async function cleanupOrphanRecords(client = prisma) {
   await client.$executeRaw`
     DELETE FROM "PartnerAccess" pa
@@ -208,4 +216,4 @@ async function ensureOnboardingField(client = prisma) {
   `);
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };
