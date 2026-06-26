@@ -808,6 +808,8 @@ function renderKanban() {
     const checklists = task.checklists || [];
     const doneCount = checklists.filter(c => c.isDone).length;
     const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
+    const latestProgress = Array.isArray(task.progressUpdates) && task.progressUpdates.length > 0 ? task.progressUpdates[0] : null;
+    const latestProgressMeta = latestProgress ? progressStatusMeta(latestProgress.status) : null;
 
     // Children count
     const childrenCount = task.children ? task.children.length : 0;
@@ -817,18 +819,12 @@ function renderKanban() {
         <a href="/tasks/${task.id}" onclick="event.stopPropagation()" class="font-semibold text-sm hover:text-blue-600 leading-tight flex-1">${escapeHtml(task.title)}</a>
       </div>
       ${task.description ? `<p class="text-xs text-gray-500 line-clamp-2 mb-2">${escapeHtml(task.description)}</p>` : ''}
-      <div class="grid grid-cols-2 gap-2 mb-2">
-        <div class="min-w-0 rounded-xl bg-gray-50 px-2.5 py-2">
-          <div class="text-[9px] uppercase tracking-wide text-gray-400 font-semibold mb-1">PIC</div>
-          <div class="flex items-center gap-1.5 min-w-0">
-            <span class="w-5 h-5 rounded-full ${task.assignee ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'} flex items-center justify-center text-[10px] font-bold shrink-0">${escapeHtml(picInitial)}</span>
-            <span class="text-[11px] font-semibold text-gray-700 truncate">${escapeHtml(picName)}</span>
-          </div>
-        </div>
-        <div class="min-w-0 rounded-xl bg-gray-50 px-2.5 py-2">
-          <div class="text-[9px] uppercase tracking-wide text-gray-400 font-semibold mb-1">Priority</div>
-          <span class="inline-flex max-w-full px-2 py-0.5 rounded-full text-[10px] font-semibold truncate ${priorityClass}">${escapeHtml(priorityLabel)}</span>
-        </div>
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <span class="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700">
+          <span class="w-5 h-5 rounded-full ${task.assignee ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'} flex items-center justify-center text-[10px] font-bold shrink-0">${escapeHtml(picInitial)}</span>
+          <span class="truncate max-w-[140px]">${escapeHtml(picName)}</span>
+        </span>
+        <span class="inline-flex max-w-full px-2.5 py-1 rounded-full text-[10px] font-semibold truncate ${priorityClass}">${escapeHtml(priorityLabel)}</span>
       </div>
       ${labels.length ? `<div class="flex flex-wrap gap-1 mb-2">${labels.map(label => `<span class="text-[10px] font-semibold rounded-full px-2 py-0.5 text-white" style="background:${escapeHtml(label.color)}">${escapeHtml(label.name)}</span>`).join('')}</div>` : ''}
       ${checklists.length > 0 ? `<div class="flex items-center gap-2 mb-2">
@@ -838,6 +834,7 @@ function renderKanban() {
       <div class="flex items-center justify-between text-xs mt-2 gap-2">
         <div class="flex items-center gap-1.5 flex-wrap">
           ${task.dueDate ? `<span class="${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400'}"><i class="fas fa-clock mr-0.5"></i>${new Date(task.dueDate).toLocaleDateString('id-ID',{month:'short',day:'numeric'})}</span>` : ''}
+          ${latestProgressMeta ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${latestProgressMeta.cls}">${escapeHtml(latestProgressMeta.label)}</span>` : ''}
           ${childrenCount > 0 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700"><i class="fas fa-sitemap mr-0.5"></i>${childrenCount}</span>` : ''}
         </div>
         <div class="flex items-center gap-1 shrink-0">
