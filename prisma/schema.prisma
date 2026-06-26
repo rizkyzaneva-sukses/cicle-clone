@@ -30,6 +30,7 @@ model User {
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
   workspaceRoles  WorkspacePartner[]
   uploads        Attachment[]
+  progressUpdates TaskProgressUpdate[] @relation("TaskProgressAuthor")
   activityLogs   ActivityLog[]
   chatReactions  ChatReaction[]
   projectChatReads ProjectChatRead[]
@@ -253,6 +254,23 @@ model Task {
   taskDeps     TaskDependency[] @relation("TaskDeps")
   depOfDeps    TaskDependency[] @relation("TaskDependents")
   telegramReminderLogs TelegramReminderLog[]
+  progressUpdates TaskProgressUpdate[]
+}
+
+model TaskProgressUpdate {
+  id        String   @id @default(cuid())
+  content   String
+  status    String?  // ON_TRACK, BLOCKED, NEED_REVIEW
+  taskId    String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation("TaskProgressAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@index([authorId])
 }
 
 // Tracks which deadline reminder (H-2/H-1/H/OVERDUE) was already sent for a task on a given day,

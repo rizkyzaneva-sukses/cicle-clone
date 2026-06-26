@@ -49,6 +49,7 @@ router.get('/:id', async (req, res) => {
         children: { select: { id: true, title: true, status: true, priority: true, assignee: true }, orderBy: { createdAt: 'asc' } },
         checklists: { orderBy: { position: 'asc' }, include: { children: { orderBy: { position: 'asc' } } } },
         comments: { where: { parentId: null }, include: { user: true, files: true, replies: { include: { user: true, files: true }, orderBy: { createdAt: 'asc' } } }, orderBy: { createdAt: 'asc' } },
+        progressUpdates: { include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } },
         labels: { include: { label: true } },
         attachments: { include: { uploadedBy: true }, orderBy: { createdAt: 'desc' } },
         activityLogs: { include: { user: true }, orderBy: { createdAt: 'desc' }, take: 30 }
@@ -260,6 +261,56 @@ router.patch('/:id/description', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gagal memperbarui deskripsi task' });
+  }
+});
+
+router.post('/:id/progress-updates', async (req, res) => {
+  try {
+    const task = await canAccessTask(req.session.user, req.params.id);
+    if (!task) {
+      if (req.headers.accept?.includes('json')) return res.status(403).json({ error: 'Akses ditolak' });
+      req.flash('error', 'Akses ditolak');
+      return res.redirect('/projects');
+    }
+
+    const content = String(req.body.content || '').trim();
+    const allowedStatuses = ['ON_TRACK', 'BLOCKED', 'NEED_REVIEW'];
+    const status = allowedStatuses.includes(req.body.status) ? req.body.status : null;
+
+    if (!content) {
+      if (req.headers.accept?.includes('json')) return res.status(400).json({ error: 'Progress update wajib diisi' });
+      req.flash('error', 'Progress update wajib diisi');
+      return res.redirect(`/tasks/${task.id}`);
+    }
+
+    const update = await prisma.taskProgressUpdate.create({
+      data: {
+        content,
+        status,
+        taskId: task.id,
+        authorId: req.session.user.id
+      },
+      include: { author: { select: { id: true, name: true } } }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'progress_updated',
+      entityType: 'task',
+      entityId: task.id,
+      projectId: task.projectId,
+      taskId: task.id,
+      metadata: { status, content }
+    });
+
+    if (req.headers.accept?.includes('json')) return res.json({ success: true, update });
+
+    req.flash('success', 'Progress update berhasil ditambahkan');
+    res.redirect(`/tasks/${task.id}`);
+  } catch (error) {
+    console.error(error);
+    if (req.headers.accept?.includes('json')) return res.status(500).json({ error: 'Gagal menambah progress update' });
+    req.flash('error', 'Gagal menambah progress update');
+    res.redirect(`/tasks/${req.params.id}`);
   }
 });
 

@@ -855,7 +855,12 @@ router.get('/:id', async (req, res) => {
           assignee: true,
           labels: { include: { label: true } },
           checklists: { select: { id: true, content: true, isDone: true } },
-          children: { select: { id: true } }
+          children: { select: { id: true } },
+          progressUpdates: {
+            include: { author: { select: { id: true, name: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 3
+          }
         },
         orderBy: [{ status: 'asc' }, { position: 'asc' }]
       }

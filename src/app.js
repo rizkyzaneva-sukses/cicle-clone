@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField } = require('./lib/maintenance');
+const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField } = require('./lib/maintenance');
 const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
@@ -52,7 +52,7 @@ app.use(async (req, res, next) => {
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
-      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), ensureProjectReportTables(), ensureProjectChatReadTable(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes(), ensureOnboardingField()]).catch((err) => {
+      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), ensureProjectReportTables(), ensureProjectChatReadTable(), ensureTaskProgressUpdateTable(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes(), ensureOnboardingField()]).catch((err) => {
         maintenancePromise = null;
         console.error('Maintenance cleanup failed:', err);
       });

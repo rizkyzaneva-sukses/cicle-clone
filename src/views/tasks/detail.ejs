@@ -373,6 +373,55 @@
       </div>
     </div>
 
+    <!-- Progress Updates -->
+    <div class="bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
+      <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">
+        <i class="fas fa-chart-line text-emerald-600"></i> Progress Update
+        <span class="text-sm text-gray-400 font-normal">(<%= task.progressUpdates.length %>)</span>
+      </h3>
+
+      <form action="/tasks/<%= task.id %>/progress-updates" method="POST" class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-5">
+        <div class="grid grid-cols-1 sm:grid-cols-[180px,1fr] gap-3">
+          <select name="status" class="border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-emerald-400">
+            <option value="ON_TRACK">On track</option>
+            <option value="BLOCKED">Blocked</option>
+            <option value="NEED_REVIEW">Need review</option>
+          </select>
+          <textarea name="content" rows="3" required placeholder="Tulis update progres, kendala, atau hasil terbaru..."
+            class="border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-400 resize-none"></textarea>
+        </div>
+        <div class="flex justify-end mt-3">
+          <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700">
+            Tambah Progress
+          </button>
+        </div>
+      </form>
+
+      <% const progressStatusMeta = {
+        ON_TRACK: ['bg-emerald-100 text-emerald-700', 'On track'],
+        BLOCKED: ['bg-red-100 text-red-700', 'Blocked'],
+        NEED_REVIEW: ['bg-blue-100 text-blue-700', 'Need review']
+      } %>
+      <div class="space-y-3">
+        <% if (task.progressUpdates.length === 0) { %>
+          <p class="text-sm text-gray-400 text-center py-4">Belum ada progress update.</p>
+        <% } %>
+        <% task.progressUpdates.forEach(update => { %>
+          <% const meta = progressStatusMeta[update.status] || ['bg-gray-100 text-gray-600', 'Update'] %>
+          <div class="border rounded-2xl px-4 py-3">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span class="text-sm font-semibold"><%= update.author.name %></span>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold <%= meta[0] %>"><%= meta[1] %></span>
+              <span class="text-xs text-gray-400">
+                <%= new Date(update.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %>
+              </span>
+            </div>
+            <p class="text-sm text-gray-700 whitespace-pre-wrap"><%= update.content %></p>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
     <!-- Comments -->
     <div class="bg-white border rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm">
       <h3 class="font-semibold text-lg mb-4 flex items-center gap-2">

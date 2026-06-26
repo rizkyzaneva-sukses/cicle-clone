@@ -82,6 +82,34 @@ async function ensureProjectChatReadTable(client = prisma) {
   `);
 }
 
+async function ensureTaskProgressUpdateTable(client = prisma) {
+  await client.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "TaskProgressUpdate" (
+      "id" TEXT PRIMARY KEY,
+      "content" TEXT NOT NULL,
+      "status" TEXT,
+      "taskId" TEXT NOT NULL,
+      "authorId" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "TaskProgressUpdate_taskId_fkey"
+        FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "TaskProgressUpdate_authorId_fkey"
+        FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "TaskProgressUpdate_taskId_createdAt_idx"
+    ON "TaskProgressUpdate" ("taskId", "createdAt")
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "TaskProgressUpdate_authorId_idx"
+    ON "TaskProgressUpdate" ("authorId")
+  `);
+}
+
 async function cleanupOrphanRecords(client = prisma) {
   await client.$executeRaw`
     DELETE FROM "PartnerAccess" pa
@@ -180,4 +208,4 @@ async function ensureOnboardingField(client = prisma) {
   `);
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };
