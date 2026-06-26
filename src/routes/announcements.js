@@ -7,13 +7,18 @@ const { requireAuth } = require('../middleware/auth');
 const { notifyUser } = require('../lib/notify');
 const { upload } = require('../lib/upload');
 const { sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
+const {
+  AnnouncementScope,
+  buildAnnouncementVisibilityWhere,
+  getAnnouncementScopeLabel
+} = require('../lib/announcementAudience');
 
 router.use(requireAuth);
 
 const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
 
 function escapeTelegramHtml(value) {
-  return String(value || '').replace(/[&<>]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]));
+  return String(value || '').replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[char]));
 }
 
 function buildPublicBaseUrl(req) {
@@ -33,7 +38,7 @@ async function sendAnnouncementTelegram(chatId, publicImageUrl, telegramContent)
   }
 
   const textWithImageFallback = publicImageUrl
-    ? `${telegramContent}\n\n🖼️ ${escapeTelegramHtml(publicImageUrl)}`
+    ? `${telegramContent}\n\n[Image] ${escapeTelegramHtml(publicImageUrl)}`
     : telegramContent;
 
   return sendTelegramMessage(chatId, textWithImageFallback);
@@ -53,13 +58,107 @@ async function deleteAnnouncementImage(imageUrl) {
   }
 }
 
-router.get('/', async (req, res) => {
-  const announcements = await prisma.announcement.findMany({
-    include: { createdBy: true },
-    orderBy: { createdAt: 'desc' },
-    take: 50
+async function getRecipientsForAnnouncement(scope, workspaceId, companyId) {
+  if (scope === AnnouncementScope.APP) {
+    return prisma.user.findMany({ select: { id: true, telegramChatId: true } });
+  }
+
+  if (scope === AnnouncementScope.HOLDING) {
+    const brands = await prisma.company.findMany({
+      where: { workspaceId },
+      select: { id: true }
+    });
+    const brandIds = brands.map((brand) => brand.id);
+    const or = [
+      { platformRole: 'owner' },
+      { workspaceRoles: { some: { workspaceId } } }
+    ];
+
+    if (brandIds.length > 0) {
+      or.push({ memberships: { some: { companyId: { in: brandIds } } } });
+      or.push({ partnerAccess: { some: { companyId: { in: brandIds } } } });
+    }
+
+    return prisma.user.findMany({
+      where: { OR: or },
+      select: { id: true, telegramChatId: true }
+    });
+  }
+
+  const or = [
+    { platformRole: 'owner' },
+    { memberships: { some: { companyId } } },
+    { partnerAccess: { some: { companyId } } }
+  ];
+
+  if (workspaceId) {
+    or.push({ workspaceRoles: { some: { workspaceId } } });
+  }
+
+  return prisma.user.findMany({
+    where: { OR: or },
+    select: { id: true, telegramChatId: true }
   });
-  res.render('announcements', { title: 'Pengumuman', announcements });
+}
+
+async function enrichAnnouncements(announcements) {
+  const workspaceIds = [...new Set(announcements.map((item) => item.workspaceId).filter(Boolean))];
+  const companyIds = [...new Set(announcements.map((item) => item.companyId).filter(Boolean))];
+
+  const [workspaces, companies] = await Promise.all([
+    workspaceIds.length > 0
+      ? prisma.workspace.findMany({
+          where: { id: { in: workspaceIds } },
+          select: { id: true, name: true }
+        })
+      : [],
+    companyIds.length > 0
+      ? prisma.company.findMany({
+          where: { id: { in: companyIds } },
+          select: { id: true, name: true }
+        })
+      : []
+  ]);
+
+  const workspaceNames = new Map(workspaces.map((workspace) => [workspace.id, workspace.name]));
+  const companyNames = new Map(companies.map((company) => [company.id, company.name]));
+
+  return announcements.map((announcement) => ({
+    ...announcement,
+    scopeLabel: getAnnouncementScopeLabel(announcement.scope),
+    targetName:
+      announcement.scope === AnnouncementScope.HOLDING
+        ? workspaceNames.get(announcement.workspaceId) || '-'
+        : announcement.scope === AnnouncementScope.BRAND
+          ? companyNames.get(announcement.companyId) || '-'
+          : 'Semua user app'
+  }));
+}
+
+router.get('/', async (req, res) => {
+  const visibilityWhere = await buildAnnouncementVisibilityWhere(req.session.user);
+  const [announcementRows, workspaces] = await Promise.all([
+    prisma.announcement.findMany({
+      where: visibilityWhere,
+      include: { createdBy: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    }),
+    req.session.user.platformRole === 'owner'
+      ? prisma.workspace.findMany({
+          include: {
+            brands: {
+              select: { id: true, name: true },
+              orderBy: { name: 'asc' }
+            }
+          },
+          orderBy: { name: 'asc' }
+        })
+      : []
+  ]);
+
+  const announcements = await enrichAnnouncements(announcementRows);
+  res.render('announcements', { title: 'Pengumuman', announcements, workspaces, AnnouncementScope });
 });
 
 router.post('/', upload.single('image'), async (req, res) => {
@@ -68,23 +167,78 @@ router.post('/', upload.single('image'), async (req, res) => {
       req.flash('error', 'Hanya Owner yang bisa membuat pengumuman');
       return res.redirect('/announcements');
     }
+
     const content = (req.body.content || '').trim();
     if (!content) {
       req.flash('error', 'Isi pengumuman wajib diisi');
       return res.redirect('/announcements');
     }
 
+    const rawScope = String(req.body.scope || AnnouncementScope.APP).trim().toUpperCase();
+    const scope = Object.values(AnnouncementScope).includes(rawScope) ? rawScope : AnnouncementScope.APP;
+    let workspaceId = null;
+    let companyId = null;
+    let targetName = 'Semua user app';
+
+    if (scope === AnnouncementScope.HOLDING) {
+      workspaceId = String(req.body.workspaceId || '').trim();
+      if (!workspaceId) {
+        req.flash('error', 'Pilih holding tujuan untuk pengumuman ini');
+        return res.redirect('/announcements');
+      }
+
+      const workspace = await prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { id: true, name: true }
+      });
+      if (!workspace) {
+        req.flash('error', 'Holding tujuan tidak ditemukan');
+        return res.redirect('/announcements');
+      }
+
+      targetName = workspace.name;
+    }
+
+    if (scope === AnnouncementScope.BRAND) {
+      companyId = String(req.body.companyId || '').trim();
+      if (!companyId) {
+        req.flash('error', 'Pilih brand tujuan untuk pengumuman ini');
+        return res.redirect('/announcements');
+      }
+
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { id: true, name: true, workspaceId: true }
+      });
+      if (!company) {
+        req.flash('error', 'Brand tujuan tidak ditemukan');
+        return res.redirect('/announcements');
+      }
+
+      workspaceId = company.workspaceId || null;
+      targetName = company.name;
+    }
+
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const imageName = req.file?.originalname || null;
 
     await prisma.announcement.create({
-      data: { content, imageUrl, imageName, createdById: req.session.user.id }
+      data: {
+        scope,
+        workspaceId,
+        companyId,
+        content,
+        imageUrl,
+        imageName,
+        createdById: req.session.user.id
+      }
     });
 
-    const users = await prisma.user.findMany({ select: { id: true, telegramChatId: true } });
+    const users = await getRecipientsForAnnouncement(scope, workspaceId, companyId);
     const io = req.app.get('io');
-    const notifContent = `📢 Pengumuman: ${content}`;
-    const telegramContent = `📢 <b>Pengumuman</b>\n\n${escapeTelegramHtml(content)}`;
+    const scopeLabel = getAnnouncementScopeLabel(scope);
+    const notifContent = `📢 ${scopeLabel} (${targetName}): ${content}`;
+    const telegramContent = `📢 <b>${escapeTelegramHtml(scopeLabel)}</b>\n<b>Target:</b> ${escapeTelegramHtml(targetName)}\n\n${escapeTelegramHtml(content)}`;
     const appUrl = buildPublicBaseUrl(req);
     const publicImageUrl = imageUrl ? `${appUrl}${imageUrl}` : null;
     let appNotificationCount = 0;
@@ -110,7 +264,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     req.flash(
       'success',
-      `Pengumuman tersimpan. Notif app: ${appNotificationCount} user. Telegram: ${telegramSuccessCount}/${telegramConnectedCount} terkirim.`
+      `${scopeLabel} untuk ${targetName} tersimpan. Notif app: ${appNotificationCount} user. Telegram: ${telegramSuccessCount}/${telegramConnectedCount} terkirim.`
     );
     if (telegramFailedCount > 0) {
       req.flash('error', `Telegram gagal ke ${telegramFailedCount} user. Cek Chat ID / status bot untuk user terkait.`);

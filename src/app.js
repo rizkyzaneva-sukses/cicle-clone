@@ -8,13 +8,14 @@ const cookieParser = require('cookie-parser');
 const flash = require('connect-flash');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField } = require('./lib/maintenance');
+const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField } = require('./lib/maintenance');
 const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
 const { maybeRunWeeklyReport } = require('./lib/weeklyReport');
 const { ensureTelegramWebhook } = require('./lib/telegram');
 const { renderAnnouncementHtml } = require('./lib/announcementFormatter');
+const { getLatestAnnouncementForUser, getAnnouncementScopeLabel } = require('./lib/announcementAudience');
 
 const app = express();
 const server = http.createServer(app);
@@ -50,17 +51,18 @@ app.use(async (req, res, next) => {
   res.locals.unreadDirectMessages = 0;
   res.locals.latestAnnouncement = null;
   res.locals.renderAnnouncementHtml = renderAnnouncementHtml;
+  res.locals.getAnnouncementScopeLabel = getAnnouncementScopeLabel;
 
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;
     try {
-      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), ensureProjectReportTables(), ensureProjectChatReadTable(), ensureTaskProgressUpdateTable(), ensureAnnouncementImageFields(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes(), ensureOnboardingField()]).catch((err) => {
+      maintenancePromise ||= Promise.all([ensureBrandProfileFields(), ensureProjectReportTables(), ensureProjectChatReadTable(), ensureTaskProgressUpdateTable(), ensureAnnouncementImageFields(), ensureAnnouncementScopeFields(), cleanupOrphanRecords(), backfillProjectMembers(), applyAccountHotfixes(), ensureOnboardingField()]).catch((err) => {
         maintenancePromise = null;
         console.error('Maintenance cleanup failed:', err);
       });
       await maintenancePromise;
 
-      res.locals.latestAnnouncement = await prisma.announcement.findFirst({ orderBy: { createdAt: 'desc' } });
+      res.locals.latestAnnouncement = await getLatestAnnouncementForUser(req.session.user);
 
       if (isConfiguredOwner(req.session.user.email) && platformRole !== 'owner') {
         await prisma.user.update({

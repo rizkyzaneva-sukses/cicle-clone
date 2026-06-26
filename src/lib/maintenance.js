@@ -118,6 +118,36 @@ async function ensureAnnouncementImageFields(client = prisma) {
   `);
 }
 
+async function ensureAnnouncementScopeFields(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "Announcement"
+    ADD COLUMN IF NOT EXISTS "scope" TEXT DEFAULT 'APP',
+    ADD COLUMN IF NOT EXISTS "workspaceId" TEXT,
+    ADD COLUMN IF NOT EXISTS "companyId" TEXT
+  `);
+
+  await client.$executeRawUnsafe(`
+    UPDATE "Announcement"
+    SET "scope" = 'APP'
+    WHERE "scope" IS NULL OR TRIM("scope") = ''
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Announcement_scope_idx"
+    ON "Announcement" ("scope")
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Announcement_workspaceId_idx"
+    ON "Announcement" ("workspaceId")
+  `);
+
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Announcement_companyId_idx"
+    ON "Announcement" ("companyId")
+  `);
+}
+
 async function cleanupOrphanRecords(client = prisma) {
   await client.$executeRaw`
     DELETE FROM "PartnerAccess" pa
@@ -216,4 +246,4 @@ async function ensureOnboardingField(client = prisma) {
   `);
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };

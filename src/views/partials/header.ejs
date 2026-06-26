@@ -634,7 +634,7 @@
               </a>
             <% } %>
             <div class="min-w-0 flex-1">
-              <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">Pengumuman terbaru</div>
+              <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">Pengumuman terbaru • <%= getAnnouncementScopeLabel(latestAnnouncement.scope) %></div>
               <div class="announcement-content mt-1 text-sm leading-6 break-words"><%- renderAnnouncementHtml(latestAnnouncement.content) %></div>
             </div>
           </div>

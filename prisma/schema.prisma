@@ -191,6 +191,9 @@ model RecurringTaskTemplate {
 // Pengumuman broadcast dari Owner ke semua user
 model Announcement {
   id          String   @id @default(cuid())
+  scope       String   @default("APP")
+  workspaceId String?
+  companyId   String?
   content     String
   imageUrl    String?
   imageName   String?
@@ -199,6 +202,9 @@ model Announcement {
 
   createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
+  @@index([scope])
+  @@index([workspaceId])
+  @@index([companyId])
   @@index([createdAt])
 }
 
