@@ -14,6 +14,7 @@ const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
 const { maybeRunWeeklyReport } = require('./lib/weeklyReport');
 const { ensureTelegramWebhook } = require('./lib/telegram');
+const { renderAnnouncementHtml } = require('./lib/announcementFormatter');
 
 const app = express();
 const server = http.createServer(app);
@@ -48,6 +49,7 @@ app.use(async (req, res, next) => {
   res.locals.unreadNotificationGroups = { PROJECT_TASK: 0, DIRECT_CHAT: 0, OTHER: 0 };
   res.locals.unreadDirectMessages = 0;
   res.locals.latestAnnouncement = null;
+  res.locals.renderAnnouncementHtml = renderAnnouncementHtml;
 
   if (req.session.user) {
     let { id: userId, platformRole } = req.session.user;

@@ -80,6 +80,12 @@
     html.dark .hover\:bg-blue-50:hover { background-color: #1d4ed8 !important; color: #fff !important; }
     html.dark .task-card:hover { box-shadow: 0 12px 28px rgb(0 0 0 / 0.45); }
     html.dark img { border-color: #334155; }
+    .announcement-content a { color: #2563eb; }
+    .announcement-content a:hover { color: #1d4ed8; }
+    html.dark .announcement-content a { color: #93c5fd !important; }
+    html.dark .announcement-content a:hover { color: #bfdbfe !important; }
+    html.dark #announcement-banner { border-color: #2563eb !important; }
+    html.dark #announcement-banner .text-blue-700 { color: #bfdbfe !important; }
     /* ===== Improved Mobile Sidebar ===== */
     @media (max-width: 1023px) {
       #sidebar {
@@ -618,17 +624,24 @@
 
       <!-- Latest announcement banner -->
       <% if (currentUser && latestAnnouncement) { %>
-      <div id="announcement-banner" data-id="<%= latestAnnouncement.id %>" class="hidden mb-6 bg-purple-50 border border-purple-200 text-purple-800 px-4 py-3 rounded-xl flex items-center justify-between gap-3 flex-wrap">
-        <div class="flex items-center gap-2 min-w-0">
-          <i class="fas fa-bullhorn text-purple-500 shrink-0"></i>
-          <% if (latestAnnouncement.imageUrl) { %>
-            <img src="<%= latestAnnouncement.imageUrl %>" alt="" class="w-9 h-9 rounded-lg object-cover border border-purple-100 bg-white shrink-0">
-          <% } %>
-          <span class="text-sm truncate"><%= latestAnnouncement.content %></span>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <a href="/announcements" class="text-xs text-purple-600 hover:underline px-2 py-1">Lihat semua</a>
-          <button onclick="dismissAnnouncementBanner()" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-purple-700">Tutup</button>
+      <div id="announcement-banner" data-id="<%= latestAnnouncement.id %>" class="hidden mb-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-gray-800 shadow-sm">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div class="flex items-start gap-3 min-w-0 flex-1">
+            <i class="fas fa-bullhorn text-blue-600 shrink-0 mt-1"></i>
+            <% if (latestAnnouncement.imageUrl) { %>
+              <a href="<%= latestAnnouncement.imageUrl %>" target="_blank" rel="noopener noreferrer" class="shrink-0">
+                <img src="<%= latestAnnouncement.imageUrl %>" alt="" class="w-12 h-12 rounded-xl object-cover border border-blue-100 bg-white shrink-0">
+              </a>
+            <% } %>
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">Pengumuman terbaru</div>
+              <div class="announcement-content mt-1 text-sm leading-6 break-words"><%- renderAnnouncementHtml(latestAnnouncement.content) %></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <a href="/announcements" class="inline-flex items-center rounded-lg px-2 py-1 text-xs font-medium text-blue-700 hover:bg-white/70 hover:underline">Lihat semua</a>
+            <button onclick="dismissAnnouncementBanner()" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-blue-700">Tutup</button>
+          </div>
         </div>
       </div>
       <script>
