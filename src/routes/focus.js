@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Get today's focus sessions count and total time
+    // Get today's focus sessions
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -45,11 +45,46 @@ router.get('/', async (req, res) => {
       return acc + (log.metadata?.minutes || 0);
     }, 0);
 
+    // Weekly stats
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+    const weekSessions = await prisma.activityLog.findMany({
+      where: {
+        userId,
+        action: 'focus_session',
+        createdAt: { gte: weekStart }
+      }
+    });
+
+    const weeklyStats = {
+      totalSessions: weekSessions.length,
+      totalMinutes: weekSessions.reduce((acc, log) => acc + (log.metadata?.minutes || 0), 0),
+      byDay: {}
+    };
+
+    // Group by day for weekly chart
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(weekStart);
+      day.setDate(day.getDate() + i);
+      const dayKey = day.toISOString().split('T')[0];
+      const dayLabel = day.toLocaleDateString('id-ID', { weekday: 'short' });
+      const daySessions = weekSessions.filter(s => {
+        const sDate = new Date(s.createdAt);
+        return sDate.toISOString().split('T')[0] === dayKey;
+      });
+      weeklyStats.byDay[dayLabel] = {
+        sessions: daySessions.length,
+        minutes: daySessions.reduce((acc, log) => acc + (log.metadata?.minutes || 0), 0)
+      };
+    }
+
     res.render('focus', {
       title: 'Focus Timer',
       tasks,
       todaySessions: todaySessions.length,
-      totalFocusMinutes
+      totalFocusMinutes,
+      weeklyStats
     });
   } catch (err) {
     console.error(err);
@@ -76,6 +111,40 @@ router.post('/log', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal log sesi' });
+  }
+});
+
+// Get focus stats API
+router.get('/stats', async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+    const [todaySessions, weekSessions] = await Promise.all([
+      prisma.activityLog.findMany({
+        where: { userId, action: 'focus_session', createdAt: { gte: todayStart } }
+      }),
+      prisma.activityLog.findMany({
+        where: { userId, action: 'focus_session', createdAt: { gte: weekStart } }
+      })
+    ]);
+
+    res.json({
+      today: {
+        sessions: todaySessions.length,
+        minutes: todaySessions.reduce((acc, log) => acc + (log.metadata?.minutes || 0), 0)
+      },
+      week: {
+        sessions: weekSessions.length,
+        minutes: weekSessions.reduce((acc, log) => acc + (log.metadata?.minutes || 0), 0)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal mengambil statistik' });
   }
 });
 

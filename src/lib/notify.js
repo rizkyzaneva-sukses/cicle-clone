@@ -17,11 +17,23 @@ function inferNotificationType(link) {
 // Single entry point for personal notifications: DB record + live socket badge + browser push.
 async function notifyUser(io, userId, content, link = null, options = {}) {
   const type = options.type || inferNotificationType(link);
+  const preview = options.preview || null;
+  const actionButtons = options.actionButtons || null;
+
   const notification = await prisma.notification.create({
     data: { userId, content, link, type }
   });
 
-  if (io) io.to(`user-${userId}`).emit('new-notification', { type });
+  if (io) {
+    io.to(`user-${userId}`).emit('new-notification', {
+      type,
+      content,
+      link,
+      preview,
+      actionButtons,
+      id: notification.id
+    });
+  }
 
   sendPushToUser(userId, { title: 'Maulana Corp', body: content, url: link || '/', tag: type }).catch((err) => {
     console.error('Push notify failed:', err.message);

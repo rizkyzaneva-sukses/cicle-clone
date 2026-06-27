@@ -246,4 +246,81 @@ async function ensureOnboardingField(client = prisma) {
   `);
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField };
+// Ensure DND fields on User
+async function ensureDndFields(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "User"
+    ADD COLUMN IF NOT EXISTS "dndStart" TEXT,
+    ADD COLUMN IF NOT EXISTS "dndEnd" TEXT
+  `);
+}
+
+// Ensure myDay field on Task
+async function ensureMyDayField(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "Task"
+    ADD COLUMN IF NOT EXISTS "myDay" BOOLEAN NOT NULL DEFAULT false
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Task_assigneeId_myDay_idx"
+    ON "Task" ("assigneeId", "myDay")
+    WHERE "myDay" = true
+  `);
+}
+
+// Ensure parentId on ChatMessage for threading
+async function ensureChatMessageParentField(client = prisma) {
+  await client.$executeRawUnsafe(`
+    ALTER TABLE "ChatMessage"
+    ADD COLUMN IF NOT EXISTS "parentId" TEXT
+  `);
+  await client.$executeRawUnsafe(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ChatMessage_parentId_fkey'
+      ) THEN
+        ALTER TABLE "ChatMessage"
+        ADD CONSTRAINT "ChatMessage_parentId_fkey"
+        FOREIGN KEY ("parentId") REFERENCES "ChatMessage"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+      END IF;
+    END $$;
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ChatMessage_parentId_idx"
+    ON "ChatMessage" ("parentId")
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ChatMessage_projectId_createdAt_idx"
+    ON "ChatMessage" ("projectId", "createdAt")
+  `);
+}
+
+// Add performance indexes
+async function ensurePerformanceIndexes(client = prisma) {
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Task_assigneeId_status_idx"
+    ON "Task" ("assigneeId", "status")
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Task_projectId_status_idx"
+    ON "Task" ("projectId", "status")
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "Task_dueDate_idx"
+    ON "Task" ("dueDate")
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ActivityLog_userId_createdAt_idx"
+    ON "ActivityLog" ("userId", "createdAt")
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ActivityLog_projectId_createdAt_idx"
+    ON "ActivityLog" ("projectId", "createdAt")
+  `);
+  await client.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ActivityLog_createdAt_idx"
+    ON "ActivityLog" ("createdAt")
+  `);
+}
+
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField, ensureDndFields, ensureMyDayField, ensureChatMessageParentField, ensurePerformanceIndexes };

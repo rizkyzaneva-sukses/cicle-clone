@@ -16,6 +16,8 @@ model User {
   platformRole String   @default("user") // owner, partner, user
   telegramChatId String?
   onboardingCompleted Boolean @default(false)
+  dndStart     String?   // HH:MM format for Do Not Disturb start
+  dndEnd       String?   // HH:MM format for Do Not Disturb end
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -247,6 +249,7 @@ model Task {
   projectId   String
   assigneeId  String?
   parentId    String?   // parent task for sub-task hierarchy
+  myDay       Boolean   @default(false) // My Day feature flag
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -263,6 +266,10 @@ model Task {
   depOfDeps    TaskDependency[] @relation("TaskDependents")
   telegramReminderLogs TelegramReminderLog[]
   progressUpdates TaskProgressUpdate[]
+
+  @@index([assigneeId, status])
+  @@index([projectId, status])
+  @@index([dueDate])
 }
 
 model TaskProgressUpdate {
@@ -394,14 +401,20 @@ model ChatMessage {
   id        String   @id @default(cuid())
   content   String
   pinned    Boolean  @default(false)
+  parentId  String?   // for threaded replies
   projectId String
   userId    String
   createdAt DateTime @default(now())
 
   project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user      User            @relation(fields: [userId], references: [id])
+  parent    ChatMessage?    @relation("ChatThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   ChatMessage[]   @relation("ChatThread")
   attachments Attachment[]
   reactions   ChatReaction[]
+
+  @@index([parentId])
+  @@index([projectId, createdAt])
 }
 
 model DirectMessage {
@@ -476,6 +489,10 @@ model ActivityLog {
   user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   task    Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([createdAt])
 }
 
 model TaskTemplate {

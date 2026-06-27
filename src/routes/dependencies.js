@@ -49,4 +49,60 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Dependency graph visualization page
+router.get('/graph/:projectId', async (req, res) => {
+  try {
+    const { hasProjectAccess } = require('../lib/access');
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.projectId },
+      select: { id: true, companyId: true, name: true }
+    });
+
+    if (!project || !await hasProjectAccess(req.session.user, project)) {
+      return res.status(403).send('Akses ditolak');
+    }
+
+    // Get all tasks with dependencies in this project
+    const tasks = await prisma.task.findMany({
+      where: { projectId: project.id },
+      select: { id: true, title: true, status: true, priority: true },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const deps = await prisma.taskDependency.findMany({
+      where: {
+        OR: [
+          { task: { projectId: project.id } },
+          { dependsOn: { projectId: project.id } }
+        ]
+      },
+      include: {
+        task: { select: { id: true, title: true, status: true } },
+        dependsOn: { select: { id: true, title: true, status: true } }
+      }
+    });
+
+    // Only include tasks that have dependencies
+    const taskIdsWithDeps = new Set();
+    deps.forEach(d => {
+      taskIdsWithDeps.add(d.taskId);
+      taskIdsWithDeps.add(d.dependsOnId);
+    });
+
+    const filteredTasks = tasks.filter(t => taskIdsWithDeps.has(t.id));
+
+    res.render('tasks/dependencies', {
+      title: `Dependencies - ${project.name}`,
+      projectId: project.id,
+      projectName: project.name,
+      tasks: filteredTasks,
+      deps
+    });
+  } catch (error) {
+    console.error('Dependency graph error:', error);
+    req.flash('error', 'Gagal membuka dependency graph');
+    res.redirect('/projects');
+  }
+});
+
 module.exports = router;

@@ -8,9 +8,10 @@
   <div class="bg-white rounded-3xl border shadow-sm p-6 sm:p-8">
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">Focus Timer</h1>
-      <p class="text-gray-500 text-sm">Atur fokus lebih fleksibel dengan sesi 30, 40, 60, atau 90 menit.</p>
+      <p class="text-gray-500 text-sm">Pomodoro timer dengan mode 25/5 dan 50/10</p>
     </div>
 
+    <!-- Stats Cards -->
     <div class="grid grid-cols-2 gap-4 mb-8">
       <div class="bg-blue-50 rounded-2xl p-4 text-center">
         <div class="text-3xl font-bold text-blue-600" id="today-sessions"><%= todaySessions %></div>
@@ -22,7 +23,23 @@
       </div>
     </div>
 
-    <div class="mb-8">
+    <!-- Mode selector -->
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Mode Timer:</label>
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" onclick="setPresetMode('classic')" id="mode-classic"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-blue-600 text-white">
+          🍅 Pomodoro Klasik (25/5)
+        </button>
+        <button type="button" onclick="setPresetMode('extended')" id="mode-extended"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
+          🎯 Fokus Panjang (50/10)
+        </button>
+      </div>
+    </div>
+
+    <!-- Task selector -->
+    <div class="mb-6">
       <label class="block text-sm font-medium text-gray-700 mb-2">Fokus pada tugas:</label>
       <select id="task-selector" class="w-full border rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-blue-400">
         <option value="">Tanpa tugas spesifik</option>
@@ -34,38 +51,37 @@
       </select>
     </div>
 
+    <!-- Duration presets -->
     <div class="mb-6">
       <div class="flex items-center justify-between gap-3 mb-3">
         <label class="block text-sm font-medium text-gray-700">Durasi fokus:</label>
-        <span id="cycle-status" class="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">3 sesi fokus untuk buka istirahat panjang</span>
+        <span id="cycle-status" class="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">Pilih mode di atas</span>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <button type="button" onclick="setWorkDuration(30)" id="preset-30"
+        <button type="button" onclick="setWorkDuration(25)" id="preset-25"
           class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-blue-600 text-white">
+          25 Menit
+        </button>
+        <button type="button" onclick="setWorkDuration(30)" id="preset-30"
+          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
           30 Menit
         </button>
-        <button type="button" onclick="setWorkDuration(40)" id="preset-40"
+        <button type="button" onclick="setWorkDuration(50)" id="preset-50"
           class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
-          40 Menit
+          50 Menit
         </button>
         <button type="button" onclick="setWorkDuration(60)" id="preset-60"
           class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
           60 Menit
         </button>
-        <button type="button" onclick="setWorkDuration(90)" id="preset-90"
-          class="px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200">
-          90 Menit
-        </button>
       </div>
-      <p id="duration-note" class="text-xs text-gray-500 mt-3">
-        Untuk 30/40 menit: istirahat pendek 5 menit. Untuk 60/90 menit: istirahat pendek 10 menit dan istirahat panjang aktif setelah 3 sesi.
-      </p>
     </div>
 
+    <!-- Timer type buttons -->
     <div class="flex justify-center gap-2 mb-8 flex-wrap">
       <button type="button" onclick="setTimerType('work')" id="type-work"
         class="px-4 py-2 rounded-xl text-sm font-medium transition bg-blue-600 text-white">
-        Kerja (30m)
+        Kerja (25m)
       </button>
       <button type="button" onclick="setTimerType('shortBreak')" id="type-shortBreak"
         class="px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-700 hover:bg-gray-200">
@@ -77,6 +93,7 @@
       </button>
     </div>
 
+    <!-- Timer display -->
     <div class="flex justify-center mb-8">
       <div class="relative w-64 h-64">
         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -86,14 +103,15 @@
             id="timer-progress" class="transition-all duration-1000" />
         </svg>
         <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <div class="text-5xl font-bold text-gray-900 font-mono" id="timer-display">30:00</div>
+          <div class="text-5xl font-bold text-gray-900 font-mono" id="timer-display">25:00</div>
           <div class="text-sm text-gray-500 mt-1" id="timer-label">Fokus</div>
-          <div class="text-xs text-gray-400 mt-2" id="timer-sub-label">Mode 30 menit</div>
+          <div class="text-xs text-gray-400 mt-2" id="timer-sub-label">Mode Pomodoro Klasik</div>
         </div>
       </div>
     </div>
 
-    <div class="flex justify-center gap-3">
+    <!-- Controls -->
+    <div class="flex justify-center gap-3 mb-6">
       <button onclick="startTimer()" id="btn-start"
         class="px-8 py-3 bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700 transition flex items-center gap-2">
         <i class="fas fa-play"></i> Mulai
@@ -107,42 +125,76 @@
         <i class="fas fa-redo"></i> Reset
       </button>
     </div>
+
+    <!-- Focus Mode toggle -->
+    <div class="text-center">
+      <label class="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <input type="checkbox" id="focus-mode-toggle" onchange="toggleFocusMode()" class="accent-blue-600">
+        <span>🔔 Focus Mode (sembunyikan notifikasi & chat)</span>
+      </label>
+    </div>
   </div>
+
+  <!-- Weekly Stats -->
+  <% if (typeof weeklyStats !== 'undefined') { %>
+  <div class="bg-white rounded-3xl border shadow-sm p-6 sm:p-8 mt-6">
+    <h2 class="font-bold text-lg text-gray-900 mb-4 flex items-center gap-2">
+      <i class="fas fa-chart-bar text-blue-500"></i> Statistik Mingguan
+    </h2>
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div class="text-center">
+        <div class="text-2xl font-bold text-blue-600"><%= weeklyStats.totalSessions %></div>
+        <div class="text-xs text-gray-500">Total Sesi</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-bold text-emerald-600"><%= weeklyStats.totalMinutes %></div>
+        <div class="text-xs text-gray-500">Total Menit</div>
+      </div>
+    </div>
+    <!-- Simple bar chart -->
+    <div class="flex items-end gap-2 h-32">
+      <% const maxMinutes = Math.max(...Object.values(weeklyStats.byDay).map(d => d.minutes), 1); %>
+      <% Object.entries(weeklyStats.byDay).forEach(([day, data]) => { %>
+        <div class="flex-1 flex flex-col items-center gap-1">
+          <div class="w-full bg-blue-500 rounded-t-lg transition-all" style="height: <%= Math.max(data.minutes / maxMinutes * 100, 4) %>%"></div>
+          <span class="text-[10px] text-gray-400"><%= day %></span>
+          <span class="text-[10px] text-gray-500 font-semibold"><%= data.minutes %>m</span>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
 </div>
 
 <script>
-  const STORAGE_KEY = 'focusTimerConfigV2';
-  const WORK_PRESETS = [30, 40, 60, 90];
-  const LONG_BREAK_MINUTES = 15;
-  const TIMER_LABELS = {
-    work: 'Fokus',
-    shortBreak: 'Istirahat',
-    longBreak: 'Istirahat Panjang'
+  const TIMER_PRESETS = {
+    classic: { work: 25, shortBreak: 5, longBreak: 15, label: 'Pomodoro Klasik' },
+    extended: { work: 50, shortBreak: 10, longBreak: 20, label: 'Fokus Panjang' }
   };
-  const TIMER_COLORS = {
-    work: '#3b82f6',
-    shortBreak: '#10b981',
-    longBreak: '#8b5cf6'
-  };
+
+  const STORAGE_KEY = 'focusTimerConfigV3';
+  const TIMER_LABELS = { work: 'Fokus', shortBreak: 'Istirahat', longBreak: 'Istirahat Panjang' };
+  const TIMER_COLORS = { work: '#3b82f6', shortBreak: '#10b981', longBreak: '#8b5cf6' };
   const circumference = 2 * Math.PI * 45;
 
   let state = loadState();
+  let currentMode = state.mode || 'classic';
   let currentType = 'work';
-  let totalSeconds = getDurationForType(currentType);
-  let remainingSeconds = totalSeconds;
+  let totalSeconds = 0;
+  let remainingSeconds = 0;
   let timerInterval = null;
   let isRunning = false;
+  let focusModeActive = false;
 
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      const workMinutes = WORK_PRESETS.includes(saved.workMinutes) ? saved.workMinutes : 30;
-      const completedSinceLongBreak = Number.isInteger(saved.completedSinceLongBreak) && saved.completedSinceLongBreak >= 0
-        ? saved.completedSinceLongBreak
-        : 0;
-      return { workMinutes, completedSinceLongBreak };
+      return {
+        mode: ['classic', 'extended'].includes(saved.mode) ? saved.mode : 'classic',
+        completedSinceLongBreak: Number.isInteger(saved.completedSinceLongBreak) ? saved.completedSinceLongBreak : 0
+      };
     } catch (_) {
-      return { workMinutes: 30, completedSinceLongBreak: 0 };
+      return { mode: 'classic', completedSinceLongBreak: 0 };
     }
   }
 
@@ -150,39 +202,69 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
-  function requiresLockedLongBreak() {
-    return state.workMinutes === 60 || state.workMinutes === 90;
+  function getPreset() {
+    return TIMER_PRESETS[currentMode];
   }
 
   function getShortBreakMinutes() {
-    return requiresLockedLongBreak() ? 10 : 5;
+    return getPreset().shortBreak;
   }
 
   function getDurationForType(type) {
-    if (type === 'work') return state.workMinutes * 60;
-    if (type === 'shortBreak') return getShortBreakMinutes() * 60;
-    return LONG_BREAK_MINUTES * 60;
+    const preset = getPreset();
+    if (type === 'work') return preset.work * 60;
+    if (type === 'shortBreak') return preset.shortBreak * 60;
+    return preset.longBreak * 60;
   }
 
   function canUseLongBreak() {
-    return !requiresLockedLongBreak() || state.completedSinceLongBreak >= 3;
+    return state.completedSinceLongBreak >= 3;
+  }
+
+  function setPresetMode(mode) {
+    if (!TIMER_PRESETS[mode]) return;
+    if (isRunning) {
+      if (!confirm('Timer sedang berjalan. Yakin ingin mengganti mode?')) return;
+      clearInterval(timerInterval);
+      isRunning = false;
+    }
+    currentMode = mode;
+    state.mode = mode;
+    saveState();
+    currentType = 'work';
+    totalSeconds = getDurationForType('work');
+    remainingSeconds = totalSeconds;
+    updateDisplay();
+    syncAllUi();
+    resetButtons();
   }
 
   function updatePresetButtons() {
-    WORK_PRESETS.forEach(minutes => {
-      const btn = document.getElementById(`preset-${minutes}`);
+    ['classic', 'extended'].forEach(mode => {
+      const btn = document.getElementById(`mode-${mode}`);
       if (!btn) return;
-      btn.className = minutes === state.workMinutes
+      btn.className = mode === currentMode
+        ? 'px-4 py-3 rounded-2xl text-sm font-semibold transition bg-blue-600 text-white'
+        : 'px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200';
+    });
+
+    // Update duration preset visibility
+    const preset = getPreset();
+    [25, 30, 50, 60].forEach(min => {
+      const btn = document.getElementById(`preset-${min}`);
+      if (!btn) return;
+      btn.className = min === preset.work
         ? 'px-4 py-3 rounded-2xl text-sm font-semibold transition bg-blue-600 text-white'
         : 'px-4 py-3 rounded-2xl text-sm font-semibold transition bg-gray-100 text-gray-700 hover:bg-gray-200';
     });
   }
 
   function updateTypeButtons() {
+    const preset = getPreset();
     const labels = {
-      work: `Kerja (${state.workMinutes}m)`,
-      shortBreak: `Istirahat (${getShortBreakMinutes()}m)`,
-      longBreak: `Panjang (${LONG_BREAK_MINUTES}m)`
+      work: `Kerja (${preset.work}m)`,
+      shortBreak: `Istirahat (${preset.shortBreak}m)`,
+      longBreak: `Panjang (${preset.longBreak}m)`
     };
 
     document.getElementById('type-work').textContent = labels.work;
@@ -192,13 +274,11 @@
     ['work', 'shortBreak', 'longBreak'].forEach(type => {
       const btn = document.getElementById('type-' + type);
       if (!btn) return;
-
       if (type === 'longBreak' && !canUseLongBreak()) {
         btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition bg-gray-100 text-gray-400 cursor-not-allowed';
         btn.disabled = true;
         return;
       }
-
       btn.disabled = false;
       if (type === currentType) {
         btn.className = 'px-4 py-2 rounded-xl text-sm font-medium transition text-white';
@@ -211,29 +291,19 @@
   }
 
   function updateCycleStatus() {
-    const cycleEl = document.getElementById('cycle-status');
-    if (!cycleEl) return;
-
-    if (!requiresLockedLongBreak()) {
-      cycleEl.textContent = `Istirahat pendek ${getShortBreakMinutes()} menit`;
-      return;
-    }
-
+    const el = document.getElementById('cycle-status');
+    if (!el) return;
     if (canUseLongBreak()) {
-      cycleEl.textContent = 'Istirahat panjang sudah terbuka';
-      return;
+      el.textContent = 'Istirahat panjang sudah terbuka';
+    } else {
+      el.textContent = `${state.completedSinceLongBreak}/3 sesi fokus menuju istirahat panjang`;
     }
-
-    cycleEl.textContent = `${state.completedSinceLongBreak}/3 sesi fokus menuju istirahat panjang`;
   }
 
   function updateHelperText() {
-    const subLabel = document.getElementById('timer-sub-label');
-    if (!subLabel) return;
-
-    if (currentType === 'work') subLabel.textContent = `Mode ${state.workMinutes} menit`;
-    if (currentType === 'shortBreak') subLabel.textContent = `Rehat ${getShortBreakMinutes()} menit`;
-    if (currentType === 'longBreak') subLabel.textContent = `Panjang ${LONG_BREAK_MINUTES} menit`;
+    const sub = document.getElementById('timer-sub-label');
+    if (!sub) return;
+    sub.textContent = `Mode ${getPreset().label}`;
   }
 
   function syncAllUi() {
@@ -245,23 +315,19 @@
   }
 
   function setWorkDuration(minutes) {
-    if (!WORK_PRESETS.includes(minutes)) return;
+    const preset = getPreset();
+    if (minutes !== preset.work) {
+      // Switch to appropriate mode
+      if (minutes <= 30 && currentMode !== 'classic') setPresetMode('classic');
+      else if (minutes >= 50 && currentMode !== 'extended') setPresetMode('extended');
+    }
     if (isRunning) {
-      if (!confirm('Timer sedang berjalan. Yakin ingin mengganti durasi fokus?')) return;
+      if (!confirm('Timer sedang berjalan. Yakin ingin mengganti durasi?')) return;
       clearInterval(timerInterval);
       isRunning = false;
     }
-
-    state.workMinutes = minutes;
-    if (!requiresLockedLongBreak()) {
-      state.completedSinceLongBreak = 0;
-    } else if (state.completedSinceLongBreak > 3) {
-      state.completedSinceLongBreak = 3;
-    }
-    saveState();
-
     currentType = 'work';
-    totalSeconds = getDurationForType(currentType);
+    totalSeconds = minutes * 60;
     remainingSeconds = totalSeconds;
     updateDisplay();
     syncAllUi();
@@ -273,13 +339,11 @@
       alert('Istirahat panjang baru bisa dipakai setelah 3 sesi fokus selesai.');
       return;
     }
-
     if (isRunning) {
       if (!confirm('Timer sedang berjalan. Yakin ingin mengganti mode?')) return;
       clearInterval(timerInterval);
       isRunning = false;
     }
-
     currentType = type;
     totalSeconds = getDurationForType(type);
     remainingSeconds = totalSeconds;
@@ -300,26 +364,22 @@
     const secs = remainingSeconds % 60;
     document.getElementById('timer-display').textContent =
       String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-
     const progress = remainingSeconds / totalSeconds;
     const offset = circumference * (1 - progress);
     document.getElementById('timer-progress').style.strokeDashoffset = offset;
     document.getElementById('timer-label').textContent = TIMER_LABELS[currentType];
-    updateHelperText();
     document.title = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} - Focus Timer`;
   }
 
   function startTimer() {
     if (isRunning) return;
     isRunning = true;
-
     document.getElementById('btn-start').classList.add('hidden');
     document.getElementById('btn-pause').classList.remove('hidden');
     document.getElementById('btn-pause').classList.add('flex');
 
     timerInterval = setInterval(() => {
       remainingSeconds--;
-
       if (remainingSeconds <= 0) {
         clearInterval(timerInterval);
         isRunning = false;
@@ -328,7 +388,6 @@
         timerComplete();
         return;
       }
-
       updateDisplay();
     }, 1000);
   }
@@ -386,7 +445,7 @@
     alert(`${TIMER_LABELS[currentType]} selesai!`);
 
     if (currentType === 'work') {
-      if (requiresLockedLongBreak() && canUseLongBreak()) {
+      if (canUseLongBreak()) {
         setTimerType('longBreak');
       } else {
         setTimerType('shortBreak');
@@ -399,13 +458,13 @@
   function playNotificationSound() {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      [0, 0.2].forEach((delay, index) => {
+      [0, 0.2].forEach((delay) => {
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         oscillator.type = 'sine';
-        oscillator.frequency.value = index === 0 ? 523.25 : 659.25;
+        oscillator.frequency.value = delay === 0 ? 523.25 : 659.25;
         gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + delay);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.5);
         oscillator.start(audioCtx.currentTime + delay);
@@ -416,11 +475,21 @@
     }
   }
 
+  function toggleFocusMode() {
+    focusModeActive = document.getElementById('focus-mode-toggle').checked;
+    // Hide notification bell and chat when in focus mode
+    const notifWrapper = document.getElementById('notif-wrapper');
+    if (notifWrapper) notifWrapper.style.display = focusModeActive ? 'none' : '';
+    // Store preference
+    localStorage.setItem('focusMode', focusModeActive ? '1' : '0');
+  }
+
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission();
   }
 
-  totalSeconds = getDurationForType(currentType);
+  // Initialize
+  totalSeconds = getDurationForType('work');
   remainingSeconds = totalSeconds;
   syncAllUi();
   updateDisplay();

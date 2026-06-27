@@ -25,7 +25,13 @@ const ACTIVITY_ACTION_LABELS = {
   unassigned: 'dihapus dari',
   set_due_date: 'atur deadline',
   cleared_due_date: 'hapus deadline',
-  priority_changed: 'ubah prioritas'
+  priority_changed: 'ubah prioritas',
+  focus_session: 'menyelesaikan sesi fokus',
+  created_template: 'membuat template dari',
+  created_from_template: 'membuat task dari template',
+  progress_updated: 'memperbarui progress',
+  progress_deleted: 'menghapus progress',
+  moved: 'memindahkan task'
 };
 
 const ACTIVITY_ENTITY_LABELS = {
@@ -148,6 +154,84 @@ router.get('/', async (req, res) => {
     console.error(error);
     req.flash('error', 'Gagal membuka halaman aktivitas');
     res.redirect('/');
+  }
+});
+
+// GET /activity/timeline — Enhanced timeline view with filters
+router.get('/timeline', async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { platformRole } = req.session.user;
+    const { project: filterProject, user: filterUser, date: filterDate } = req.query;
+
+    // Get accessible brands
+    let brands;
+    if (platformRole === 'owner') {
+      brands = await prisma.company.findMany({ orderBy: { name: 'asc' } });
+    } else {
+      const memberships = await prisma.membership.findMany({ where: { userId }, include: { company: true } });
+      brands = memberships.map(m => m.company);
+    }
+    const brandIds = brands.map(b => b.id);
+
+    // Get projects for filter dropdown
+    const projects = await prisma.project.findMany({
+      where: { companyId: { in: brandIds }, archivedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    });
+
+    // Get users for filter dropdown
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    });
+
+    // Build where clause
+    const where = {
+      OR: [
+        { project: { companyId: { in: brandIds } } },
+        { task: { project: { companyId: { in: brandIds } } } }
+      ]
+    };
+    if (filterProject) {
+      where.AND = [{ projectId: filterProject }];
+    }
+    if (filterUser) {
+      where.userId = filterUser;
+    }
+    if (filterDate) {
+      const dayStart = new Date(filterDate);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      where.createdAt = { gte: dayStart, lt: dayEnd };
+    }
+
+    const logs = await prisma.activityLog.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } },
+        task: { select: { id: true, title: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200
+    });
+
+    res.render('activity/timeline', {
+      title: 'Activity Timeline',
+      logs,
+      projects,
+      users,
+      brands,
+      filterProject: filterProject || '',
+      filterUser: filterUser || '',
+      filterDate: filterDate || ''
+    });
+  } catch (error) {
+    console.error(error);
+    req.flash('error', 'Gagal membuka timeline');
+    res.redirect('/activity');
   }
 });
 

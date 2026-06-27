@@ -1,0 +1,176 @@
+<%- include('partials/header', { title: 'My Day' }) %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="fas fa-sun text-amber-500"></i> My Day
+      </h1>
+      <p class="text-sm text-gray-500 mt-1"><%= new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) %></p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-50 px-4 py-2 rounded-xl text-center">
+        <div class="text-lg font-bold text-blue-600"><%= myDayTasks.length + dueToday.length %></div>
+        <div class="text-[10px] text-blue-500">Task Hari Ini</div>
+      </div>
+      <div class="bg-emerald-50 px-4 py-2 rounded-xl text-center">
+        <div class="text-lg font-bold text-emerald-600"><%= inProgress.length %></div>
+        <div class="text-[10px] text-emerald-500">Sedang Dikerjakan</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- My Day Tasks -->
+  <div>
+    <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+      <i class="fas fa-star text-amber-500"></i> My Day
+      <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"><%= myDayTasks.length %></span>
+    </h2>
+    <% if (myDayTasks.length === 0) { %>
+      <div class="bg-white border rounded-2xl p-8 text-center">
+        <i class="fas fa-star text-3xl text-gray-200 mb-3"></i>
+        <p class="text-gray-400 text-sm">Belum ada task di My Day</p>
+        <p class="text-gray-300 text-xs mt-1">Klik bintang pada task untuk menambahkannya</p>
+      </div>
+    <% } else { %>
+      <div class="space-y-2">
+        <% myDayTasks.forEach(task => { %>
+          <%- renderTaskCard(task, true) %>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Due Today -->
+  <div>
+    <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+      <i class="fas fa-calendar-day text-red-500"></i> Deadline Hari Ini
+      <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full"><%= dueToday.length %></span>
+    </h2>
+    <% if (dueToday.length === 0) { %>
+      <div class="bg-white border rounded-2xl p-8 text-center">
+        <i class="fas fa-check-circle text-3xl text-emerald-200 mb-3"></i>
+        <p class="text-gray-400 text-sm">Tidak ada deadline hari ini</p>
+      </div>
+    <% } else { %>
+      <div class="space-y-2">
+        <% dueToday.forEach(task => { %>
+          <%- renderTaskCard(task, false) %>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- In Progress -->
+  <div>
+    <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+      <i class="fas fa-spinner text-amber-500"></i> Sedang Dikerjakan
+      <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"><%= inProgress.length %></span>
+    </h2>
+    <% if (inProgress.length === 0) { %>
+      <div class="bg-white border rounded-2xl p-8 text-center">
+        <i class="fas fa-pause-circle text-3xl text-gray-200 mb-3"></i>
+        <p class="text-gray-400 text-sm">Tidak ada task dalam progress</p>
+      </div>
+    <% } else { %>
+      <div class="space-y-2">
+        <% inProgress.forEach(task => { %>
+          <%- renderTaskCard(task, false) %>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Suggested -->
+  <div>
+    <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+      <i class="fas fa-lightbulb text-purple-500"></i> Disarankan
+      <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full"><%= suggestedTasks.length %></span>
+    </h2>
+    <% if (suggestedTasks.length === 0) { %>
+      <div class="bg-white border rounded-2xl p-8 text-center">
+        <i class="fas fa-thumbs-up text-3xl text-emerald-200 mb-3"></i>
+        <p class="text-gray-400 text-sm">Semua task sudah tertangani</p>
+      </div>
+    <% } else { %>
+      <div class="space-y-2">
+        <% suggestedTasks.forEach(task => { %>
+          <%- renderTaskCard(task, false) %>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<% function renderTaskCard(task, isInMyDay) { %>
+  <%
+    const PRIO = { URGENT: { label: '🔴', cls: 'bg-red-100 text-red-700' }, HIGH: { label: '🟠', cls: 'bg-orange-100 text-orange-700' }, MEDIUM: { label: '🟡', cls: 'bg-yellow-100 text-yellow-700' }, LOW: { label: '🟢', cls: 'bg-green-100 text-green-700' }, NONE: { label: '', cls: '' } };
+    const prio = PRIO[task.priority] || PRIO.NONE;
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
+  %>
+  <div class="bg-white border rounded-xl p-3 hover:shadow-sm transition-shadow flex items-start gap-3 group">
+    <button onclick="toggleMyDay('<%= task.id %>', this)" class="mt-0.5 shrink-0 text-lg transition
+      <%= isInMyDay ? 'text-amber-500' : 'text-gray-300 hover:text-amber-400' %>" title="<%= isInMyDay ? 'Hapus dari My Day' : 'Tambah ke My Day' %>">
+      <i class="<%= isInMyDay ? 'fas' : 'far' %> fa-star"></i>
+    </button>
+    <a href="/tasks/<%= task.id %>" class="flex-1 min-w-0">
+      <div class="font-medium text-sm text-gray-900 truncate"><%= task.title %></div>
+      <div class="flex items-center gap-2 mt-1 text-xs flex-wrap">
+        <span class="text-gray-400"><%= task.project.name %></span>
+        <% if (prio.label) { %><span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold <%= prio.cls %>"><%= prio.label %></span><% } %>
+        <% if (task.dueDate) { %>
+          <span class="<%= isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400' %>">
+            <i class="fas fa-clock mr-0.5"></i><%= new Date(task.dueDate).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) %>
+            <% if (isOverdue) { %><span class="text-[10px] ml-1">overdue</span><% } %>
+          </span>
+        <% } %>
+      </div>
+    </a>
+    <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition">
+      <% if (task.status === 'TODO') { %>
+        <button onclick="quickMoveDay('<%= task.id %>','IN_PROGRESS')" class="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-semibold hover:bg-amber-200">Mulai</button>
+      <% } else if (task.status === 'IN_PROGRESS') { %>
+        <button onclick="quickMoveDay('<%= task.id %>','DONE')" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold hover:bg-emerald-200">Selesai</button>
+      <% } %>
+    </div>
+  </div>
+<% } %>
+
+<script>
+async function toggleMyDay(taskId, btn) {
+  try {
+    const res = await fetch(`/my-day/toggle/${taskId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      if (data.myDay) {
+        btn.classList.remove('text-gray-300', 'hover:text-amber-400');
+        btn.classList.add('text-amber-500');
+        btn.innerHTML = '<i class="fas fa-star"></i>';
+      } else {
+        btn.classList.remove('text-amber-500');
+        btn.classList.add('text-gray-300', 'hover:text-amber-400');
+        btn.innerHTML = '<i class="far fa-star"></i>';
+      }
+    }
+  } catch (e) {
+    alert('Gagal update My Day');
+  }
+}
+
+async function quickMoveDay(taskId, status) {
+  try {
+    await fetch(`/tasks/${taskId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    window.location.reload();
+  } catch (e) {
+    alert('Gagal update status');
+  }
+}
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,133 @@
+<%- include('partials/header', { title: 'Workload Balancing' }) %>
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Workload Balancing</h1>
+  <p class="text-sm text-gray-500 mt-1">Distribusi beban kerja anggota tim</p>
+</div>
+
+<!-- Brand selector -->
+<div class="flex gap-2 mb-6 flex-wrap">
+  <% brands.forEach(brand => { %>
+    <a href="/workload?brand=<%= brand.id %>"
+      class="px-4 py-2 text-sm rounded-xl border transition font-medium
+      <%- selectedBrand === brand.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50' %>">
+      <%= brand.name %>
+    </a>
+  <% }) %>
+</div>
+
+<% if (members.length === 0) { %>
+  <div class="bg-white border rounded-2xl p-12 text-center">
+    <i class="fas fa-users text-5xl text-gray-200 mb-4"></i>
+    <p class="text-gray-500">Belum ada anggota tim</p>
+  </div>
+<% } else { %>
+  <!-- Summary cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white border rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-blue-600"><%= members.length %></div>
+      <div class="text-xs text-gray-500">Total Anggota</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-amber-600"><%= members.reduce((s,m) => s + m.activeTasks, 0) %></div>
+      <div class="text-xs text-gray-500">Total Task Aktif</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-red-600"><%= members.filter(m => m.isOverloaded).length %></div>
+      <div class="text-xs text-gray-500">Overloaded</div>
+    </div>
+    <div class="bg-white border rounded-2xl p-4 text-center">
+      <div class="text-2xl font-bold text-emerald-600"><%= members.reduce((s,m) => s + m.overdueTasks, 0) %></div>
+      <div class="text-xs text-gray-500">Total Overdue</div>
+    </div>
+  </div>
+
+  <!-- Member cards -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <% members.forEach(member => { %>
+      <div class="bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0
+            <%= member.isOverloaded ? 'bg-red-500' : member.activeTasks > 5 ? 'bg-amber-500' : 'bg-blue-600' %>">
+            <%= member.name.charAt(0).toUpperCase() %>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <h3 class="font-semibold text-gray-900"><%= member.name %></h3>
+              <% if (member.isOverloaded) { %>
+                <span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">Overloaded</span>
+              <% } %>
+              <% if (member.overdueTasks > 0) { %>
+                <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold"><%= member.overdueTasks %> overdue</span>
+              <% } %>
+            </div>
+            <div class="text-xs text-gray-400"><%= member.email %> • <%= member.role %></div>
+          </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="grid grid-cols-4 gap-2 mb-4">
+          <div class="text-center">
+            <div class="text-lg font-bold text-blue-600"><%= member.activeTasks %></div>
+            <div class="text-[10px] text-gray-400">Aktif</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-bold text-emerald-600"><%= member.doneTasks %></div>
+            <div class="text-[10px] text-gray-400">Selesai</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-bold text-red-600"><%= member.overdueTasks %></div>
+            <div class="text-[10px] text-gray-400">Overdue</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-bold text-gray-600"><%= member.completionRate %>%</div>
+            <div class="text-[10px] text-gray-400">Rate</div>
+          </div>
+        </div>
+
+        <!-- Capacity bar -->
+        <div class="mb-3">
+          <div class="flex justify-between text-xs text-gray-400 mb-1">
+            <span>Kapasitas</span>
+            <span><%= member.activeTasks %>/10 task</span>
+          </div>
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all
+              <%= member.activeTasks > 10 ? 'bg-red-500' : member.activeTasks > 7 ? 'bg-amber-500' : 'bg-blue-500' %>"
+              style="width: <%= Math.min(member.activeTasks * 10, 100) %>%"></div>
+          </div>
+        </div>
+
+        <!-- Recent tasks -->
+        <% if (member.recentTasks.length > 0) { %>
+          <div class="border-t pt-3 mt-3">
+            <div class="text-xs text-gray-400 font-medium mb-2">Task aktif:</div>
+            <div class="space-y-1.5 max-h-32 overflow-y-auto">
+              <% member.recentTasks.slice(0, 5).forEach(task => { %>
+                <a href="/tasks/<%= task.id %>" class="flex items-center gap-2 text-xs hover:bg-gray-50 rounded-lg px-2 py-1.5 transition">
+                  <span class="w-2 h-2 rounded-full shrink-0
+                    <%= task.status === 'IN_PROGRESS' ? 'bg-amber-400' : 'bg-gray-400' %>"></span>
+                  <span class="flex-1 truncate"><%= task.title %></span>
+                  <span class="text-gray-300 shrink-0"><%= task.project.name %></span>
+                  <% if (task.dueDate && new Date(task.dueDate) < new Date()) { %>
+                    <span class="text-red-500 text-[10px] font-semibold">overdue</span>
+                  <% } %>
+                </a>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Reassignment suggestion -->
+        <% if (member.isOverloaded) { %>
+          <div class="mt-3 bg-red-50 border border-red-100 rounded-xl px-3 py-2 text-xs text-red-700">
+            <i class="fas fa-lightbulb mr-1"></i>
+            Anggota ini memiliki <%= member.activeTasks %> task aktif. Pertimbangkan untuk mendistribusikan task ke anggota lain.
+          </div>
+        <% } %>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

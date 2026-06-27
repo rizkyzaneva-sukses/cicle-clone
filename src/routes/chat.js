@@ -112,7 +112,7 @@ function serializeChatMessage(message, audience, readRows) {
   };
 }
 
-async function buildChatPayload(projectId, currentUserId, markSeen = true) {
+async function buildChatPayload(projectId, currentUserId, markSeen = true, options = {}) {
   const project = await getProjectForChat(projectId);
   if (!project) return null;
 
@@ -124,36 +124,67 @@ async function buildChatPayload(projectId, currentUserId, markSeen = true) {
     });
   }
 
-  const [audience, messages, readRows] = await Promise.all([
+  // Cursor-based pagination
+  const limit = Math.min(parseInt(options.limit) || 50, 100);
+  const before = options.before ? new Date(options.before) : null;
+
+  const messageWhere = { projectId, parentId: null };
+  if (before && !isNaN(before.getTime())) {
+    messageWhere.createdAt = { lt: before };
+  }
+
+  const [audience, messages, readRows, totalCount] = await Promise.all([
     getProjectChatAudience(project),
     prisma.chatMessage.findMany({
-      where: { projectId },
+      where: messageWhere,
       include: {
         user: true,
         attachments: true,
-        reactions: { include: { user: { select: { id: true, name: true } } } }
+        reactions: { include: { user: { select: { id: true, name: true } } } },
+        replies: {
+          include: {
+            user: { select: { id: true, name: true } },
+            reactions: { include: { user: { select: { id: true, name: true } } } }
+          },
+          orderBy: { createdAt: 'asc' },
+          take: 5
+        },
+        _count: { select: { replies: true } }
       },
-      orderBy: { createdAt: 'asc' },
-      take: 100
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1
     }),
-    prisma.projectChatRead.findMany({ where: { projectId } })
+    prisma.projectChatRead.findMany({ where: { projectId } }),
+    prisma.chatMessage.count({ where: { projectId, parentId: null } })
   ]);
+
+  const hasMore = messages.length > limit;
+  const trimmedMessages = hasMore ? messages.slice(0, limit) : messages;
+  // Reverse to chronological order
+  trimmedMessages.reverse();
 
   return {
     project,
     audience: audience.map(user => ({ id: user.id, name: user.name })),
-    messages: messages.map(message => serializeChatMessage(message, audience, readRows))
+    messages: trimmedMessages.map(message => serializeChatMessage(message, audience, readRows)),
+    pagination: {
+      hasMore,
+      oldestTimestamp: trimmedMessages.length > 0 ? trimmedMessages[0].createdAt : null,
+      totalCount,
+      limit
+    }
   };
 }
 
-// Get messages for project
+// Get messages for project (with pagination)
 router.get('/messages/:projectId', async (req, res) => {
-  const payload = await buildChatPayload(req.params.projectId, req.session.user.id, false);
+  const { before, limit } = req.query;
+  const payload = await buildChatPayload(req.params.projectId, req.session.user.id, false, { before, limit });
   if (!payload || !await hasProjectAccess(req.session.user, payload.project)) {
     return res.status(403).json({ error: 'Akses ditolak' });
   }
 
-  res.json({ messages: payload.messages, audience: payload.audience });
+  res.json({ messages: payload.messages, audience: payload.audience, pagination: payload.pagination });
 });
 
 router.post('/messages/:projectId/read', async (req, res) => {
@@ -229,8 +260,17 @@ router.post('/messages/:projectId', upload.array('files', 8), async (req, res) =
       return res.status(400).json({ error: 'Pesan atau file wajib diisi' });
     }
 
+    // Threading support
+    const parentId = req.body.parentId || null;
+    if (parentId) {
+      const parentMsg = await prisma.chatMessage.findUnique({ where: { id: parentId } });
+      if (!parentMsg || parentMsg.projectId !== projectId) {
+        return res.status(400).json({ error: 'Parent message tidak valid' });
+      }
+    }
+
     const message = await prisma.chatMessage.create({
-      data: { content, projectId, userId }
+      data: { content, projectId, userId, parentId }
     });
 
     if (files.length > 0) {

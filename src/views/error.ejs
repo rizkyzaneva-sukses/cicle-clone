@@ -1,0 +1,23 @@
+<%- include('partials/header', { title: 'Error ' + statusCode }) %>
+
+<div class="max-w-lg mx-auto text-center py-16">
+  <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+    <i class="fas fa-exclamation-triangle text-red-500 text-3xl"></i>
+  </div>
+  <h1 class="text-3xl font-bold text-gray-900 mb-3">Error <%= statusCode %></h1>
+  <p class="text-gray-600 mb-4"><%= message %></p>
+  <% if (typeof errorId !== 'undefined' && errorId) { %>
+    <p class="text-sm text-gray-400 mb-6">Error ID: <code class="bg-gray-100 px-2 py-1 rounded"><%= errorId %></code></p>
+  <% } %>
+  <% if (typeof stack !== 'undefined' && stack) { %>
+    <details class="text-left bg-gray-50 border rounded-xl p-4 mb-6 text-xs">
+      <summary class="cursor-pointer font-medium text-gray-600">Stack trace</summary>
+      <pre class="mt-2 overflow-auto text-gray-500"><%= stack %></pre>
+    </details>
+  <% } %>
+  <a href="/" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition">
+    <i class="fas fa-home"></i> Kembali ke Dashboard
+  </a>
+</div>
+
+<%- include('partials/footer') %>
