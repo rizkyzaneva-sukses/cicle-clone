@@ -59,6 +59,7 @@
       </div>
 
       <form action="/projects/<%= project.id %>/report/entries" method="POST" class="space-y-4">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium mb-1.5">Tanggal</label>
@@ -216,6 +217,7 @@
                         <i class="fas fa-pen"></i>
                       </button>
                       <form action="/projects/<%= project.id %>/report/entries/<%= entry.id %>/delete" method="POST" onsubmit="return confirm('Hapus data report ini?')">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button type="submit" class="text-red-500 hover:text-red-600 text-xs px-2 py-1 rounded-lg hover:bg-red-50">
                         <i class="fas fa-trash"></i>
                       </button>
@@ -238,6 +240,7 @@
         <p class="text-sm text-gray-500 mb-4">Versi 2: project ini bisa punya kolom report sendiri. Kosongkan field yang tidak dipakai, maksimal 8 kolom.</p>
 
         <form action="/projects/<%= project.id %>/report/config" method="POST" class="space-y-3">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <% for (let index = 0; index < Math.max(columns.length, 6); index++) { %>
             <div>
               <label class="block text-sm font-medium mb-1.5">Kolom <%= index + 1 %></label>

@@ -203,6 +203,7 @@
       <div class="task-edit-card p-4 sm:p-6 lg:bg-white lg:border lg:rounded-2xl lg:sm:rounded-3xl lg:shadow-sm">
       <h3 class="hidden lg:block font-semibold text-lg mb-4">Edit Task</h3>
       <form action="/tasks/<%= task.id %>/update" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="space-y-4">
           <div>
             <label class="text-sm font-medium text-gray-700">Judul</label>
@@ -381,6 +382,7 @@
       </h3>
 
       <form action="/tasks/<%= task.id %>/progress-updates" method="POST" class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-5">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="grid grid-cols-1 sm:grid-cols-[180px,1fr] gap-3">
           <select name="status" class="border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-emerald-400">
             <option value="ON_TRACK">On track</option>
@@ -614,6 +616,7 @@
       <div class="space-y-2">
         <% ['TODO','IN_PROGRESS','DONE'].forEach(s => { %>
           <form action="/tasks/<%= task.id %>/update" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <input type="hidden" name="title" value="<%= task.title %>">
             <input type="hidden" name="priority" value="<%= task.priority %>">
             <input type="hidden" name="status" value="<%= s %>">
@@ -638,6 +641,7 @@
         <% } %>
         <% task.labels.forEach(tl => { %>
           <form action="/tasks/<%= task.id %>/labels/<%= tl.label.id %>/remove" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="text-xs font-semibold rounded-full px-3 py-1 text-white" style="background:<%= tl.label.color %>" title="Klik untuk hapus">
               <%= tl.label.name %> ×
             </button>
@@ -645,6 +649,7 @@
         <% }) %>
       </div>
       <form action="/tasks/<%= task.id %>/labels" method="POST" class="space-y-2">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <select name="labelId" class="w-full border rounded-xl px-3 py-2 text-sm">
           <option value="">Buat label baru...</option>
           <% labels.forEach(label => { %>

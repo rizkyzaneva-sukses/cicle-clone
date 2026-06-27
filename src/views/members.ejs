@@ -26,6 +26,7 @@
     <i class="fas fa-user-plus text-blue-600"></i> Undang Anggota Baru
   </h2>
   <form action="/members/invite" method="POST" class="flex gap-3 flex-wrap">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" name="companyId" value="<%= company.id %>">
     <div class="flex-1 min-w-48">
       <input type="email" name="email" required
@@ -76,6 +77,7 @@
             </summary>
             <form action="/members/users/<%= pa.userId %>/reset-password" method="POST"
               class="mt-2 w-full sm:w-72 bg-white border rounded-2xl shadow-sm p-4 space-y-3">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <input type="hidden" name="companyId" value="<%= company.id %>">
               <div class="text-sm font-semibold text-gray-800">Reset Password <%= pa.user.name %></div>
               <input type="password" name="newPassword" minlength="6" required placeholder="Password baru"
@@ -90,6 +92,7 @@
         <% } %>
         <form action="/members/partners/<%= pa.userId %>/remove" method="POST"
           onsubmit="return confirm('Cabut akses Partner <%= pa.user.name %> dari brand <%= company.name %>?')">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="companyId" value="<%= company.id %>">
           <button type="submit" class="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-xs font-medium transition">
             <i class="fas fa-user-slash mr-1"></i> Cabut
@@ -153,6 +156,7 @@
       <% if (canManage && membership.user.id !== currentUserId) { %>
       <div class="flex items-center gap-2 shrink-0">
         <form action="/members/<%= membership.id %>/role" method="POST">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="companyId" value="<%= company.id %>">
           <input type="hidden" name="role" value="<%= membership.role === 'admin' ? 'member' : 'admin' %>">
           <button type="submit" class="text-xs px-3 py-1.5 border rounded-xl hover:bg-gray-50 transition text-gray-600">
@@ -162,6 +166,7 @@
         </form>
         <form action="/members/<%= membership.id %>/remove" method="POST"
           onsubmit="return confirm('Hapus <%= membership.user.name %> dari brand ini?')">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="companyId" value="<%= company.id %>">
           <button type="submit" class="text-xs px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl transition">
             <i class="fas fa-trash"></i>
@@ -174,6 +179,7 @@
             </summary>
             <form action="/members/users/<%= membership.user.id %>/reset-password" method="POST"
               class="mt-2 w-full sm:w-72 bg-white border rounded-2xl shadow-sm p-4 space-y-3">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <input type="hidden" name="companyId" value="<%= company.id %>">
               <div class="text-sm font-semibold text-gray-800">Reset Password <%= membership.user.name %></div>
               <input type="password" name="newPassword" minlength="6" required placeholder="Password baru"

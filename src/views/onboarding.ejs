@@ -147,6 +147,7 @@
               <i class="fas fa-keyboard mr-1"></i> Atau isi manual Chat ID
             </summary>
             <form method="POST" action="/onboarding/telegram" class="mt-3">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="flex gap-2">
                 <input type="text" name="chatId" placeholder="565228988"
                   pattern="\d{5,30}" required

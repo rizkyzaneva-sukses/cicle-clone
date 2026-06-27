@@ -14,6 +14,7 @@
     <% } %>
 
     <form method="POST" action="/auth/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : '/' %>">
       <div class="space-y-5">
         <div>

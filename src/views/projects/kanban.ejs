@@ -183,6 +183,7 @@
     <% if (canManageProject) { %>
       <form action="/projects/<%= project.id %>/archive" method="POST"
             onsubmit="return confirm('Arsipkan proyek &quot;<%= project.name %>&quot;? Proyek akan hilang dari daftar tapi datanya tetap tersimpan dan bisa dipulihkan dari Arsip.');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button type="submit" class="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border hover:bg-amber-50 text-gray-500 hover:text-amber-600" title="Arsipkan proyek">
           <i class="fas fa-box-archive"></i>
         </button>

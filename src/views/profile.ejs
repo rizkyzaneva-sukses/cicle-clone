@@ -70,6 +70,7 @@
           </form>
           <% if (user.avatar) { %>
             <form action="/profile/avatar/delete" method="POST" onsubmit="return confirm('Hapus foto profil kamu?');">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-white border text-gray-700 rounded-2xl text-sm font-semibold hover:bg-gray-50 transition">
                 <i class="fas fa-trash text-red-500"></i>
                 Hapus Foto
@@ -108,6 +109,7 @@
         <p class="text-sm text-gray-500 mt-1">Nama dan email ini dipakai di workspace, task, chat, dan notifikasi.</p>
       </div>
       <form action="/profile/update" method="POST" class="space-y-4">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap</label>
           <input type="text" name="name" value="<%= user.name %>" required
@@ -134,6 +136,7 @@
         <p class="text-sm text-gray-500 mt-1">Gunakan minimal 6 karakter untuk password baru.</p>
       </div>
       <form action="/profile/password" method="POST" class="space-y-4">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Password Lama</label>
           <input type="password" name="currentPassword" required
@@ -220,6 +223,7 @@
       <p class="text-sm text-red-600 mb-5">Hapus semua brand, proyek, task, chat, notifikasi, dan user dummy. Akun yang dipertahankan akan tetap menjadi owner.</p>
       <form action="/admin/reset-data" method="POST" class="flex flex-col sm:flex-row gap-3"
         onsubmit="return confirm('Yakin reset semua data platform? Aksi ini tidak bisa dibatalkan.');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="email" name="keepEmail" value="<%= user.email %>" required
           class="flex-1 border border-red-200 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-red-400"
           aria-label="Email yang dipertahankan">

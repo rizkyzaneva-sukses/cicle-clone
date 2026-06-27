@@ -47,6 +47,7 @@
         </div>
 
         <form action="/workspaces/<%= workspace.id %>/partners" method="POST" class="grid grid-cols-1 sm:grid-cols-[1fr_90px_auto] gap-2 w-full lg:max-w-xl">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="email" name="email" required placeholder="Email CEO/COO..."
             class="border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-400">
           <select name="role" class="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
@@ -76,6 +77,7 @@
                 </div>
                 <form action="/workspaces/<%= workspace.id %>/partners/<%= partner.userId %>/remove" method="POST"
                   onsubmit="return confirm('Cabut akses <%= partner.user.name %> dari workspace ini?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button type="submit" class="ml-1 text-red-400 hover:text-red-600 transition p-1" title="Cabut akses">
                     <i class="fas fa-times-circle"></i>
                   </button>
@@ -125,6 +127,7 @@
                     </button>
                     <form action="/brands/<%= brand.id %>/delete" method="POST"
                       onsubmit="return confirm('Hapus brand <%= brand.name %>? Semua data di dalamnya akan ikut terhapus!')">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button type="submit" class="px-3 py-1.5 text-xs border border-red-200 text-red-500 rounded-xl hover:bg-red-50 transition">
                         <i class="fas fa-trash"></i>
                       </button>
@@ -156,6 +159,7 @@
   <div class="bg-white rounded-3xl p-8 w-full max-w-md mx-4 shadow-2xl">
     <h3 class="text-2xl font-bold mb-6">Buat Workspace / Holding</h3>
     <form action="/workspaces/create" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="mb-5">
         <label class="block text-sm font-medium mb-1.5">Nama Workspace</label>
         <input type="text" name="name" required autofocus placeholder="Contoh: Zaneva Group"
@@ -176,6 +180,7 @@
   <div class="bg-white rounded-3xl p-8 w-full max-w-md mx-4 shadow-2xl">
     <h3 class="text-2xl font-bold mb-6">Buat Brand Baru</h3>
     <form action="/brands/create" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="space-y-5">
         <div>
           <label class="block text-sm font-medium mb-1.5">Workspace / Holding</label>
@@ -239,6 +244,7 @@
     </div>
 
     <form id="editBrandForm" action="" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="space-y-5">
         <div>
           <label class="block text-sm font-medium mb-1.5">Nama Brand</label>

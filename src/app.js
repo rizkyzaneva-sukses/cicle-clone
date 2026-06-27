@@ -138,6 +138,13 @@ function csrfProtection(req, res, next) {
     return next();
   }
 
+  // Skip for same-origin fetch/XHR calls. Sec-Fetch-Site is set by the
+  // browser itself and cannot be spoofed by a cross-site attacker page,
+  // so this safely covers in-app AJAX calls that don't carry a _csrf field.
+  if (req.headers['sec-fetch-site'] === 'same-origin') {
+    return next();
+  }
+
   const token = req.body._csrf || req.headers['x-csrf-token'];
   const sessionToken = req.session.csrfToken;
 

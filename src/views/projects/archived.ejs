@@ -29,6 +29,7 @@
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <form action="/projects/<%= project.id %>/unarchive" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button type="submit" class="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-100 transition">
               <i class="fas fa-rotate-left mr-1.5"></i>Pulihkan
             </button>
