@@ -103,6 +103,59 @@
       </section>
 
       <section class="bg-white border rounded-3xl p-6">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="text-xs font-bold uppercase tracking-wide text-gray-400">Update 27 Juni 2026</span>
+          <div class="h-px flex-1 bg-gray-200"></div>
+        </div>
+        <div class="space-y-5">
+          <div class="border-l-4 border-slate-600 pl-4">
+            <div class="font-bold">Dark Mode</div>
+            <p class="text-sm text-gray-600 mt-1">Klik ikon bulan/matahari di navbar untuk ganti tampilan gelap/terang. Pilihan tersimpan otomatis, ikut sinkron di semua tab, dan default ikut preferensi sistem perangkat.</p>
+          </div>
+          <div class="border-l-4 border-indigo-500 pl-4">
+            <div class="font-bold">Keyboard Shortcuts</div>
+            <p class="text-sm text-gray-600 mt-1">Tekan <strong>?</strong> di halaman manapun untuk lihat daftar shortcut. <strong>K</strong> buka Kanban, <strong>C</strong> buat task baru, <strong>/</strong> fokus ke pencarian, <strong>D</strong> ke My Day, <strong>T</strong> ke Tugas Saya, <strong>G</strong> ke Dashboard, <strong>Esc</strong> tutup modal/panel.</p>
+          </div>
+          <div class="border-l-4 border-orange-500 pl-4">
+            <div class="font-bold">Menu Baru: My Day</div>
+            <p class="text-sm text-gray-600 mt-1">Menampilkan task yang jatuh tempo hari ini, task sedang dikerjakan, dan saran task (overdue/priority tinggi). Bisa tandai task masuk My Day langsung dari sana.</p>
+          </div>
+          <div class="border-l-4 border-cyan-500 pl-4">
+            <div class="font-bold">Menu Baru: Workload</div>
+            <p class="text-sm text-gray-600 mt-1">Menampilkan jumlah task aktif, tingkat selesai, dan task overdue per anggota tim. Anggota dengan lebih dari 10 task aktif ditandai overload, lengkap dengan saran reassign.</p>
+          </div>
+          <div class="border-l-4 border-teal-500 pl-4">
+            <div class="font-bold">Menu Baru: Timeline</div>
+            <p class="text-sm text-gray-600 mt-1">Riwayat aktivitas tim dalam tampilan garis waktu, bisa difilter per project, per user, dan per tanggal.</p>
+          </div>
+          <div class="border-l-4 border-violet-500 pl-4">
+            <div class="font-bold">Visualisasi Dependency Task</div>
+            <p class="text-sm text-gray-600 mt-1">Tombol <strong>Deps</strong> di header Kanban menampilkan graph hubungan antar task yang saling bergantung, dengan warna status (hijau=done, kuning=in progress, abu=todo) dan jalur kritis ditandai merah.</p>
+          </div>
+          <div class="border-l-4 border-emerald-600 pl-4">
+            <div class="font-bold">Export Tugas (CSV/Excel)</div>
+            <p class="text-sm text-gray-600 mt-1">Tombol <strong>Export</strong> di header Kanban dan di halaman Tugas Saya untuk unduh daftar task sebagai CSV/Excel, sesuai filter status, priority, atau assignee yang sedang aktif.</p>
+          </div>
+          <div class="border-l-4 border-rose-500 pl-4">
+            <div class="font-bold">Focus Timer: 2 Mode + Statistik Mingguan</div>
+            <p class="text-sm text-gray-600 mt-1">Pilih mode Pomodoro Klasik (25/5 menit) atau Fokus Panjang (50/10 menit). Aktifkan Focus Mode untuk sembunyikan notifikasi dan chat saat kerja, dan lihat statistik sesi per minggu di halaman Focus Timer.</p>
+          </div>
+          <div class="border-l-4 border-sky-500 pl-4">
+            <div class="font-bold">Kanban Card Lebih Informatif</div>
+            <p class="text-sm text-gray-600 mt-1">Kartu task di Kanban kini punya garis warna sesuai priority, badge status progress terbaru (On track/Blocked/Need review), serta highlight merah dan keterangan jumlah hari untuk task yang overdue.</p>
+          </div>
+          <div class="border-l-4 border-fuchsia-500 pl-4">
+            <div class="font-bold">Pengumuman Bisa Ditarget</div>
+            <p class="text-sm text-gray-600 mt-1">Owner sekarang bisa pilih target pengumuman: semua User Apps, Holding tertentu, atau Brand tertentu — tidak harus broadcast ke semua orang.</p>
+          </div>
+          <div class="border-l-4 border-red-600 pl-4">
+            <div class="font-bold">Keamanan Login Diperkuat</div>
+            <p class="text-sm text-gray-600 mt-1">Percobaan login dan registrasi yang berlebihan kini dibatasi otomatis (rate limit), dan semua form memakai proteksi CSRF supaya submit hanya berlaku dari halaman resmi aplikasi.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border rounded-3xl p-6">
         <div class="space-y-5">
           <div class="border-l-4 border-emerald-500 pl-4">
             <div class="font-bold">Progress Update Task</div>
@@ -315,6 +368,14 @@
           <div class="font-bold mb-1"><i class="fas fa-tags text-teal-600 mr-2"></i>Label & Activity Log</div>
           <p class="text-sm text-gray-600">Label membantu klasifikasi task. Activity log mencatat create, update, checklist, komentar, upload, dan perubahan label.</p>
         </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-moon text-slate-600 mr-2"></i>Dark Mode</div>
+          <p class="text-sm text-gray-600">Klik ikon bulan/matahari di navbar untuk ganti tampilan gelap/terang. Tersimpan otomatis dan sinkron di semua tab.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <div class="font-bold mb-1"><i class="fas fa-keyboard text-indigo-600 mr-2"></i>Keyboard Shortcuts</div>
+          <p class="text-sm text-gray-600">Tekan <strong>?</strong> di halaman manapun untuk lihat semua shortcut yang tersedia (Kanban, buat task, search, dll).</p>
+        </div>
       </div>
     </div>
 
@@ -376,8 +437,8 @@
           Lampirkan file langsung di komentar task.
         </div>
         <div class="bg-gray-50 rounded-2xl p-4">
-          <div class="font-semibold text-gray-800 mb-1">Task Dependencies</div>
-          Tambahkan dependency di detail task untuk memantau task yang saling bergantung.
+          <div class="font-semibold text-gray-800 mb-1">Task Dependencies + Visualisasi Graph</div>
+          Tambahkan dependency di detail task, lalu klik tombol <strong>Deps</strong> di header Kanban untuk lihat graph hubungan antar task dan jalur kritis.
         </div>
         <div class="bg-gray-50 rounded-2xl p-4">
           <div class="font-semibold text-gray-800 mb-1">Task Templates</div>
@@ -394,6 +455,22 @@
         <div class="bg-gray-50 rounded-2xl p-4">
           <div class="font-semibold text-gray-800 mb-1">Invite Link</div>
           Generate link invite per brand dari halaman Kelola Brand.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">My Day</div>
+          Menu baru yang menampilkan task jatuh tempo hari ini, task sedang dikerjakan, dan saran task overdue/priority tinggi.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Workload (Beban Kerja Tim)</div>
+          Menu baru untuk pantau jumlah task aktif, tingkat selesai, dan overload per anggota, lengkap saran reassign.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Activity Timeline</div>
+          Menu baru di samping Aktivitas, menampilkan riwayat kerja tim dalam tampilan garis waktu dengan filter project/user/tanggal.
+        </div>
+        <div class="bg-gray-50 rounded-2xl p-4">
+          <div class="font-semibold text-gray-800 mb-1">Export CSV/Excel</div>
+          Tombol Export di header Kanban dan halaman Tugas Saya untuk unduh daftar task sesuai filter yang aktif.
         </div>
       </div>
     </div>
@@ -415,7 +492,7 @@
         </div>
         <div class="bg-gray-50 rounded-2xl p-4">
           <div class="font-semibold text-gray-800 mb-1">Pengumuman</div>
-          Owner bisa kirim pengumuman ke semua user lewat menu Pengumuman.
+          Owner bisa kirim pengumuman lewat menu Pengumuman, dengan target: semua User Apps, Holding tertentu, atau Brand tertentu.
         </div>
         <div class="bg-gray-50 rounded-2xl p-4">
           <div class="font-semibold text-gray-800 mb-1">Pin Pesan Chat</div>
