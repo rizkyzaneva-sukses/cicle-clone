@@ -110,4 +110,48 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Edit checklist item content
+router.patch('/:id/content', async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim()) return res.status(400).json({ error: 'Content required' });
+    const updated = await prisma.checklistItem.update({
+      where: { id: req.params.id },
+      data: { content: content.trim() }
+    });
+    const task = await prisma.task.findUnique({ where: { id: updated.taskId }, select: { projectId: true } });
+    await logActivity(prisma, req, {
+      action: 'updated_checklist',
+      entityType: 'task',
+      entityId: updated.taskId,
+      projectId: task?.projectId,
+      taskId: updated.taskId,
+      metadata: { content: updated.content }
+    });
+    res.json({ success: true, item: updated });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal update konten checklist' });
+  }
+});
+
+// Reorder checklist items
+router.patch('/task/:taskId/reorder', async (req, res) => {
+  try {
+    const { items } = req.body; // expects [{ id: '...', position: Int }]
+    if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Invalid data' });
+    
+    await prisma.$transaction(
+      items.map(item => 
+        prisma.checklistItem.update({
+          where: { id: item.id },
+          data: { position: item.position }
+        })
+      )
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Gagal reorder checklist' });
+  }
+});
+
 module.exports = router;

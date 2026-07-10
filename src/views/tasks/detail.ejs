@@ -304,38 +304,50 @@
         <% task.checklists.forEach(item => { %>
           <div class="checklist-group" id="check-<%= item.id %>">
             <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group cursor-pointer">
+              <i class="fas fa-grip-vertical text-gray-300 hover:text-gray-500 cursor-grab drag-handle shrink-0 opacity-0 group-hover:opacity-100 transition"></i>
               <input type="checkbox" <%= item.isDone ? 'checked' : '' %>
                 onchange="toggleCheck('<%= item.id %>', this)"
-                class="w-5 h-5 sm:w-4 sm:h-4 accent-blue-600 cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 -ml-3 sm:ml-0">
-              <span class="flex-1 text-sm <%= item.isDone ? 'line-through text-gray-400' : 'text-gray-700' %>">
+                class="w-5 h-5 sm:w-4 sm:h-4 accent-blue-600 cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 -ml-3 sm:ml-0 shrink-0">
+              <span class="flex-1 text-sm <%= item.isDone ? 'line-through text-gray-400' : 'text-gray-700' %> checklist-text" ondblclick="startEditChecklist('<%= item.id %>')">
                 <%= item.content %>
               </span>
-              <button onclick="event.stopPropagation(); showSubCheckForm('<%= item.id %>')" class="text-blue-400 hover:text-blue-600 text-xs transition" title="Tambah sub-checklist">
+              <input type="text" class="hidden flex-1 border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 checklist-edit-input" value="<%= item.content %>" onblur="saveEditChecklist('<%= item.id %>', this)" onkeydown="if(event.key==='Enter') this.blur()">
+              
+              <button onclick="event.stopPropagation(); startEditChecklist('<%= item.id %>')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button onclick="event.stopPropagation(); showSubCheckForm('<%= item.id %>')" class="text-blue-400 hover:text-blue-600 text-xs transition shrink-0" title="Tambah sub-checklist">
                 <i class="fas fa-plus"></i>
               </button>
               <button onclick="deleteCheck('<%= item.id %>')"
-                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
+                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition shrink-0">
                 <i class="fas fa-times"></i>
               </button>
             </div>
+            <div class="sub-checklist ml-8 space-y-1 mt-1">
             <% if (item.children && item.children.length > 0) { %>
-              <div class="ml-8 space-y-1 mt-1">
                 <% item.children.forEach(sub => { %>
                   <div class="flex items-center gap-3 p-1.5 rounded-lg hover:bg-gray-50 group" id="check-<%= sub.id %>">
+                    <i class="fas fa-grip-vertical text-gray-300 hover:text-gray-500 cursor-grab drag-handle shrink-0 opacity-0 group-hover:opacity-100 transition"></i>
                     <input type="checkbox" <%= sub.isDone ? 'checked' : '' %>
                       onchange="toggleCheck('<%= sub.id %>', this)"
-                      class="w-5 h-5 sm:w-3.5 sm:h-3.5 accent-blue-600 cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 -ml-3 sm:ml-0">
-                    <span class="flex-1 text-xs <%= sub.isDone ? 'line-through text-gray-400' : 'text-gray-600' %>">
+                      class="w-5 h-5 sm:w-3.5 sm:h-3.5 accent-blue-600 cursor-pointer min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 -ml-3 sm:ml-0 shrink-0">
+                    <span class="flex-1 text-xs <%= sub.isDone ? 'line-through text-gray-400' : 'text-gray-600' %> checklist-text" ondblclick="startEditChecklist('<%= sub.id %>')">
                       <%= sub.content %>
                     </span>
+                    <input type="text" class="hidden flex-1 border rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-400 checklist-edit-input" value="<%= sub.content %>" onblur="saveEditChecklist('<%= sub.id %>', this)" onkeydown="if(event.key==='Enter') this.blur()">
+                    
+                    <button onclick="event.stopPropagation(); startEditChecklist('<%= sub.id %>')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
+                      <i class="fas fa-pen"></i>
+                    </button>
                     <button onclick="deleteCheck('<%= sub.id %>')"
-                      class="text-red-400 hover:text-red-600 text-xs transition">
+                      class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition shrink-0">
                       <i class="fas fa-times"></i>
                     </button>
                   </div>
                 <% }) %>
-              </div>
             <% } %>
+            </div>
             <div id="sub-form-<%= item.id %>" class="hidden ml-8 mt-1 flex gap-2">
               <input type="text" placeholder="Sub-checklist..."
                 class="flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400"
@@ -722,6 +734,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 const taskId = '<%= task.id %>';
 
@@ -841,13 +854,47 @@ async function addCheck() {
     div.className = 'flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group';
     div.id = `check-${data.item.id}`;
     div.innerHTML = `
-      <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-4 h-4 accent-blue-600 cursor-pointer">
-      <span class="flex-1 text-sm text-gray-700">${escapeHtml(data.item.content)}</span>
-      <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition">
-        <i class="fas fa-times"></i>
-      </button>
+      <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group cursor-pointer w-full">
+        <i class="fas fa-grip-vertical text-gray-300 hover:text-gray-500 cursor-grab drag-handle shrink-0 opacity-0 group-hover:opacity-100 transition"></i>
+        <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-4 h-4 accent-blue-600 cursor-pointer shrink-0">
+        <span class="flex-1 text-sm text-gray-700 checklist-text" ondblclick="startEditChecklist('${data.item.id}')">${escapeHtml(data.item.content)}</span>
+        <input type="text" class="hidden flex-1 border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 checklist-edit-input" value="${escapeHtml(data.item.content)}" onblur="saveEditChecklist('${data.item.id}', this)" onkeydown="if(event.key==='Enter') this.blur()">
+        <button onclick="event.stopPropagation(); startEditChecklist('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
+          <i class="fas fa-pen"></i>
+        </button>
+        <button onclick="event.stopPropagation(); showSubCheckForm('${data.item.id}')" class="text-blue-400 hover:text-blue-600 text-xs transition shrink-0" title="Tambah sub-checklist">
+          <i class="fas fa-plus"></i>
+        </button>
+        <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition shrink-0">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="sub-checklist ml-8 space-y-1 mt-1"></div>
+      <div id="sub-form-${data.item.id}" class="hidden ml-8 mt-1 flex gap-2">
+        <input type="text" placeholder="Sub-checklist..." class="flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-400" onkeypress="if(event.key==='Enter' && !event.shiftKey) addSubCheck('${data.item.id}', this)">
+        <button onclick="addSubCheck('${data.item.id}', this.previousElementSibling)" class="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700"><i class="fas fa-plus"></i></button>
+      </div>
     `;
     list.appendChild(div);
+    
+    // Initialize sortable on the new sub-checklist
+    const newSubList = div.querySelector('.sub-checklist');
+    if (newSubList && typeof Sortable !== 'undefined') {
+      Sortable.create(newSubList, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: async function(evt) {
+          const items = Array.from(newSubList.children).map((el, index) => {
+            return { id: el.id.replace('check-', ''), position: index + 1 };
+          });
+          await fetch(`/checklist/task/${taskId}/reorder`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items })
+          });
+        }
+      });
+    }
     input.value = '';
     updateChecklistMeta();
   }
@@ -899,9 +946,14 @@ async function addSubCheck(parentId, input) {
     div.className = 'flex items-center gap-3 p-1.5 rounded-lg hover:bg-gray-50 group';
     div.id = `check-${data.item.id}`;
     div.innerHTML = `
-      <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-3.5 h-3.5 accent-blue-600 cursor-pointer">
-      <span class="flex-1 text-xs text-gray-600">${escapeHtml(data.item.content)}</span>
-      <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition"><i class="fas fa-times"></i></button>
+      <i class="fas fa-grip-vertical text-gray-300 hover:text-gray-500 cursor-grab drag-handle shrink-0 opacity-0 group-hover:opacity-100 transition"></i>
+      <input type="checkbox" onchange="toggleCheck('${data.item.id}', this)" class="w-3.5 h-3.5 accent-blue-600 cursor-pointer shrink-0">
+      <span class="flex-1 text-xs text-gray-600 checklist-text" ondblclick="startEditChecklist('${data.item.id}')">${escapeHtml(data.item.content)}</span>
+      <input type="text" class="hidden flex-1 border rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-400 checklist-edit-input" value="${escapeHtml(data.item.content)}" onblur="saveEditChecklist('${data.item.id}', this)" onkeydown="if(event.key==='Enter') this.blur()">
+      <button onclick="event.stopPropagation(); startEditChecklist('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
+        <i class="fas fa-pen"></i>
+      </button>
+      <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition shrink-0"><i class="fas fa-times"></i></button>
     `;
     subList.appendChild(div);
     input.value = '';
@@ -1194,7 +1246,101 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDependencies();
   setupSidebarSheetTouch();
   setupStatusSwipe();
+  initChecklistSortable();
 });
+
+function initChecklistSortable() {
+  if (typeof Sortable === 'undefined') return;
+  const mainList = document.getElementById('checklist-list');
+  if (mainList) {
+    Sortable.create(mainList, {
+      handle: '.drag-handle',
+      animation: 150,
+      draggable: '.checklist-group',
+      onEnd: async function(evt) {
+        const items = Array.from(mainList.children).filter(el => el.classList.contains('checklist-group')).map((el, index) => {
+          return { id: el.id.replace('check-', ''), position: index + 1 };
+        });
+        if (items.length > 0) {
+          await fetch(`/checklist/task/${taskId}/reorder`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items })
+          });
+        }
+      }
+    });
+
+    document.querySelectorAll('.sub-checklist').forEach(subList => {
+      Sortable.create(subList, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: async function(evt) {
+          const items = Array.from(subList.children).map((el, index) => {
+            return { id: el.id.replace('check-', ''), position: index + 1 };
+          });
+          if (items.length > 0) {
+            await fetch(`/checklist/task/${taskId}/reorder`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items })
+            });
+          }
+        }
+      });
+    });
+  }
+}
+
+function startEditChecklist(id) {
+  const container = document.getElementById(`check-${id}`);
+  if (!container) return;
+  const span = container.querySelector('.checklist-text');
+  const input = container.querySelector('.checklist-edit-input');
+  if (span && input) {
+    span.classList.add('hidden');
+    input.classList.remove('hidden');
+    input.focus();
+    const val = input.value;
+    input.value = '';
+    input.value = val;
+  }
+}
+
+async function saveEditChecklist(id, input) {
+  const content = input.value.trim();
+  const container = document.getElementById(`check-${id}`);
+  const span = container.querySelector('.checklist-text');
+  
+  if (!content) {
+    input.value = span.textContent.trim();
+    input.classList.add('hidden');
+    span.classList.remove('hidden');
+    return;
+  }
+  
+  if (content !== span.textContent.trim()) {
+    try {
+      const res = await fetch(`/checklist/${id}/content`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if (data.success) {
+        span.textContent = content;
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (e) {
+      alert('Gagal update checklist');
+      input.value = span.textContent.trim();
+    }
+  }
+  
+  input.classList.add('hidden');
+  span.classList.remove('hidden');
+}
 
 // --- Inline edit: Assignee ---
 function toggleAssigneeMenu(e) {
