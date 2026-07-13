@@ -29,6 +29,7 @@ if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || pro
 }
 
 const app = express();
+app.set('trust proxy', 1); // Memperbaiki deteksi IP asli di balik reverse proxy (EasyPanel/Traefik)
 const server = http.createServer(app);
 
 // ==========================================
