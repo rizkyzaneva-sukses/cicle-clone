@@ -478,7 +478,7 @@
                 <span class="text-sm font-semibold"><%= comment.user.name %></span>
                 <div class="flex items-center gap-2">
                   <span class="text-xs text-gray-400">
-                    <%= new Date(comment.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short'}) %>
+                    <%= new Date(comment.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %>
                   </span>
                   <% if (comment.userId === currentUserId) { %>
                     <button onclick="deleteComment('<%= comment.id %>')" class="text-xs text-red-400 hover:text-red-600">
@@ -541,7 +541,7 @@
                       <div class="flex-1">
                         <div class="flex items-center gap-2 mb-0.5">
                           <span class="text-xs font-semibold">${escapeHtml('<%= reply.user.name %>')}</span>
-                          <span class="text-[10px] text-gray-400"><%= new Date(reply.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short'}) %></span>
+                          <span class="text-[10px] text-gray-400"><%= new Date(reply.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) %></span>
                         </div>
                         <p class="text-xs text-gray-700 whitespace-pre-wrap"><%= reply.content %></p>
                         <% if (reply.files && reply.files.length > 0) { %>

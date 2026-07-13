@@ -123,7 +123,7 @@ function appendDm(message) {
       ${message.content ? `<div class="whitespace-pre-wrap">${escapeHtml(message.content)}</div>` : ''}
       ${(message.attachments || []).map(renderAttachment).join('')}
       <div class="mt-2 text-[11px] ${isMe ? 'text-blue-100' : 'text-gray-400'}" ${message.id ? `id="dm-seen-${message.id}"` : ''}>
-        ${isMe ? (message.readAt ? `Dilihat ${new Date(message.readAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Belum dilihat') : new Date(message.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+        ${isMe ? (message.readAt ? `Dilihat ${new Date(message.readAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Belum dilihat') : new Date(message.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>`;
   container.appendChild(div);
@@ -134,7 +134,7 @@ function updateDmSeenStatus(messageIds, readAt) {
   (messageIds || []).forEach(messageId => {
     const target = document.getElementById(`dm-seen-${messageId}`);
     if (!target) return;
-    target.textContent = `Dilihat ${new Date(readAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+    target.textContent = `Dilihat ${new Date(readAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
   });
 }
 

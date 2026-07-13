@@ -1390,7 +1390,7 @@ function buildChatMessageHtml(msg) {
     <div id="${msg.id ? `chat-msg-${msg.id}` : ''}" class="flex ${isMe ? 'justify-end' : ''} group">
       <div class="relative ${isMe ? 'bg-blue-600 text-white' : 'bg-white border'} max-w-[75%] px-4 py-2.5 rounded-3xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
         ${msg.id ? `<button onclick="togglePin('${msg.id}')" class="absolute -top-2 ${isMe ? '-left-2' : '-right-2'} w-6 h-6 rounded-full bg-white border shadow text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center ${msg.pinned ? 'text-amber-500 opacity-100' : 'text-gray-400 hover:text-amber-500'}" title="${msg.pinned ? 'Lepas pin' : 'Pin pesan'}"><i class="fas fa-thumbtack"></i></button>` : ''}
-        <div class="text-xs opacity-70 mb-0.5">${msg.user ? escapeHtml(msg.user.name) : 'User'}</div>
+        <div class="text-xs opacity-70 mb-0.5 flex items-center justify-between gap-2"><span>${msg.user ? escapeHtml(msg.user.name) : 'User'}</span><span>${msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('id-ID', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : ''}</span></div>
         ${msg.content ? `<div class="whitespace-pre-wrap">${escapeHtml(msg.content)}</div>` : ''}
         ${(msg.attachments || []).map(renderAttachment).join('')}
         ${msg.id ? renderChatReactions(msg) : ''}
