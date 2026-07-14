@@ -942,13 +942,29 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.appendChild(b);
         }
       }
-      
-      // Tampilkan notifikasi pop-up desktop secara native saat tab aktif
-      if (Notification.permission === 'granted' && data && data.content) {
-        const n = new Notification('Notifikasi Baru', { body: data.content });
-        n.onclick = () => { if (data.link) window.location.href = data.link; };
+      // Helper untuk menampilkan notifikasi yang kompatibel dengan mobile (Android Chrome butuh Service Worker)
+      async function showLocalNotification(title, body, url) {
+        if (Notification.permission !== 'granted' || !body) return;
+        try {
+          if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg) {
+              await reg.showNotification(title, { body, data: { url: url || '/' }, icon: '/favicon.ico' });
+              return;
+            }
+          }
+          // Fallback PC/Desktop
+          const n = new Notification(title, { body, icon: '/favicon.ico' });
+          n.onclick = () => { if (url) window.location.href = url; };
+        } catch (e) {
+          console.error('Gagal menampilkan notif:', e);
+        }
       }
+
+      // Tampilkan notifikasi pop-up desktop secara native saat tab aktif
+      showLocalNotification('Notifikasi Baru', data?.content, data?.link);
     });
+    
     socket.on('new-direct-message', (data) => {
       const badge = document.getElementById('inbox-badge');
       if (badge) {
@@ -967,8 +983,23 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Tampilkan notifikasi pop-up desktop secara native saat tab aktif
       if (Notification.permission === 'granted' && data && data.content) {
-        const n = new Notification('Pesan Baru', { body: data.content });
-        n.onclick = () => { window.location.href = '/inbox'; };
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+              if (reg) {
+                reg.showNotification('Pesan Baru', { body: data.content, data: { url: '/inbox' }, icon: '/favicon.ico' });
+              } else {
+                const n = new Notification('Pesan Baru', { body: data.content, icon: '/favicon.ico' });
+                n.onclick = () => { window.location.href = '/inbox'; };
+              }
+            });
+          } else {
+            const n = new Notification('Pesan Baru', { body: data.content, icon: '/favicon.ico' });
+            n.onclick = () => { window.location.href = '/inbox'; };
+          }
+        } catch (e) {
+           console.error('Gagal menampilkan notif:', e);
+        }
       }
     });
   }
