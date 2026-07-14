@@ -1108,6 +1108,12 @@ async function testPushNotification(showSuccessAlert = true) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (typeof Notification === 'undefined') return;
+
+  // Pastikan Service Worker terdaftar agar reg.showNotification() berfungsi di Android
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.error('SW register failed:', e));
+  }
+
   try {
     if (Notification.permission === 'granted') {
       // Jika sudah diizinkan, coba jalankan push subs di background (abaikan jika gagal)
