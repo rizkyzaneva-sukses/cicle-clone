@@ -926,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof io !== 'undefined') {
     const socket = io();
     socket.emit('join-user', '<%= currentUser.id %>');
-    socket.on('new-notification', () => {
+    socket.on('new-notification', (data) => {
       notifLoaded = false;
       const badge = document.getElementById('notif-badge');
       if (badge) {
@@ -942,8 +942,14 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.appendChild(b);
         }
       }
+      
+      // Tampilkan notifikasi pop-up desktop secara native saat tab aktif
+      if (Notification.permission === 'granted' && data && data.content) {
+        const n = new Notification('Notifikasi Baru', { body: data.content });
+        n.onclick = () => { if (data.link) window.location.href = data.link; };
+      }
     });
-    socket.on('new-direct-message', () => {
+    socket.on('new-direct-message', (data) => {
       const badge = document.getElementById('inbox-badge');
       if (badge) {
         const count = parseInt(badge.textContent) || 0;
@@ -957,6 +963,12 @@ document.addEventListener('DOMContentLoaded', () => {
           b.textContent = '1';
           link.appendChild(b);
         }
+      }
+      
+      // Tampilkan notifikasi pop-up desktop secara native saat tab aktif
+      if (Notification.permission === 'granted' && data && data.content) {
+        const n = new Notification('Pesan Baru', { body: data.content });
+        n.onclick = () => { window.location.href = '/inbox'; };
       }
     });
   }
