@@ -323,4 +323,24 @@ async function ensurePerformanceIndexes(client = prisma) {
   `);
 }
 
-module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField, ensureDndFields, ensureMyDayField, ensureChatMessageParentField, ensurePerformanceIndexes };
+async function migrateTaskAssignees(client = prisma) {
+  try {
+    const tasks = await client.task.findMany({
+      where: { assigneeId: { not: null } },
+      select: { id: true, assigneeId: true, assignees: { select: { id: true } } }
+    });
+
+    for (const task of tasks) {
+      if (task.assignees.length === 0 && task.assigneeId) {
+        await client.task.update({
+          where: { id: task.id },
+          data: { assignees: { connect: { id: task.assigneeId } } }
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Failed to migrate task assignees:', err);
+  }
+}
+
+module.exports = { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField, ensureDndFields, ensureMyDayField, ensureChatMessageParentField, ensurePerformanceIndexes, migrateTaskAssignees };
