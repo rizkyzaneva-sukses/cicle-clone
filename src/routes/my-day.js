@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
       // Tasks due today
       prisma.task.findMany({
         where: {
-          assigneeId: userId,
+          assignees: { some: { id: userId } },
           dueDate: { gte: startOfDay, lt: endOfDay },
           status: { not: 'DONE' }
         },
@@ -27,21 +27,21 @@ router.get('/', async (req, res) => {
       }),
       // In progress tasks
       prisma.task.findMany({
-        where: { assigneeId: userId, status: 'IN_PROGRESS' },
+        where: { assignees: { some: { id: userId } }, status: 'IN_PROGRESS' },
         include: { project: { select: { name: true, id: true } }, labels: { include: { label: true } } },
         orderBy: { updatedAt: 'desc' },
         take: 10
       }),
       // Tasks marked for My Day
       prisma.task.findMany({
-        where: { assigneeId: userId, myDay: true, status: { not: 'DONE' } },
+        where: { assignees: { some: { id: userId } }, myDay: true, status: { not: 'DONE' } },
         include: { project: { select: { name: true, id: true } }, labels: { include: { label: true } } },
         orderBy: { updatedAt: 'desc' }
       }),
       // Suggested: overdue or high priority not done
       prisma.task.findMany({
         where: {
-          assigneeId: userId,
+          assignees: { some: { id: userId } },
           status: { not: 'DONE' },
           myDay: false,
           OR: [
@@ -77,11 +77,11 @@ router.post('/toggle/:taskId', async (req, res) => {
   try {
     const task = await prisma.task.findUnique({
       where: { id: req.params.taskId },
-      select: { id: true, assigneeId: true, myDay: true }
+      select: { id: true, assignees: { select: { id: true } }, myDay: true }
     });
 
     if (!task) return res.status(404).json({ error: 'Task tidak ditemukan' });
-    if (task.assigneeId !== req.session.user.id) return res.status(403).json({ error: 'Bukan task kamu' });
+    if (!task.assignees.some(a => a.id === req.session.user.id)) return res.status(403).json({ error: 'Bukan task kamu' });
 
     const updated = await prisma.task.update({
       where: { id: task.id },

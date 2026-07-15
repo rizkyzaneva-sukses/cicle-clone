@@ -23,7 +23,7 @@ async function canAccessProject(user, projectId) {
 async function canAccessTask(user, taskId) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    include: { project: { select: { id: true, companyId: true } } }
+    include: { project: { select: { id: true, companyId: true } }, assignees: { select: { id: true } } }
   });
   if (!task) return null;
   return await hasProjectAccess(user, task.project) ? task : null;
@@ -45,8 +45,9 @@ router.get('/:id', async (req, res) => {
       include: {
         project: { include: { company: true } },
         assignee: true,
+        assignees: true,
         parent: { select: { id: true, title: true, status: true } },
-        children: { select: { id: true, title: true, status: true, priority: true, assignee: true }, orderBy: { createdAt: 'asc' } },
+        children: { select: { id: true, title: true, status: true, priority: true, assignee: true, assignees: true }, orderBy: { createdAt: 'asc' } },
         checklists: { orderBy: { position: 'asc' }, include: { children: { orderBy: { position: 'asc' } } } },
         comments: { where: { parentId: null }, include: { user: true, files: true, replies: { include: { user: true, files: true }, orderBy: { createdAt: 'asc' } } }, orderBy: { createdAt: 'asc' } },
         progressUpdates: { include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } },
@@ -104,7 +105,12 @@ router.get('/:id', async (req, res) => {
 // Create task
 router.post('/create', async (req, res) => {
   try {
-    const { title, description, projectId, assigneeId, dueDate, status, priority } = req.body;
+    const { title, description, projectId, dueDate, status, priority } = req.body;
+    let finalAssigneeIds = [];
+    const rawAssignees = req.body.assigneeIds || req.body.assigneeId;
+    if (Array.isArray(rawAssignees)) finalAssigneeIds = rawAssignees.filter(Boolean);
+    else if (rawAssignees) finalAssigneeIds = [rawAssignees].filter(Boolean);
+
     const allowedStatuses = ['TODO', 'IN_PROGRESS', 'DONE'];
     const normalizedStatus = allowedStatuses.includes(status) ? status : 'TODO';
     const checklists = Array.isArray(req.body.checklists)
@@ -112,8 +118,11 @@ router.post('/create', async (req, res) => {
       : [];
     const project = await canAccessProject(req.session.user, projectId);
     if (!project) return res.status(403).json({ error: 'Akses ditolak' });
-    if (!await isValidAssignee(assigneeId, project.companyId)) {
-      return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
+    
+    for (const id of finalAssigneeIds) {
+      if (!await isValidAssignee(id, project.companyId)) {
+        return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
+      }
     }
 
     const task = await prisma.task.create({
@@ -121,7 +130,8 @@ router.post('/create', async (req, res) => {
         title,
         description: description || null,
         projectId,
-        assigneeId: assigneeId || null,
+        assigneeId: finalAssigneeIds[0] || null,
+        assignees: finalAssigneeIds.length > 0 ? { connect: finalAssigneeIds.map(id => ({ id })) } : undefined,
         dueDate: dueDate ? new Date(dueDate) : null,
         status: normalizedStatus,
         priority: priority || 'NONE',
@@ -131,6 +141,7 @@ router.post('/create', async (req, res) => {
       },
       include: {
         assignee: true,
+        assignees: true,
         checklists: { orderBy: { position: 'asc' } },
         labels: { include: { label: true } },
         children: { select: { id: true } }
@@ -147,11 +158,11 @@ router.post('/create', async (req, res) => {
     });
 
     // Assigning grants project access; notify assignee
-    if (task.assigneeId) {
+    for (const assigneeId of finalAssigneeIds) {
       try {
-        await ensureProjectMember(task.assigneeId, projectId);
-        if (task.assigneeId !== req.session.user.id) {
-          await notifyUser(req.app.get('io'), task.assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+        await ensureProjectMember(assigneeId, projectId);
+        if (assigneeId !== req.session.user.id) {
+          await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
         }
       } catch (notifyError) {
         console.error('Task post-create notify failed:', notifyError.message);
@@ -185,7 +196,7 @@ router.patch('/:id/status', async (req, res) => {
         status,
         position: position !== undefined ? parseInt(position) : undefined
       },
-      include: { assignee: true }
+      include: { assignee: true, assignees: true }
     });
 
     await logActivity(prisma, req, {
@@ -384,35 +395,45 @@ router.delete('/:id/progress-updates/:updateId', async (req, res) => {
 // Quick inline update: assignee only
 router.patch('/:id/assignee', async (req, res) => {
   try {
-    const { assigneeId } = req.body;
+    const rawAssignees = req.body.assigneeIds || req.body.assigneeId;
+    let finalIds = [];
+    if (Array.isArray(rawAssignees)) finalIds = rawAssignees.filter(Boolean);
+    else if (rawAssignees) finalIds = [rawAssignees].filter(Boolean);
+
+    // If "clear", finalIds will be empty which is correct.
     const existingTask = await canAccessTask(req.session.user, req.params.id);
     if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
 
-    const normalizedId = (assigneeId === '' || assigneeId === null || assigneeId === 'null') ? null : assigneeId;
-    if (normalizedId) {
-      const valid = await isValidAssignee(normalizedId, existingTask.project.companyId);
+    for (const id of finalIds) {
+      const valid = await isValidAssignee(id, existingTask.project.companyId);
       if (!valid) return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
     }
 
     const task = await prisma.task.update({
       where: { id: req.params.id },
-      data: { assigneeId: normalizedId },
-      include: { assignee: true }
+      data: {
+        assigneeId: finalIds[0] || null,
+        assignees: { set: finalIds.map(id => ({ id })) }
+      },
+      include: { assignee: true, assignees: true }
     });
 
     await logActivity(prisma, req, {
-      action: normalizedId ? 'assigned' : 'unassigned',
+      action: finalIds.length > 0 ? 'assigned' : 'unassigned',
       entityType: 'task',
       entityId: task.id,
       projectId: task.projectId,
       taskId: task.id,
-      metadata: { assigneeId: normalizedId, assigneeName: task.assignee?.name || null }
+      metadata: { assigneeIds: finalIds, assigneeNames: task.assignees.map(a => a.name) }
     });
 
-    if (normalizedId && normalizedId !== existingTask.assigneeId) {
-      await ensureProjectMember(normalizedId, task.projectId);
-      if (normalizedId !== req.session.user.id) {
-        await notifyUser(req.app.get('io'), normalizedId, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
+    const oldIds = existingTask.assignees.map(a => a.id);
+    const addedIds = finalIds.filter(id => !oldIds.includes(id));
+
+    for (const id of addedIds) {
+      await ensureProjectMember(id, task.projectId);
+      if (id !== req.session.user.id) {
+        await notifyUser(req.app.get('io'), id, `Kamu ditugaskan ke task "${task.title}"`, `/tasks/${task.id}`);
       }
     }
 
@@ -534,18 +555,29 @@ router.post('/:id/update', async (req, res) => {
       data.dueDate = dueDate;
     }
 
-    if (hasField('assigneeId')) {
-      const assigneeId = String(req.body.assigneeId || '').trim() || null;
-      if (!await isValidAssignee(assigneeId, existingTask.project.companyId)) {
-        req.flash('error', 'Assignee bukan anggota brand ini');
-        return res.redirect(`/tasks/${existingTask.id}`);
-      }
-      data.assigneeId = assigneeId;
+    if (hasField('assigneeIds') || hasField('assigneeId')) {
+      const rawAssignees = req.body.assigneeIds || req.body.assigneeId;
+      let finalIds = [];
+      if (Array.isArray(rawAssignees)) finalIds = rawAssignees.filter(Boolean);
+      else if (rawAssignees) finalIds = [rawAssignees].filter(Boolean);
 
-      if (assigneeId && assigneeId !== existingTask.assigneeId) {
-        await ensureProjectMember(assigneeId, existingTask.projectId);
-        if (assigneeId !== req.session.user.id) {
-          await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${data.title || existingTask.title}"`, `/tasks/${existingTask.id}`);
+      for (const id of finalIds) {
+        if (!await isValidAssignee(id, existingTask.project.companyId)) {
+          req.flash('error', 'Assignee bukan anggota brand ini');
+          return res.redirect(`/tasks/${existingTask.id}`);
+        }
+      }
+      
+      data.assigneeId = finalIds[0] || null;
+      data.assignees = { set: finalIds.map(id => ({ id })) };
+
+      const oldIds = existingTask.assignees.map(a => a.id);
+      const addedIds = finalIds.filter(id => !oldIds.includes(id));
+
+      for (const id of addedIds) {
+        await ensureProjectMember(id, existingTask.projectId);
+        if (id !== req.session.user.id) {
+          await notifyUser(req.app.get('io'), id, `Kamu ditugaskan ke task "${data.title || existingTask.title}"`, `/tasks/${existingTask.id}`);
         }
       }
     }
@@ -588,16 +620,29 @@ router.post('/:id/update', async (req, res) => {
 // Update task via JSON from the kanban editor.
 router.put('/:id', async (req, res) => {
   try {
-    const { title, description, assigneeId, dueDate, priority } = req.body;
+    const { title, description, dueDate, priority } = req.body;
+    
+    const rawAssignees = req.body.assigneeIds || req.body.assigneeId;
+    let finalIds = [];
+    if (Array.isArray(rawAssignees)) finalIds = rawAssignees.filter(Boolean);
+    else if (rawAssignees) finalIds = [rawAssignees].filter(Boolean);
+
     const existingTask = await canAccessTask(req.session.user, req.params.id);
     if (!existingTask) return res.status(403).json({ error: 'Akses ditolak' });
-    if (!await isValidAssignee(assigneeId, existingTask.project.companyId)) {
-      return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
+    
+    for (const id of finalIds) {
+      if (!await isValidAssignee(id, existingTask.project.companyId)) {
+        return res.status(400).json({ error: 'Assignee bukan anggota brand ini' });
+      }
     }
-    if (assigneeId && assigneeId !== existingTask.assigneeId) {
-      await ensureProjectMember(assigneeId, existingTask.projectId);
-      if (assigneeId !== req.session.user.id) {
-        await notifyUser(req.app.get('io'), assigneeId, `Kamu ditugaskan ke task "${title || existingTask.title}"`, `/tasks/${existingTask.id}`);
+    
+    const oldIds = existingTask.assignees.map(a => a.id);
+    const addedIds = finalIds.filter(id => !oldIds.includes(id));
+
+    for (const id of addedIds) {
+      await ensureProjectMember(id, existingTask.projectId);
+      if (id !== req.session.user.id) {
+        await notifyUser(req.app.get('io'), id, `Kamu ditugaskan ke task "${title || existingTask.title}"`, `/tasks/${existingTask.id}`);
       }
     }
 
@@ -606,11 +651,12 @@ router.put('/:id', async (req, res) => {
       data: {
         title,
         description,
-        assigneeId: assigneeId || null,
+        assigneeId: finalIds[0] || null,
+        assignees: { set: finalIds.map(id => ({ id })) },
         dueDate: dueDate ? new Date(dueDate) : null,
         priority: priority || undefined
       },
-      include: { assignee: true }
+      include: { assignee: true, assignees: true }
     });
 
     await logActivity(prisma, req, {

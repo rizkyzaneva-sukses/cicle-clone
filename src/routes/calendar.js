@@ -32,7 +32,7 @@ async function getCalendarTaskWhere(user) {
 
   return {
     dueDate: { not: null },
-    OR: [{ assigneeId: user.id }, { projectId: { in: projectIds } }]
+    OR: [{ assignees: { some: { id: user.id } } }, { projectId: { in: projectIds } }]
   };
 }
 
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
     const where = await getCalendarTaskWhere(req.session.user);
     const tasks = await prisma.task.findMany({
       where: { ...where, dueDate: { gte: rangeStart, lt: rangeEnd } },
-      include: { project: { select: { name: true } }, assignee: { select: { name: true } } },
+      include: { project: { select: { name: true } }, assignees: { select: { name: true } } },
       orderBy: { dueDate: 'asc' }
     });
 

@@ -62,7 +62,7 @@ router.post('/status', async (req, res) => {
 // POST /bulk/assign — bulk assign
 router.post('/assign', async (req, res) => {
   try {
-    const { taskIds, assigneeId } = req.body;
+    const { taskIds, assigneeIds } = req.body;
     if (!Array.isArray(taskIds) || taskIds.length === 0) {
       return res.status(400).json({ error: 'Pilih minimal 1 task' });
     }
@@ -81,26 +81,38 @@ router.post('/assign', async (req, res) => {
       }
     }
 
-    const result = await prisma.task.updateMany({
-      where: { id: { in: taskIds } },
-      data: { assigneeId: assigneeId || null }
-    });
+    let primaryAssigneeId = null;
+    let assigneesConnect = [];
+    if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+      primaryAssigneeId = assigneeIds[0];
+      assigneesConnect = assigneeIds.map(id => ({ id }));
+    }
 
-    // Notify new assignee
-    if (assigneeId) {
+    await prisma.$transaction(taskIds.map(id => prisma.task.update({
+      where: { id },
+      data: {
+        assigneeId: primaryAssigneeId,
+        assignees: { set: assigneesConnect }
+      }
+    })));
+
+    // Notify new assignees
+    if (assigneesConnect.length > 0) {
       for (const task of tasks) {
-        if (assigneeId !== req.session.user.id) {
-          try {
-            await notifyUser(req.app.get('io'), assigneeId,
-              `Kamu ditugaskan ke task "${task.title}" (bulk assign)`,
-              `/tasks/${task.id}`
-            );
-          } catch (_) {}
+        for (const a of assigneesConnect) {
+          if (a.id !== req.session.user.id) {
+            try {
+              await notifyUser(req.app.get('io'), a.id,
+                `Kamu ditugaskan ke task "${task.title}" (bulk assign)`,
+                `/tasks/${task.id}`
+              );
+            } catch (_) {}
+          }
         }
       }
     }
 
-    res.json({ success: true, updated: result.count });
+    res.json({ success: true, updated: taskIds.length });
   } catch (error) {
     console.error('Bulk assign error:', error);
     res.status(500).json({ error: 'Gagal assign task' });

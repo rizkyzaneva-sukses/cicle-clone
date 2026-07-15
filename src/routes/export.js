@@ -22,12 +22,12 @@ router.get('/tasks/:projectId', async (req, res) => {
     const where = { projectId: project.id };
     if (status && ['TODO', 'IN_PROGRESS', 'DONE'].includes(status)) where.status = status;
     if (priority && ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) where.priority = priority;
-    if (assignee) where.assigneeId = assignee;
+    if (assignee) where.assignees = { some: { id: assignee } };
 
     const tasks = await prisma.task.findMany({
       where,
       include: {
-        assignee: { select: { name: true, email: true } },
+        assignees: { select: { name: true, email: true } },
         labels: { include: { label: true } },
         checklists: { where: { parentId: null }, include: { children: true } }
       },
@@ -40,8 +40,8 @@ router.get('/tasks/:projectId', async (req, res) => {
       Description: t.description || '',
       Status: t.status,
       Priority: t.priority,
-      Assignee: t.assignee?.name || '',
-      'Assignee Email': t.assignee?.email || '',
+      Assignee: (t.assignees || []).map(a => a.name).join(', '),
+      'Assignee Email': (t.assignees || []).map(a => a.email).join(', '),
       'Due Date': t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '',
       Labels: t.labels.map(tl => tl.label.name).join(', '),
       'Checklist Done': t.checklists.filter(c => c.isDone).length,
@@ -103,7 +103,7 @@ router.get('/my-tasks', async (req, res) => {
     const userId = req.session.user.id;
 
     const tasks = await prisma.task.findMany({
-      where: { assigneeId: userId },
+      where: { assignees: { some: { id: userId } } },
       include: {
         project: { select: { name: true } },
         labels: { include: { label: true } }

@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const prisma = require('./lib/prisma');
 const { isConfiguredOwner } = require('./lib/owners');
-const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField, ensureDndFields, ensureMyDayField, ensureChatMessageParentField, ensurePerformanceIndexes } = require('./lib/maintenance');
+const { ensureBrandProfileFields, ensureProjectReportTables, ensureProjectChatReadTable, ensureTaskProgressUpdateTable, ensureAnnouncementImageFields, ensureAnnouncementScopeFields, cleanupOrphanRecords, ensureDefaultWorkspace, backfillProjectMembers, applyAccountHotfixes, ensureOnboardingField, ensureDndFields, ensureMyDayField, ensureChatMessageParentField, ensurePerformanceIndexes, migrateTaskAssignees } = require('./lib/maintenance');
 const { startDailyScheduler } = require('./lib/scheduler');
 const { runDailyReminders } = require('./lib/reminderScheduler');
 const { runRecurringTaskGenerator } = require('./lib/recurringTasks');
@@ -76,7 +76,8 @@ async function runMaintenance() {
     ensureDndFields(),
     ensureMyDayField(),
     ensureChatMessageParentField(),
-    ensurePerformanceIndexes()
+    ensurePerformanceIndexes(),
+    migrateTaskAssignees()
   ]).catch((err) => {
     console.error('Maintenance cleanup failed:', err);
   }).finally(() => {

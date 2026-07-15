@@ -90,7 +90,7 @@ router.get('/', async (req, res) => {
     for (const membership of members) {
       const userTasks = await prisma.task.findMany({
         where: {
-          assigneeId: membership.userId,
+          assignees: { some: { id: membership.userId } },
           project: { companyId: membership.companyId }
         },
         select: { id: true, status: true, dueDate: true, createdAt: true }

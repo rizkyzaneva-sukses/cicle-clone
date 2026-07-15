@@ -36,7 +36,13 @@
           <div class="font-semibold"><%= task.title %></div>
           <div class="text-sm text-gray-500"><%= task.project.name %> • <%= task.project.company.name %></div>
         </div>
-        <div class="text-sm text-gray-600"><%= task.assignee ? task.assignee.name : 'Belum ditugaskan' %></div>
+        <div class="text-sm text-gray-600">
+          <% if (task.assignees && task.assignees.length > 0) { %>
+            <%= task.assignees.map(a => a.name).join(', ') %>
+          <% } else { %>
+            Belum ditugaskan
+          <% } %>
+        </div>
         <div class="text-sm <%= overdue ? 'text-red-600 font-semibold' : 'text-gray-600' %>">
           <%= new Date(task.dueDate).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) %>
         </div>

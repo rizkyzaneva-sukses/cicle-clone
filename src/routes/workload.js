@@ -39,21 +39,21 @@ router.get('/', async (req, res) => {
 
       const [activeTasks, overdueTasks, totalTasks, doneTasks] = await Promise.all([
         prisma.task.count({
-          where: { assigneeId: user.id, status: { in: ['TODO', 'IN_PROGRESS'] }, project: { companyId: selectedBrand } }
+          where: { assignees: { some: { id: user.id } }, status: { in: ['TODO', 'IN_PROGRESS'] }, project: { companyId: selectedBrand } }
         }),
         prisma.task.count({
-          where: { assigneeId: user.id, status: { not: 'DONE' }, dueDate: { lt: now }, project: { companyId: selectedBrand } }
+          where: { assignees: { some: { id: user.id } }, status: { not: 'DONE' }, dueDate: { lt: now }, project: { companyId: selectedBrand } }
         }),
         prisma.task.count({
-          where: { assigneeId: user.id, project: { companyId: selectedBrand } }
+          where: { assignees: { some: { id: user.id } }, project: { companyId: selectedBrand } }
         }),
         prisma.task.count({
-          where: { assigneeId: user.id, status: 'DONE', project: { companyId: selectedBrand } }
+          where: { assignees: { some: { id: user.id } }, status: 'DONE', project: { companyId: selectedBrand } }
         })
       ]);
 
       const recentTasks = await prisma.task.findMany({
-        where: { assigneeId: user.id, status: { in: ['TODO', 'IN_PROGRESS'] }, project: { companyId: selectedBrand } },
+        where: { assignees: { some: { id: user.id } }, status: { in: ['TODO', 'IN_PROGRESS'] }, project: { companyId: selectedBrand } },
         select: { id: true, title: true, status: true, priority: true, dueDate: true, project: { select: { name: true } } },
         orderBy: { dueDate: 'asc' },
         take: 10
@@ -108,7 +108,7 @@ router.get('/api/:brandId', async (req, res) => {
     const result = [];
     for (const m of memberships) {
       const activeTasks = await prisma.task.count({
-        where: { assigneeId: m.user.id, status: { in: ['TODO', 'IN_PROGRESS'] }, project: { companyId: req.params.brandId } }
+        where: { assignees: { some: { id: m.user.id } }, status: { in: ['TODO', 'IN_PROGRESS'] }, project: { companyId: req.params.brandId } }
       });
       result.push({ ...m.user, activeTasks, capacity: Math.max(0, 10 - activeTasks) });
     }

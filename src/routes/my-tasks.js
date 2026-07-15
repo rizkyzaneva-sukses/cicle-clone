@@ -11,13 +11,14 @@ router.get('/', async (req, res) => {
 
   const tasks = await prisma.task.findMany({
     where: {
-      assigneeId: userId
+      assignees: { some: { id: userId } }
     },
     include: {
       project: {
         include: { company: true }
       },
       assignee: true,
+      assignees: true,
       checklists: { select: { id: true, isDone: true } },
       labels: { include: { label: true } }
     },

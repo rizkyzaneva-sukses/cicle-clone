@@ -23,6 +23,7 @@ model User {
 
   memberships    Membership[]
   tasks          Task[]          @relation("TaskAssignee")
+  assignedTasks  Task[]          @relation("TaskAssignees")
   comments       Comment[]
   messages       ChatMessage[]
   directSent     DirectMessage[] @relation("DirectSent")
@@ -255,6 +256,7 @@ model Task {
 
   project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee     User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignees    User[]          @relation("TaskAssignees")
   parent       Task?           @relation("TaskParent", fields: [parentId], references: [id], onDelete: SetNull)
   children     Task[]          @relation("TaskParent")
   comments     Comment[]

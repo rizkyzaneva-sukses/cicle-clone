@@ -368,7 +368,7 @@ router.post('/:id/move-brand', requireAdmin, async (req, res) => {
       include: {
         company: { select: { id: true, name: true, workspaceId: true } },
         projectMembers: { select: { userId: true } },
-        tasks: { select: { assigneeId: true } }
+        tasks: { select: { assignees: { select: { id: true } } } }
       }
     });
     if (!project) {
@@ -406,7 +406,7 @@ router.post('/:id/move-brand', requireAdmin, async (req, res) => {
 
     const relatedUserIds = [...new Set([
       ...project.projectMembers.map(member => member.userId),
-      ...project.tasks.map(task => task.assigneeId).filter(Boolean)
+      ...project.tasks.flatMap(task => task.assignees.map(a => a.id))
     ])];
 
     await prisma.$transaction(async (tx) => {
@@ -813,7 +813,7 @@ router.get('/:id/gantt', async (req, res) => {
       company: true,
       tasks: {
         include: {
-          assignee: true,
+          assignees: true,
           labels: { include: { label: true } },
           checklists: { select: { id: true, content: true, isDone: true } }
         },
@@ -852,7 +852,7 @@ router.get('/:id', async (req, res) => {
       company: true,
       tasks: {
         include: {
-          assignee: true,
+          assignees: true,
           labels: { include: { label: true } },
           checklists: { select: { id: true, content: true, isDone: true } },
           children: { select: { id: true } },

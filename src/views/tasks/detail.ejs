@@ -51,13 +51,17 @@
         <!-- Assignee (inline editable) -->
         <div class="relative">
           <span class="text-gray-400">Assignee</span>
-          <div class="font-medium mt-0.5 flex items-center gap-2">
-            <% if (task.assignee) { %>
-              <div id="assignee-display" class="flex items-center gap-2 flex-1 min-w-0">
-                <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  <%= task.assignee.name.charAt(0) %>
-                </div>
-                <span class="truncate"><%= task.assignee.name %></span>
+          <div class="font-medium mt-0.5 flex flex-wrap items-center gap-1">
+            <% if (task.assignees && task.assignees.length > 0) { %>
+              <div id="assignee-display" class="flex flex-wrap items-center gap-1 flex-1 min-w-0">
+                <% task.assignees.forEach(a => { %>
+                  <div class="flex items-center gap-1 bg-gray-100 rounded-full px-2 py-1" title="<%= a.name %>">
+                    <div class="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                      <%= a.name.charAt(0) %>
+                    </div>
+                    <span class="text-xs truncate max-w-[100px]"><%= a.name %></span>
+                  </div>
+                <% }) %>
               </div>
             <% } else { %>
               <div id="assignee-display" class="flex items-center gap-2 flex-1 min-w-0">
@@ -71,23 +75,21 @@
             </button>
           </div>
           <!-- Assignee dropdown -->
-          <div id="assignee-menu" class="hidden absolute left-0 top-full mt-2 z-30 bg-white border rounded-2xl shadow-lg p-3 w-64">
-            <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Pilih Assignee</div>
+          <div id="assignee-menu" class="hidden absolute left-0 top-full mt-2 z-30 bg-white border rounded-2xl shadow-lg p-3 w-64" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-semibold text-gray-500 uppercase">Pilih Assignee</div>
+              <button onclick="saveMultipleAssignees()" class="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 font-medium">Simpan</button>
+            </div>
             <div class="space-y-1 max-h-60 overflow-y-auto" id="assignee-options">
-              <button type="button" data-id=""
-                class="assignee-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-sm">
-                <div class="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-xs"><i class="fas fa-user-slash text-[10px]"></i></div>
-                <span class="text-gray-500">Belum ditugaskan</span>
-              </button>
+              <% const selectedIds = (task.assignees || []).map(a => a.id); %>
               <% members.forEach(m => { %>
-                <button type="button" data-id="<%= m.id %>" data-name="<%= m.name %>"
-                  class="assignee-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm <%= task.assigneeId === m.id ? 'bg-blue-50' : '' %>">
-                  <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                <label class="assignee-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm cursor-pointer <%= selectedIds.includes(m.id) ? 'bg-blue-50' : '' %>">
+                  <input type="checkbox" value="<%= m.id %>" data-name="<%= m.name %>" class="assignee-checkbox rounded text-blue-600 focus:ring-blue-500" <%= selectedIds.includes(m.id) ? 'checked' : '' %>>
+                  <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
                     <%= m.name.charAt(0) %>
                   </div>
                   <span class="truncate"><%= m.name %></span>
-                  <% if (task.assigneeId === m.id) { %><i class="fas fa-check text-blue-600 ml-auto text-xs"></i><% } %>
-                </button>
+                </label>
               <% }) %>
             </div>
           </div>
@@ -180,12 +182,22 @@
               <span class="w-2 h-2 rounded-full shrink-0
                 <%= child.status === 'DONE' ? 'bg-emerald-500' : child.status === 'IN_PROGRESS' ? 'bg-amber-400' : 'bg-gray-400' %>"></span>
               <span class="text-sm flex-1 truncate <%= child.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-700' %>"><%= child.title %></span>
-              <% if (child.assignee) { %>
-                <div class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" title="<%= child.assignee.name %>">
-                  <%= child.assignee.name.charAt(0) %>
+              <div class="flex items-center gap-3">
+              <% if (child.assignees && child.assignees.length > 0) { %>
+                <div class="flex items-center -space-x-2">
+                  <% child.assignees.slice(0,3).forEach(a => { %>
+                    <div class="w-6 h-6 bg-blue-600 border border-white rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" title="<%= a.name %>">
+                      <%= a.name.charAt(0) %>
+                    </div>
+                  <% }) %>
+                  <% if (child.assignees.length > 3) { %>
+                    <div class="w-6 h-6 bg-gray-200 border border-white rounded-full flex items-center justify-center text-gray-600 text-[10px] font-bold shrink-0">
+                      +<%= child.assignees.length - 3 %>
+                    </div>
+                  <% } %>
                 </div>
               <% } %>
-            </a>
+              <% if (child.dueDate) { %>    </a>
           <% }) %>
         </div>
       </div>
@@ -234,14 +246,17 @@
                 <option value="URGENT" <%= task.priority==='URGENT'?'selected':'' %>>Urgent</option>
               </select>
             </div>
-            <div>
-              <label class="text-sm font-medium text-gray-700">Assignee</label>
-              <select name="assigneeId" class="mt-1 w-full border rounded-2xl px-4 py-2.5">
-                <option value="">Belum ditugaskan</option>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700">Assignee</label>
+              <div class="mt-1 border rounded-2xl p-2 max-h-40 overflow-y-auto bg-gray-50">
+                <% const formSelectedIds = (task.assignees || []).map(a => a.id); %>
                 <% members.forEach(m => { %>
-                  <option value="<%= m.id %>" <%= task.assigneeId===m.id?'selected':'' %>><%= m.name %></option>
+                  <label class="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
+                    <input type="checkbox" name="assigneeIds" value="<%= m.id %>" class="rounded text-blue-600 focus:ring-blue-500" <%= formSelectedIds.includes(m.id) ? 'checked' : '' %>>
+                    <span class="text-sm"><%= m.name %></span>
+                  </label>
                 <% }) %>
-              </select>
+              </div>
             </div>
             <div>
               <label class="text-sm font-medium text-gray-700">Deadline</label>
@@ -632,7 +647,11 @@
             <input type="hidden" name="title" value="<%= task.title %>">
             <input type="hidden" name="priority" value="<%= task.priority %>">
             <input type="hidden" name="status" value="<%= s %>">
-            <% if (task.assigneeId) { %><input type="hidden" name="assigneeId" value="<%= task.assigneeId %>"><% } %>
+            <% if (task.assignees && task.assignees.length > 0) { %>
+              <% task.assignees.forEach(a => { %>
+                <input type="hidden" name="assigneeIds" value="<%= a.id %>">
+              <% }) %>
+            <% } %>
             <button type="submit" class="w-full text-left px-3 py-2 rounded-xl text-sm transition
               <%= task.status === s ? 'bg-blue-600 text-white font-semibold' : 'hover:bg-gray-50 text-gray-700' %>">
               <% if (s==='TODO') { %><i class="fas fa-circle text-gray-400 mr-2 text-xs"></i>To Do
@@ -1357,46 +1376,49 @@ document.addEventListener('click', (e) => {
   menu.classList.add('hidden');
 });
 
-document.querySelectorAll('.assignee-option').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const assigneeId = btn.dataset.id || null;
-    const name = btn.dataset.name || '';
-    document.getElementById('assignee-menu').classList.add('hidden');
-    await saveAssignee(assigneeId, name);
+document.querySelectorAll('.assignee-checkbox').forEach(cb => {
+  cb.addEventListener('change', (e) => {
+    const label = cb.closest('.assignee-option');
+    if (cb.checked) label.classList.add('bg-blue-50');
+    else label.classList.remove('bg-blue-50');
   });
 });
 
-async function saveAssignee(assigneeId, name) {
+async function saveMultipleAssignees() {
+  document.getElementById('assignee-menu').classList.add('hidden');
+  const checkboxes = document.querySelectorAll('.assignee-checkbox:checked');
+  const assigneeIds = Array.from(checkboxes).map(cb => cb.value);
+  const assigneesData = Array.from(checkboxes).map(cb => ({
+    id: cb.value,
+    name: cb.dataset.name
+  }));
+
   const display = document.getElementById('assignee-display');
   const original = display.innerHTML;
   display.style.opacity = '0.5';
+  
   try {
     const res = await fetch(`/tasks/${taskId}/assignee`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assigneeId })
+      body: JSON.stringify({ assigneeIds })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Gagal');
-    if (assigneeId && name) {
-      display.innerHTML = `
-        <div class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">${escapeHtml(name.charAt(0))}</div>
-        <span class="truncate">${escapeHtml(name)}</span>
-      `;
+    
+    if (assigneesData.length > 0) {
+      display.className = "flex flex-wrap items-center gap-1 flex-1 min-w-0";
+      display.innerHTML = assigneesData.map(a => `
+        <div class="flex items-center gap-1 bg-gray-100 rounded-full px-2 py-1" title="${escapeHtml(a.name)}">
+          <div class="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+            ${escapeHtml(a.name.charAt(0))}
+          </div>
+          <span class="text-xs truncate max-w-[100px]">${escapeHtml(a.name)}</span>
+        </div>
+      `).join('');
     } else {
+      display.className = "flex items-center gap-2 flex-1 min-w-0";
       display.innerHTML = `<span class="text-gray-400">Belum ditugaskan</span>`;
-    }
-    document.querySelectorAll('.assignee-option').forEach(o => {
-      o.classList.remove('bg-blue-50');
-      const check = o.querySelector('.fa-check');
-      if (check) check.remove();
-    });
-    const active = document.querySelector(`.assignee-option[data-id="${assigneeId || ''}"]`);
-    if (active) {
-      active.classList.add('bg-blue-50');
-      const ic = document.createElement('i');
-      ic.className = 'fas fa-check text-blue-600 ml-auto text-xs';
-      active.appendChild(ic);
     }
   } catch (err) {
     display.innerHTML = original;

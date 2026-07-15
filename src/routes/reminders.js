@@ -37,7 +37,7 @@ async function getTaskWhere(user) {
   return {
     status: { not: 'DONE' },
     dueDate: { not: null },
-    assigneeId: user.id
+    assignees: { some: { id: user.id } }
   };
 }
 
@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
     const where = await getTaskWhere(req.session.user);
     const tasks = await prisma.task.findMany({
       where,
-      include: { project: { include: { company: true } }, assignee: true },
+      include: { project: { include: { company: true } }, assignee: true, assignees: true },
       orderBy: { dueDate: 'asc' },
       take: 100
     });
@@ -68,9 +68,9 @@ router.post('/scan', async (req, res) => {
       where: {
         status: { not: 'DONE' },
         dueDate: { lte: tomorrow },
-        assigneeId: { not: null }
+        assignees: { some: {} }
       },
-      include: { assignee: true }
+      include: { assignees: true }
     });
 
     let created = 0;
@@ -81,18 +81,20 @@ router.post('/scan', async (req, res) => {
         ? `Task "${task.title}" sudah lewat deadline`
         : `Task "${task.title}" mendekati deadline`;
 
-      const existing = await prisma.notification.findFirst({
-        where: {
-          userId: task.assigneeId,
-          link,
-          content,
-          isRead: false
-        }
-      });
+      for (const a of task.assignees) {
+        const existing = await prisma.notification.findFirst({
+          where: {
+            userId: a.id,
+            link,
+            content,
+            isRead: false
+          }
+        });
 
-      if (!existing) {
-        await notifyUser(req.app.get('io'), task.assigneeId, content, link);
-        created++;
+        if (!existing) {
+          await notifyUser(req.app.get('io'), a.id, content, link);
+          created++;
+        }
       }
     }
 
