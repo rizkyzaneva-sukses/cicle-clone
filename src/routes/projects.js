@@ -829,14 +829,15 @@ router.get('/:id/gantt', async (req, res) => {
     return res.status(403).send('Akses ditolak');
   }
 
-  const members = await prisma.membership.findMany({
-    where: { companyId: project.companyId },
-    include: { user: true }
+  const projectMemberRows = await prisma.projectMember.findMany({
+    where: { projectId: project.id },
+    include: { user: true },
+    orderBy: { user: { name: 'asc' } }
   });
 
   res.render('projects/gantt', {
     project,
-    members: members.map(m => m.user),
+    members: projectMemberRows.map(pm => pm.user),
     currentUserId: userId
   });
 });
@@ -874,7 +875,7 @@ router.get('/:id', async (req, res) => {
     return res.status(403).send('Akses ditolak');
   }
 
-  // Get company members for assignee dropdown + project members for access management
+  // Get company members for member management + project members for assignee dropdowns
   const [members, projectMembers, recurringTemplates, allProjects] = await Promise.all([
     prisma.membership.findMany({
       where: { companyId: project.companyId },
@@ -882,7 +883,8 @@ router.get('/:id', async (req, res) => {
     }),
     prisma.projectMember.findMany({
       where: { projectId },
-      include: { user: true }
+      include: { user: true },
+      orderBy: { user: { name: 'asc' } }
     }),
     prisma.recurringTaskTemplate.findMany({
       where: { projectId },
@@ -904,6 +906,7 @@ router.get('/:id', async (req, res) => {
   res.render('projects/kanban', {
     project,
     members: members.map(m => m.user),
+    assignableMembers: projectMembers.map(pm => pm.user),
     projectMembers,
     recurringTemplates,
     currentUserId: userId,

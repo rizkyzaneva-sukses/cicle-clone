@@ -218,8 +218,8 @@ router.get('/members/:projectId', async (req, res) => {
   });
   if (!project || !await hasProjectAccess(req.session.user, project)) return res.json([]);
 
-  const members = await prisma.membership.findMany({
-    where: { companyId: project.companyId },
+  const members = await prisma.projectMember.findMany({
+    where: { projectId: project.id },
     include: { user: { select: { id: true, name: true, email: true } } }
   });
 

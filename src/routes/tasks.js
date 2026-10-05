@@ -62,9 +62,10 @@ router.get('/:id', async (req, res) => {
       return res.status(403).send('Akses ditolak');
     }
 
-    const members = await prisma.membership.findMany({
-      where: { companyId: task.project.companyId },
-      include: { user: true }
+    const members = await prisma.projectMember.findMany({
+      where: { projectId: task.projectId },
+      include: { user: true },
+      orderBy: { user: { name: 'asc' } }
     });
 
     const labels = await prisma.label.findMany({
@@ -975,8 +976,8 @@ router.get('/:id/members', async (req, res) => {
     });
     if (!task) return res.json([]);
 
-    const members = await prisma.membership.findMany({
-      where: { companyId: task.project.companyId },
+    const members = await prisma.projectMember.findMany({
+      where: { projectId: task.projectId },
       include: { user: { select: { id: true, name: true, email: true } } }
     });
 
