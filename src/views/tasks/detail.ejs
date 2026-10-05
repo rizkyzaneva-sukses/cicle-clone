@@ -126,6 +126,42 @@
             </div>
           </div>
         </div>
+        <!-- Priority (inline editable) -->
+        <div class="relative">
+          <span class="text-gray-400">Priority</span>
+          <div class="font-medium mt-0.5 flex items-center gap-2">
+            <button type="button" onclick="openPriorityEditor(event)" id="priority-display"
+              class="flex-1 min-w-0 text-left flex items-center gap-1.5 hover:underline decoration-dotted underline-offset-2">
+              <% const prioMeta = { NONE: ['text-gray-400', 'Tanpa Prioritas', 'text-gray-300'], LOW: ['text-blue-700', 'Low', 'text-blue-400'], MEDIUM: ['text-yellow-700', 'Medium', 'text-yellow-400'], HIGH: ['text-orange-700', 'High', 'text-orange-400'], URGENT: ['text-red-700', 'Urgent', 'text-red-500'] } %>
+              <% const curPrio = prioMeta[task.priority] || prioMeta.NONE %>
+              <i class="fas fa-flag <%= curPrio[2] %>" id="priority-icon"></i>
+              <span id="priority-text" class="<%= task.priority && task.priority !== 'NONE' ? curPrio[0] : 'text-gray-400' %>"><%= curPrio[1] %></span>
+            </button>
+            <button type="button" onclick="openPriorityEditor(event)"
+              class="shrink-0 w-6 h-6 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition"
+              title="Edit priority">
+              <i class="fas fa-pen text-[10px]"></i>
+            </button>
+          </div>
+          <!-- Priority popover -->
+          <div id="priority-menu" class="hidden absolute left-0 top-full mt-2 z-30 bg-white border rounded-2xl shadow-lg p-2 w-48">
+            <div class="text-xs font-semibold text-gray-500 uppercase px-2 pt-1 pb-2">Pilih Priority</div>
+            <% [
+              ['NONE', 'Tanpa Prioritas', 'text-gray-400'],
+              ['LOW', 'Low', 'text-blue-500'],
+              ['MEDIUM', 'Medium', 'text-yellow-500'],
+              ['HIGH', 'High', 'text-orange-500'],
+              ['URGENT', 'Urgent', 'text-red-500']
+            ].forEach(([val, label, color]) => { %>
+              <button type="button" onclick="savePriority('<%= val %>')"
+                class="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm <%= task.priority === val ? 'bg-blue-50 font-medium' : '' %>">
+                <i class="fas fa-flag <%= color %> text-xs"></i>
+                <span><%= label %></span>
+                <% if (task.priority === val) { %><i class="fas fa-check text-blue-600 text-xs ml-auto"></i><% } %>
+              </button>
+            <% }) %>
+          </div>
+        </div>
         <div>
           <span class="text-gray-400">Proyek</span>
           <div class="font-medium mt-0.5">
@@ -1491,6 +1527,57 @@ async function saveDeadlineToServer(dueDate) {
   } catch (err) {
     textEl.innerHTML = original;
     alert(err.message || 'Gagal update deadline');
+  } finally {
+    textEl.style.opacity = '1';
+  }
+}
+
+// --- Inline edit: Priority ---
+function openPriorityEditor(e) {
+  e.stopPropagation();
+  document.getElementById('assignee-menu')?.classList.add('hidden');
+  document.getElementById('deadline-menu')?.classList.add('hidden');
+  document.getElementById('priority-menu')?.classList.toggle('hidden');
+}
+
+function closePriorityEditor() {
+  document.getElementById('priority-menu')?.classList.add('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('priority-menu');
+  if (!menu || menu.classList.contains('hidden')) return;
+  if (e.target.closest('#priority-menu') || e.target.closest('#priority-display')) return;
+  if (e.target.closest('[onclick*="openPriorityEditor"]')) return;
+  menu.classList.add('hidden');
+});
+
+async function savePriority(priority) {
+  const prioMeta = {
+    NONE:   { label: 'Tanpa Prioritas', textCls: 'text-gray-400',  iconCls: 'text-gray-300' },
+    LOW:    { label: 'Low',             textCls: 'text-blue-700',  iconCls: 'text-blue-400' },
+    MEDIUM: { label: 'Medium',          textCls: 'text-yellow-700',iconCls: 'text-yellow-400' },
+    HIGH:   { label: 'High',            textCls: 'text-orange-700',iconCls: 'text-orange-400' },
+    URGENT: { label: 'Urgent',          textCls: 'text-red-700',   iconCls: 'text-red-500' }
+  };
+  const textEl = document.getElementById('priority-text');
+  const iconEl = document.getElementById('priority-icon');
+  textEl.style.opacity = '0.5';
+  try {
+    const res = await fetch(`/tasks/${taskId}/priority`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priority })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Gagal');
+    const meta = prioMeta[data.task.priority] || prioMeta.NONE;
+    textEl.textContent = meta.label;
+    textEl.className = meta.textCls;
+    iconEl.className = `fas fa-flag ${meta.iconCls}`;
+    closePriorityEditor();
+  } catch (err) {
+    alert(err.message || 'Gagal update prioritas');
   } finally {
     textEl.style.opacity = '1';
   }
