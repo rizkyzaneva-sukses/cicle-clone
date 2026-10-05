@@ -48,7 +48,16 @@ router.get('/:id', async (req, res) => {
         assignees: true,
         parent: { select: { id: true, title: true, status: true } },
         children: { select: { id: true, title: true, status: true, priority: true, assignee: true, assignees: true }, orderBy: { createdAt: 'asc' } },
-        checklists: { orderBy: { position: 'asc' }, include: { children: { orderBy: { position: 'asc' } } } },
+        checklists: {
+          orderBy: { position: 'asc' },
+          include: {
+            assignee: { select: { id: true, name: true } },
+            children: {
+              orderBy: { position: 'asc' },
+              include: { assignee: { select: { id: true, name: true } } }
+            }
+          }
+        },
         comments: { where: { parentId: null }, include: { user: true, files: true, replies: { include: { user: true, files: true }, orderBy: { createdAt: 'asc' } } }, orderBy: { createdAt: 'asc' } },
         progressUpdates: { include: { author: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' } },
         labels: { include: { label: true } },

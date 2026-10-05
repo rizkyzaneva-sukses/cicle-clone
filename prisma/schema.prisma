@@ -43,6 +43,7 @@ model User {
   recurringTaskTemplates RecurringTaskTemplate[] @relation("RecurringAssignee")
   announcements          Announcement[]
   projectReportEntries   ProjectReportEntry[] @relation("ReportCreatedBy")
+  assignedChecklists     ChecklistItem[]      @relation("ChecklistAssignee")
 }
 
 model Workspace {
@@ -306,17 +307,21 @@ model TelegramReminderLog {
 }
 
 model ChecklistItem {
-  id        String   @id @default(cuid())
-  content   String
-  isDone    Boolean  @default(false)
-  taskId    String
-  parentId  String?  // sub-checklist
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
+  id         String    @id @default(cuid())
+  content    String
+  isDone     Boolean   @default(false)
+  taskId     String
+  parentId   String?   // sub-checklist
+  position   Int       @default(0)
+  assigneeId String?
+  priority   String    @default("NONE") // NONE, LOW, MEDIUM, HIGH, URGENT
+  dueDate    DateTime?
+  createdAt  DateTime  @default(now())
 
   task     Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
   parent   ChecklistItem?  @relation("SubChecklist", fields: [parentId], references: [id], onDelete: Cascade)
   children ChecklistItem[] @relation("SubChecklist")
+  assignee User?           @relation("ChecklistAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@index([taskId])
   @@index([parentId])

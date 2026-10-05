@@ -353,7 +353,10 @@
 
       <div id="checklist-list" class="space-y-2 mb-4">
         <p class="text-xs text-gray-400 mb-2"><i class="fas fa-info-circle mr-1"></i>Klik <i class="fas fa-plus text-blue-500"></i> di kanan item untuk tambah sub-checklist</p>
+        <% const clPrioColor = { NONE: 'text-gray-300', LOW: 'text-blue-400', MEDIUM: 'text-yellow-400', HIGH: 'text-orange-400', URGENT: 'text-red-500' } %>
+        <% function clDateShort(d) { const dt = new Date(d); return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); } %>
         <% task.checklists.forEach(item => { %>
+          <% const itemOverdue = item.dueDate && new Date(item.dueDate) < new Date() && !item.isDone %>
           <div class="checklist-group" id="check-<%= item.id %>">
             <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group cursor-pointer">
               <i class="fas fa-grip-vertical text-gray-300 hover:text-gray-500 cursor-grab drag-handle shrink-0 opacity-0 group-hover:opacity-100 transition"></i>
@@ -364,9 +367,27 @@
                 <%= item.content %>
               </span>
               <input type="text" class="hidden flex-1 border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-400 checklist-edit-input" value="<%= item.content %>" onblur="saveEditChecklist('<%= item.id %>', this)" onkeydown="if(event.key==='Enter') this.blur()">
-              
+               
               <button onclick="event.stopPropagation(); startEditChecklist('<%= item.id %>')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
                 <i class="fas fa-pen"></i>
+              </button>
+              <!-- checklist meta: assignee / priority / deadline -->
+              <button type="button" onclick="openChecklistPopover(event, 'assignee', '<%= item.id %>')" title="Assignee"
+                class="cl-assignee-btn shrink-0 <%= item.assignee ? '' : 'text-gray-400' %> hover:text-blue-600 text-xs transition" data-assignee-id="<%= item.assigneeId || '' %>">
+                <% if (item.assignee) { %>
+                  <span class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[9px] font-bold"><%= item.assignee.name.charAt(0) %></span>
+                <% } else { %>
+                  <i class="fas fa-user"></i>
+                <% } %>
+              </button>
+              <button type="button" onclick="openChecklistPopover(event, 'priority', '<%= item.id %>')" title="Priority"
+                class="cl-priority-btn shrink-0 <%= clPrioColor[item.priority] || 'text-gray-300' %> hover:text-blue-600 text-xs transition" data-priority="<%= item.priority || 'NONE' %>">
+                <i class="fas fa-flag"></i>
+              </button>
+              <button type="button" onclick="openChecklistPopover(event, 'due', '<%= item.id %>')" title="Deadline"
+                class="cl-due-btn shrink-0 flex items-center gap-0.5 <%= item.dueDate ? (itemOverdue ? 'text-red-500' : 'text-blue-500') : 'text-gray-400' %> hover:text-blue-600 text-xs transition" data-due="<%= item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '' %>">
+                <i class="fas fa-calendar"></i>
+                <% if (item.dueDate) { %><span class="cl-due-text text-[10px]"><%= clDateShort(item.dueDate) %></span><% } %>
               </button>
               <button onclick="event.stopPropagation(); showSubCheckForm('<%= item.id %>')" class="text-blue-400 hover:text-blue-600 text-xs transition shrink-0" title="Tambah sub-checklist">
                 <i class="fas fa-plus"></i>
@@ -379,6 +400,7 @@
             <div class="sub-checklist ml-8 space-y-1 mt-1">
             <% if (item.children && item.children.length > 0) { %>
                 <% item.children.forEach(sub => { %>
+                  <% const subOverdue = sub.dueDate && new Date(sub.dueDate) < new Date() && !sub.isDone %>
                   <div class="flex items-center gap-3 p-1.5 rounded-lg hover:bg-gray-50 group" id="check-<%= sub.id %>">
                     <i class="fas fa-grip-vertical text-gray-300 hover:text-gray-500 cursor-grab drag-handle shrink-0 opacity-0 group-hover:opacity-100 transition"></i>
                     <input type="checkbox" <%= sub.isDone ? 'checked' : '' %>
@@ -391,6 +413,23 @@
                     
                     <button onclick="event.stopPropagation(); startEditChecklist('<%= sub.id %>')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
                       <i class="fas fa-pen"></i>
+                    </button>
+                    <button type="button" onclick="openChecklistPopover(event, 'assignee', '<%= sub.id %>')" title="Assignee"
+                      class="cl-assignee-btn shrink-0 <%= sub.assignee ? '' : 'text-gray-400' %> hover:text-blue-600 text-xs transition" data-assignee-id="<%= sub.assigneeId || '' %>">
+                      <% if (sub.assignee) { %>
+                        <span class="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-[8px] font-bold"><%= sub.assignee.name.charAt(0) %></span>
+                      <% } else { %>
+                        <i class="fas fa-user"></i>
+                      <% } %>
+                    </button>
+                    <button type="button" onclick="openChecklistPopover(event, 'priority', '<%= sub.id %>')" title="Priority"
+                      class="cl-priority-btn shrink-0 <%= clPrioColor[sub.priority] || 'text-gray-300' %> hover:text-blue-600 text-xs transition" data-priority="<%= sub.priority || 'NONE' %>">
+                      <i class="fas fa-flag"></i>
+                    </button>
+                    <button type="button" onclick="openChecklistPopover(event, 'due', '<%= sub.id %>')" title="Deadline"
+                      class="cl-due-btn shrink-0 flex items-center gap-0.5 <%= sub.dueDate ? (subOverdue ? 'text-red-500' : 'text-blue-500') : 'text-gray-400' %> hover:text-blue-600 text-xs transition" data-due="<%= sub.dueDate ? new Date(sub.dueDate).toISOString().split('T')[0] : '' %>">
+                      <i class="fas fa-calendar"></i>
+                      <% if (sub.dueDate) { %><span class="cl-due-text text-[10px]"><%= clDateShort(sub.dueDate) %></span><% } %>
                     </button>
                     <button onclick="deleteCheck('<%= sub.id %>')"
                       class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition shrink-0">
@@ -418,6 +457,56 @@
         <button onclick="addCheck()" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm hover:bg-blue-700">
           <i class="fas fa-plus"></i>
         </button>
+      </div>
+
+      <!-- Checklist item meta popover (assignee / priority / deadline) -->
+      <div id="checklist-meta-popover" class="hidden fixed z-50 bg-white border rounded-2xl shadow-lg p-3 w-64">
+        <!-- Assignee content -->
+        <div id="cl-pop-assignee" class="hidden">
+          <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Assignee</div>
+          <div class="space-y-1 max-h-56 overflow-y-auto">
+            <button type="button" onclick="saveChecklistAssignee(null)" class="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm">
+              <i class="fas fa-user-slash text-gray-400 text-xs"></i>
+              <span class="text-gray-500">Tanpa assignee</span>
+            </button>
+            <% members.forEach(m => { %>
+              <button type="button" onclick="saveChecklistAssignee('<%= m.id %>')" data-member-id="<%= m.id %>"
+                class="cl-assignee-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm">
+                <span class="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"><%= m.name.charAt(0) %></span>
+                <span class="truncate"><%= m.name %></span>
+                <i class="fas fa-check text-blue-600 text-xs ml-auto hidden"></i>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+        <!-- Priority content -->
+        <div id="cl-pop-priority" class="hidden">
+          <div class="text-xs font-semibold text-gray-500 uppercase px-2 pt-1 pb-2">Priority</div>
+          <% [
+            ['NONE', 'Tanpa Prioritas', 'text-gray-400'],
+            ['LOW', 'Low', 'text-blue-500'],
+            ['MEDIUM', 'Medium', 'text-yellow-500'],
+            ['HIGH', 'High', 'text-orange-500'],
+            ['URGENT', 'Urgent', 'text-red-500']
+          ].forEach(([val, label, color]) => { %>
+            <button type="button" onclick="saveChecklistPriority('<%= val %>')" data-priority-val="<%= val %>"
+              class="cl-priority-option w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-blue-50 text-sm">
+              <i class="fas fa-flag <%= color %> text-xs"></i>
+              <span><%= label %></span>
+              <i class="fas fa-check text-blue-600 text-xs ml-auto hidden"></i>
+            </button>
+          <% }) %>
+        </div>
+        <!-- Due date content -->
+        <div id="cl-pop-due" class="hidden">
+          <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Deadline</div>
+          <input type="date" id="cl-due-input" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+          <div class="flex gap-2 mt-3">
+            <button type="button" onclick="saveChecklistDue(null)" class="flex-1 py-1.5 text-xs text-gray-600 border rounded-xl hover:bg-gray-50">Hapus</button>
+            <button type="button" onclick="closeChecklistPopover()" class="flex-1 py-1.5 text-xs text-gray-600 border rounded-xl hover:bg-gray-50">Batal</button>
+            <button type="button" onclick="saveChecklistDueFromInput()" class="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded-xl hover:bg-blue-700">Simpan</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -794,6 +883,36 @@
 <script>
 const taskId = '<%= task.id %>';
 
+// Data members untuk render ikon assignee item checklist baru
+const checklistMembers = <%- JSON.stringify(members.map(m => ({ id: m.id, name: m.name }))) %>;
+
+function clPrioCls(p) {
+  return { NONE: 'text-gray-300', LOW: 'text-blue-400', MEDIUM: 'text-yellow-400', HIGH: 'text-orange-400', URGENT: 'text-red-500' }[p || 'NONE'] || 'text-gray-300';
+}
+
+function clDateShortStr(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
+
+// Ikon meta (assignee/priority/deadline) untuk item checklist baru — default kosong
+function clMetaButtonsHTML(id) {
+  return `
+    <button type="button" onclick="openChecklistPopover(event, 'assignee', '${id}')" title="Assignee"
+      class="cl-assignee-btn shrink-0 text-gray-400 hover:text-blue-600 text-xs transition" data-assignee-id="">
+      <i class="fas fa-user"></i>
+    </button>
+    <button type="button" onclick="openChecklistPopover(event, 'priority', '${id}')" title="Priority"
+      class="cl-priority-btn shrink-0 text-gray-300 hover:text-blue-600 text-xs transition" data-priority="NONE">
+      <i class="fas fa-flag"></i>
+    </button>
+    <button type="button" onclick="openChecklistPopover(event, 'due', '${id}')" title="Deadline"
+      class="cl-due-btn shrink-0 flex items-center gap-0.5 text-gray-400 hover:text-blue-600 text-xs transition" data-due="">
+      <i class="fas fa-calendar"></i>
+    </button>`;
+}
+
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 }
@@ -918,6 +1037,7 @@ async function addCheck() {
         <button onclick="event.stopPropagation(); startEditChecklist('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
           <i class="fas fa-pen"></i>
         </button>
+        ${clMetaButtonsHTML(data.item.id)}
         <button onclick="event.stopPropagation(); showSubCheckForm('${data.item.id}')" class="text-blue-400 hover:text-blue-600 text-xs transition shrink-0" title="Tambah sub-checklist">
           <i class="fas fa-plus"></i>
         </button>
@@ -1009,11 +1129,158 @@ async function addSubCheck(parentId, input) {
       <button onclick="event.stopPropagation(); startEditChecklist('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-xs transition" title="Edit">
         <i class="fas fa-pen"></i>
       </button>
+      ${clMetaButtonsHTML(data.item.id)}
       <button onclick="deleteCheck('${data.item.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition shrink-0"><i class="fas fa-times"></i></button>
     `;
     subList.appendChild(div);
     input.value = '';
     updateChecklistMeta();
+  }
+}
+
+// ============================================
+// CHECKLIST ITEM META: assignee / priority / dueDate
+// ============================================
+let clPopover = { type: null, id: null };
+
+function openChecklistPopover(e, type, id) {
+  e.stopPropagation();
+  const pop = document.getElementById('checklist-meta-popover');
+  const sameTarget = clPopover.type === type && clPopover.id === id && !pop.classList.contains('hidden');
+  closeChecklistPopover();
+  if (sameTarget) return;
+
+  clPopover = { type, id };
+  ['assignee', 'priority', 'due'].forEach(t => {
+    document.getElementById('cl-pop-' + t).classList.toggle('hidden', t !== type);
+  });
+
+  const row = document.getElementById('check-' + id);
+  const btn = row ? row.querySelector('.cl-' + (type === 'due' ? 'due' : type) + '-btn') : null;
+
+  if (type === 'assignee') {
+    const cur = btn?.dataset.assigneeId || '';
+    document.querySelectorAll('.cl-assignee-option').forEach(opt => {
+      const active = opt.dataset.memberId === cur;
+      opt.classList.toggle('bg-blue-50', active);
+      opt.querySelector('.fa-check')?.classList.toggle('hidden', !active);
+    });
+  } else if (type === 'priority') {
+    const cur = btn?.dataset.priority || 'NONE';
+    document.querySelectorAll('.cl-priority-option').forEach(opt => {
+      const active = opt.dataset.priorityVal === cur;
+      opt.classList.toggle('bg-blue-50', active);
+      opt.querySelector('.fa-check')?.classList.toggle('hidden', !active);
+    });
+  } else if (type === 'due') {
+    document.getElementById('cl-due-input').value = btn?.dataset.due || '';
+  }
+
+  // Posisikan popover di dekat tombol
+  const rect = (btn || e.target).getBoundingClientRect();
+  pop.classList.remove('hidden');
+  const popW = 256; // w-64
+  let left = rect.left + window.scrollX - (popW / 2) + (rect.width / 2);
+  left = Math.max(8, Math.min(left, window.scrollX + document.documentElement.clientWidth - popW - 8));
+  pop.style.left = left + 'px';
+  pop.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+
+  if (type === 'due') setTimeout(() => document.getElementById('cl-due-input').focus(), 0);
+}
+
+function closeChecklistPopover() {
+  document.getElementById('checklist-meta-popover')?.classList.add('hidden');
+  clPopover = { type: null, id: null };
+}
+
+document.addEventListener('click', (e) => {
+  const pop = document.getElementById('checklist-meta-popover');
+  if (!pop || pop.classList.contains('hidden')) return;
+  if (e.target.closest('#checklist-meta-popover')) return;
+  if (e.target.closest('[onclick*="openChecklistPopover"]')) return;
+  closeChecklistPopover();
+});
+
+async function patchChecklistField(id, payload) {
+  const res = await fetch(`/checklist/${id}/fields`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Gagal update');
+  return data.item;
+}
+
+async function saveChecklistAssignee(userId) {
+  const { id } = clPopover;
+  if (!id) return;
+  try {
+    const item = await patchChecklistField(id, { assigneeId: userId });
+    const row = document.getElementById('check-' + id);
+    const btn = row?.querySelector('.cl-assignee-btn');
+    if (btn) {
+      btn.dataset.assigneeId = item.assigneeId || '';
+      const isSub = !!row.closest('.sub-checklist');
+      const avatarCls = isSub ? 'w-4 h-4 text-[8px]' : 'w-5 h-5 text-[9px]';
+      if (item.assignee) {
+        btn.classList.remove('text-gray-400');
+        btn.innerHTML = `<span class="${avatarCls} bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">${escapeHtml(item.assignee.name.charAt(0))}</span>`;
+      } else {
+        btn.classList.add('text-gray-400');
+        btn.innerHTML = '<i class="fas fa-user"></i>';
+      }
+    }
+    closeChecklistPopover();
+  } catch (err) {
+    alert(err.message || 'Gagal update assignee');
+  }
+}
+
+async function saveChecklistPriority(priority) {
+  const { id } = clPopover;
+  if (!id) return;
+  try {
+    const item = await patchChecklistField(id, { priority });
+    const btn = document.getElementById('check-' + id)?.querySelector('.cl-priority-btn');
+    if (btn) {
+      btn.dataset.priority = item.priority;
+      btn.classList.remove('text-gray-300', 'text-blue-400', 'text-yellow-400', 'text-orange-400', 'text-red-500');
+      btn.classList.add(clPrioCls(item.priority));
+    }
+    closeChecklistPopover();
+  } catch (err) {
+    alert(err.message || 'Gagal update priority');
+  }
+}
+
+function saveChecklistDueFromInput() {
+  const val = document.getElementById('cl-due-input').value;
+  saveChecklistDue(val || null);
+}
+
+async function saveChecklistDue(dueDate) {
+  const { id } = clPopover;
+  if (!id) return;
+  try {
+    const item = await patchChecklistField(id, { dueDate });
+    const btn = document.getElementById('check-' + id)?.querySelector('.cl-due-btn');
+    if (btn) {
+      const iso = item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '';
+      btn.dataset.due = iso;
+      btn.classList.remove('text-gray-400', 'text-blue-500', 'text-red-500');
+      if (item.dueDate) {
+        const overdue = new Date(item.dueDate) < new Date();
+        btn.classList.add(overdue ? 'text-red-500' : 'text-blue-500');
+        btn.innerHTML = `<i class="fas fa-calendar"></i><span class="cl-due-text text-[10px]">${clDateShortStr(iso)}</span>`;
+      } else {
+        btn.classList.add('text-gray-400');
+        btn.innerHTML = '<i class="fas fa-calendar"></i>';
+      }
+    }
+    closeChecklistPopover();
+  } catch (err) {
+    alert(err.message || 'Gagal update deadline');
   }
 }
 
@@ -1401,6 +1668,7 @@ async function saveEditChecklist(id, input) {
 // --- Inline edit: Assignee ---
 function toggleAssigneeMenu(e) {
   e.stopPropagation();
+  closeChecklistPopover();
   closeDeadlineEditor();
   document.getElementById('assignee-menu').classList.toggle('hidden');
 }
@@ -1535,6 +1803,7 @@ async function saveDeadlineToServer(dueDate) {
 // --- Inline edit: Priority ---
 function openPriorityEditor(e) {
   e.stopPropagation();
+  closeChecklistPopover();
   document.getElementById('assignee-menu')?.classList.add('hidden');
   document.getElementById('deadline-menu')?.classList.add('hidden');
   document.getElementById('priority-menu')?.classList.toggle('hidden');

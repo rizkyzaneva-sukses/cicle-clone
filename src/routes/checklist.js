@@ -3,8 +3,20 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { logActivity } = require('../lib/activity');
+const { hasProjectAccess } = require('../lib/access');
 
 router.use(requireAuth);
+
+// Helper: pastikan user punya akses ke task pemilik checklist item
+async function canAccessChecklistItem(user, checklistId) {
+  const item = await prisma.checklistItem.findUnique({
+    where: { id: checklistId },
+    include: { task: { include: { project: true } } }
+  });
+  if (!item) return null;
+  const allowed = await hasProjectAccess(user, item.task.project);
+  return allowed ? item : null;
+}
 
 // Get all checklists for a task
 router.get('/task/:taskId', async (req, res) => {
@@ -131,6 +143,72 @@ router.patch('/:id/content', async (req, res) => {
     res.json({ success: true, item: updated });
   } catch (error) {
     res.status(500).json({ error: 'Gagal update konten checklist' });
+  }
+});
+
+// Update checklist item fields: assignee / priority / dueDate
+router.patch('/:id/fields', async (req, res) => {
+  try {
+    const item = await canAccessChecklistItem(req.session.user, req.params.id);
+    if (!item) return res.status(403).json({ error: 'Akses ditolak' });
+
+    const data = {};
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'priority')) {
+      const validPriorities = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+      data.priority = validPriorities.includes(req.body.priority) ? req.body.priority : 'NONE';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'dueDate')) {
+      let normalized = null;
+      if (req.body.dueDate) {
+        const d = new Date(req.body.dueDate);
+        if (!isNaN(d.getTime())) normalized = d;
+      }
+      data.dueDate = normalized;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'assigneeId')) {
+      const assigneeId = req.body.assigneeId || null;
+      if (assigneeId) {
+        // assignee harus anggota proyek atau minimal anggota brand
+        const isProjectMember = await prisma.projectMember.findUnique({
+          where: { userId_projectId: { userId: assigneeId, projectId: item.task.projectId } }
+        });
+        if (!isProjectMember) {
+          const membership = await prisma.membership.findUnique({
+            where: { userId_companyId: { userId: assigneeId, companyId: item.task.project.companyId } }
+          });
+          if (!membership) return res.status(400).json({ error: 'Assignee bukan anggota proyek/brand' });
+        }
+      }
+      data.assigneeId = assigneeId;
+    }
+
+    const updated = await prisma.checklistItem.update({
+      where: { id: req.params.id },
+      data,
+      include: { assignee: { select: { id: true, name: true } } }
+    });
+
+    await logActivity(prisma, req, {
+      action: 'updated_checklist_fields',
+      entityType: 'task',
+      entityId: item.taskId,
+      projectId: item.task.projectId,
+      taskId: item.taskId,
+      metadata: {
+        content: item.content,
+        assigneeId: updated.assigneeId,
+        priority: updated.priority,
+        dueDate: updated.dueDate ? updated.dueDate.toISOString() : null
+      }
+    });
+
+    res.json({ success: true, item: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gagal update checklist' });
   }
 });
 
