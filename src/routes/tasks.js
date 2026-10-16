@@ -49,6 +49,7 @@ router.get('/:id', async (req, res) => {
         parent: { select: { id: true, title: true, status: true } },
         children: { select: { id: true, title: true, status: true, priority: true, assignee: true, assignees: true }, orderBy: { createdAt: 'asc' } },
         checklists: {
+          where: { parentId: null }, // sub-checklist ditampilkan lewat children
           orderBy: { position: 'asc' },
           include: {
             assignee: { select: { id: true, name: true } },

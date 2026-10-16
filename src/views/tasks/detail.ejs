@@ -321,8 +321,9 @@
           <button type="button" onclick="toggleSaveTemplateForm()" class="text-xs px-3 py-1.5 border rounded-xl text-purple-600 hover:bg-purple-50 font-semibold transition">
             <i class="fas fa-bookmark mr-1"></i>Simpan Template
           </button>
+          <% const allChecks = task.checklists.flatMap(c => [c, ...(c.children || [])]) %>
           <span class="text-sm text-gray-500" id="checklist-count">
-            <%= task.checklists.filter(c=>c.isDone).length %> / <%= task.checklists.length %> selesai
+            <%= allChecks.filter(c=>c.isDone).length %> / <%= allChecks.length %> selesai
           </span>
         </div>
       </div>
@@ -344,8 +345,8 @@
       </div>
 
       <!-- Progress bar -->
-      <% if (task.checklists.length > 0) { %>
-        <% const pct = Math.round(task.checklists.filter(c=>c.isDone).length / task.checklists.length * 100) %>
+      <% if (allChecks.length > 0) { %>
+        <% const pct = Math.round(allChecks.filter(c=>c.isDone).length / allChecks.length * 100) %>
         <div class="h-1.5 bg-gray-100 rounded-full mb-4 overflow-hidden">
           <div class="h-full bg-blue-500 rounded-full transition-all" id="checklist-bar" style="width:<%= pct %>%"></div>
         </div>
@@ -1026,7 +1027,7 @@ async function addCheck() {
   if (data.success) {
     const list = document.getElementById('checklist-list');
     const div = document.createElement('div');
-    div.className = 'flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group';
+    div.className = 'checklist-group';
     div.id = `check-${data.item.id}`;
     div.innerHTML = `
       <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 group cursor-pointer w-full">
