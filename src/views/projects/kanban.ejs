@@ -649,6 +649,10 @@ function clearTaskSearch() {
   input?.focus();
 }
 
+function flattenChecklistItems(items = []) {
+  return items.flatMap(item => [item, ...flattenChecklistItems(item.children || [])]);
+}
+
 function flattenChecklistText(items = []) {
   return items.map(item => [
     item.content || '',
@@ -839,7 +843,7 @@ function renderKanban() {
     else moveBtn = `<button onclick="event.stopPropagation(); moveStatus('${task.id}','TODO')" class="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-gray-100 text-gray-600 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold hover:bg-gray-200 transition whitespace-nowrap" title="Buka Lagi"><i class="fas fa-undo mr-0.5 sm:mr-1"></i>Buka</button>`;
 
     // Checklist progress
-    const checklists = task.checklists || [];
+    const checklists = flattenChecklistItems(task.checklists || []);
     const doneCount = checklists.filter(c => c.isDone).length;
     const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
     const latestProgress = Array.isArray(task.progressUpdates) && task.progressUpdates.length > 0 ? task.progressUpdates[0] : null;
@@ -932,8 +936,9 @@ function openPreview(taskId) {
   if (!task) return;
 
   const checklists = task.checklists || [];
-  const doneCount = checklists.filter(c => c.isDone).length;
-  const checkPct = checklists.length > 0 ? Math.round(doneCount / checklists.length * 100) : 0;
+  const allChecks = flattenChecklistItems(checklists);
+  const doneCount = allChecks.filter(c => c.isDone).length;
+  const checkPct = allChecks.length > 0 ? Math.round(doneCount / allChecks.length * 100) : 0;
   const PRIO_MAP = { URGENT: { label: '🔴 Urgent', cls: 'bg-red-100 text-red-700' }, HIGH: { label: '🟠 High', cls: 'bg-orange-100 text-orange-700' }, MEDIUM: { label: '🟡 Medium', cls: 'bg-yellow-100 text-yellow-700' }, LOW: { label: '🟢 Low', cls: 'bg-green-100 text-green-700' }, NONE: { label: '', cls: '' } };
   const prio = PRIO_MAP[task.priority] || PRIO_MAP.NONE;
   const STATUS_MAP = { TODO: '📋 To Do', IN_PROGRESS: '🔄 Doing', DONE: '✅ Done' };
