@@ -29,11 +29,14 @@
     left: 50%;
     transform: translateX(-50%) translateY(-60px);
     z-index: 100;
-    transition: transform 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
   }
 
   .pull-refresh-indicator.visible {
     transform: translateX(-50%) translateY(0);
+    opacity: 1;
   }
 
   .pull-refresh-spinner {
