@@ -13,12 +13,38 @@ if (enabled) {
   );
 }
 
+const DEFAULT_ICON = '/icon-192.png';
+
+// Pick a picture for the notification from its link: sender photo for DMs, brand avatar for project/task.
+async function resolveIcon(url) {
+  try {
+    const [, section, id] = (url || '').split('/');
+    if (!id) return DEFAULT_ICON;
+    if (section === 'inbox') {
+      const user = await prisma.user.findUnique({ where: { id }, select: { avatar: true } });
+      return user?.avatar || DEFAULT_ICON;
+    }
+    if (section === 'projects') {
+      const project = await prisma.project.findUnique({ where: { id }, select: { company: { select: { avatar: true } } } });
+      return project?.company?.avatar || DEFAULT_ICON;
+    }
+    if (section === 'tasks') {
+      const task = await prisma.task.findUnique({ where: { id }, select: { project: { select: { company: { select: { avatar: true } } } } } });
+      return task?.project?.company?.avatar || DEFAULT_ICON;
+    }
+  } catch (_) {}
+  return DEFAULT_ICON;
+}
+
 async function sendPushToUser(userId, payload) {
   const result = { enabled, total: 0, sent: 0, removed: 0, failed: 0 };
   if (!enabled) return result;
 
   const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
   result.total = subscriptions.length;
+  if (!subscriptions.length) return result;
+
+  if (!payload.icon) payload = { ...payload, icon: await resolveIcon(payload.url) };
 
   await Promise.all(subscriptions.map(async (sub) => {
     try {
